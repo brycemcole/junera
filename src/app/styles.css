@@ -1,0 +1,13 @@
+   /* styles.css */
+   .page-transition {
+    transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1); /* smoother transition */
+  }
+  
+  .page-transition-enter {
+    opacity: 0;
+  }
+  
+  .page-transition-enter-active {
+    opacity: 1;
+  }
+  
