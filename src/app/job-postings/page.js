@@ -77,6 +77,57 @@ export function ExperienceLevelSelect({ onChange, value }) {
 }
 
 export function LocationSelect({ onChange, value }) {
+    const states = {
+        "new york": "New York",
+        "california": "California",
+        "texas": "Texas",
+        "florida": "Florida",
+        "illinois": "Illinois",
+        "pennsylvania": "Pennsylvania",
+        "ohio": "Ohio",
+        "georgia": "Georgia",
+        "north carolina": "North Carolina",
+        "michigan": "Michigan",
+        "washington": "Washington",
+        "arizona": "Arizona",
+        "massachusetts": "Massachusetts",
+        "tennessee": "Tennessee",
+        "indiana": "Indiana",
+        "missouri": "Missouri",
+        "maryland": "Maryland",
+        "wisconsin": "Wisconsin",
+        "colorado": "Colorado",
+        "minnesota": "Minnesota",
+        "south carolina": "South Carolina",
+        "alabama": "Alabama",
+        "louisiana": "Louisiana",
+        "kentucky": "Kentucky",
+        "oregon": "Oregon",
+        "oklahoma": "Oklahoma",
+        "connecticut": "Connecticut",
+        "iowa": "Iowa",
+        "utah": "Utah",
+        "nevada": "Nevada",
+        "arkansas": "Arkansas",
+        "mississippi": "Mississippi",
+        "kansas": "Kansas",
+        "new mexico": "New Mexico",
+        "nebraska": "Nebraska",
+        "west virginia": "West Virginia",
+        "idaho": "Idaho",
+        "hawaii": "Hawaii",
+        "new hampshire": "New Hampshire",
+        "maine": "Maine",
+        "montana": "Montana",
+        "rhode island": "Rhode Island",
+        "delaware": "Delaware",
+        "south dakota": "South Dakota",
+        "north dakota": "North Dakota",
+        "alaska": "Alaska",
+        "vermont": "Vermont",
+        "wyoming": "Wyoming",
+    };
+
     return (
         <Select onValueChange={onChange} value={value}>
             <SelectTrigger className="w-[180px]">
@@ -85,11 +136,11 @@ export function LocationSelect({ onChange, value }) {
             <SelectContent>
                 <SelectGroup>
                     <SelectLabel>State</SelectLabel>
-                    {/* List of states */}
-                    <SelectItem value="new york">New York</SelectItem>
-                    <SelectItem value="california">California</SelectItem>
-                    <SelectItem value="texas">Texas</SelectItem>
-                    {/* Add more states as needed */}
+                    {Object.entries(states).map(([stateValue, stateName]) => (
+                        <SelectItem key={stateValue} value={stateValue}>
+                            {stateName}
+                        </SelectItem>
+                    ))}
                 </SelectGroup>
             </SelectContent>
         </Select>
@@ -144,6 +195,7 @@ export default function JobPostingsPage() {
     const searchParams = useSearchParams();
     const [currentPage, setCurrentPage] = useState(1);
     const [data, setData] = useState([]);
+    const [totalJobs, setTotalJobs] = useState(0);
     const [title, setTitle] = useState("");
     const [experienceLevel, setExperienceLevel] = useState("");
     const [location, setLocation] = useState("");
@@ -166,8 +218,33 @@ export default function JobPostingsPage() {
             if (!user) {
                 router.push('/login');
             } else {
+                // Fetch totalJobs whenever filters change
+                const cacheKeyTotal = `totalJobs_${title}_${experienceLevel}_${location}_${company}`;
+                const cachedTotal = sessionStorage.getItem(cacheKeyTotal);
+
+                if (cachedTotal) {
+                    setTotalJobs(parseInt(cachedTotal, 10));
+                } else {
+                    async function fetchTotalJobs() {
+                        try {
+                            const response = await fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
+                                headers: {
+                                    'Authorization': `Bearer ${user.token}`,
+                                },
+                            });
+                            const result = await response.json();
+                            setTotalJobs(result.totalJobs);
+                            sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
+                        } catch (error) {
+                            console.error("Error fetching total jobs:", error);
+                        }
+                    }
+                    fetchTotalJobs();
+                }
+
                 const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
                 const cachedData = sessionStorage.getItem(cacheKey);
+
                 if (cachedData) {
                     setData(JSON.parse(cachedData));
                 } else {
@@ -179,8 +256,9 @@ export default function JobPostingsPage() {
                                 },
                             });
                             const result = await response.json();
-                            setData(result);
-                            sessionStorage.setItem(cacheKey, JSON.stringify(result));
+                            console.log("Fetched job postings:", result);
+                            setData(result.jobPostings);
+                            sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
                         } catch (error) {
                             console.error("Error fetching job postings:", error);
                         }
@@ -265,11 +343,11 @@ export default function JobPostingsPage() {
 </Breadcrumb>
 
             <h1 className="text-2xl font-bold mb-4">
-                Job Postings{filterText && ` - ${filterText}`}
+                {totalJobs} Job Postings{filterText && ` - ${filterText}`}
             </h1>
                         {user && (
                             <>
-                <div class="flex flex-row mb-2 gap-4">
+                <div className="flex flex-row mb-2 gap-4">
                     <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
                       <BriefcaseBusiness size={16} strokeWidth={1.5} />
                         <span>Applied</span>

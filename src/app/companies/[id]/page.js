@@ -19,7 +19,7 @@ async function getCompanyById(id) {
   const pool = await getConnection();
   const result = await pool
     .request()
-    .input("id", id) // Use parameterized query to prevent SQL injection
+    .input("id", id)
     .query("SELECT * FROM companies WHERE id = @id");
 
   return result.recordset[0]; // Return the first (and only) result
@@ -35,7 +35,7 @@ async function getJobPostingsByCompanyId(companyId) {
 }
 
 export default async function CompanyPage({ params }) {
-  const { id } = params; // Extract id from the URL
+  const { id } = await params; // Extract id from the URL
   const company = await getCompanyById(id);
   const jobPostings = await getJobPostingsByCompanyId(id);
   const MAX_POSTINGS = 20; // Maximum number of job postings to display

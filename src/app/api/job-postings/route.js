@@ -20,20 +20,33 @@ export async function GET(req) {
         jp.title, 
         jp.location, 
         jp.postedDate, 
+        jp.salary,
         jp.experienceLevel,
         c.name AS companyName,
         c.logo AS companyLogo
       FROM jobPostings jp
       INNER JOIN companies c ON jp.company_id = c.id
       WHERE 
-        jp.title LIKE '%${title}%' AND
-        jp.experienceLevel LIKE '%${experienceLevel}%' AND
-        jp.location LIKE '%${location}%' 
-        ${company ? `AND jp.company_id = ${company}` : ""}
+        jp.title LIKE @title AND
+        jp.experienceLevel LIKE @experienceLevel AND
+        jp.location LIKE @location 
+        ${company ? `AND jp.company_id = @company` : ""}
       ORDER BY jp.postedDate DESC
-      OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY;
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
     `;
-    const result = await pool.request().query(query);
+
+    const request = pool.request()
+      .input('title', `%${title}%`)
+      .input('experienceLevel', `%${experienceLevel}%`)
+      .input('location', `%${location}%`)
+      .input('offset', offset)
+      .input('limit', limit);
+
+    if (company) {
+      request.input('company', company);
+    }
+
+    const result = await request.query(query);
 
     const jobPostings = result.recordset.map((job) => ({
       id: job.id,
@@ -43,10 +56,10 @@ export async function GET(req) {
       location: job.location,
       salary: job.salary,
       logo: job.companyLogo,
-      postedDate: new Date(job.postedDate).toLocaleDateString(),
+      postedDate: job.postedDate,
     }));
 
-    return new Response(JSON.stringify(jobPostings), { status: 200 });
+    return new Response(JSON.stringify({ jobPostings }), { status: 200 });
   } catch (error) {
     console.error("Error fetching job postings:", error);
     return new Response(JSON.stringify({ error: "Error fetching job postings" }), { status: 500 });

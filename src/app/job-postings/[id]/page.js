@@ -37,6 +37,7 @@ import {
 import { Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "../../../components/job-posting";
+import { CollapsibleDemo } from "./collapsible";
 
 export function CompanyHoverCard({ companyName, companyLogo, companyDescription, companyId }) {
   return (
@@ -167,11 +168,17 @@ async function getRelatedJobPostings(jobPosting) {
   // Fetch similar job postings based on location, title, and experience level
   const similarPostings = await pool.request()
     .input('id', jobPosting.id)
+    .input('location', jobPosting.location)
+    .input('title', jobPosting.title)
     .query(`
-      SELECT TOP 10 jobPostings.*, companies.name AS company, companies.description AS companyDescription, companies.logo AS companyLogo
+      SELECT TOP 10 jobPostings.*, 
+             companies.name AS company, 
+             companies.description AS companyDescription, 
+             companies.logo AS companyLogo
       FROM jobPostings
       JOIN companies ON jobPostings.company_id = companies.id
       WHERE jobPostings.id != @id
+        AND FREETEXT(jobPostings.title, @title)
     `);
 
   // Fetch job postings from the same company
@@ -179,9 +186,14 @@ async function getRelatedJobPostings(jobPosting) {
     .input('companyId', jobPosting.company_id)
     .input('id', jobPosting.id)
     .query(`
-      SELECT TOP 10 * FROM jobPostings
-      WHERE company_id = @companyId
-        AND id != @id
+      SELECT TOP 10 jobPostings.*, 
+             companies.name AS company, 
+             companies.description AS companyDescription, 
+             companies.logo AS companyLogo
+      FROM jobPostings
+      JOIN companies ON jobPostings.company_id = companies.id
+      WHERE jobPostings.company_id = @companyId
+        AND jobPostings.id != @id
     `);
 
   return {
@@ -191,7 +203,7 @@ async function getRelatedJobPostings(jobPosting) {
 }
 
 export default async function JobPostingPage({ params }) {
-  const { id } = params; // Extract id from the URL
+  const { id } = await params;
   const jobPosting = await getJobPostingById(id);
 
   if (!jobPosting) {
@@ -238,11 +250,11 @@ export default async function JobPostingPage({ params }) {
   <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
     <p className="text-lime-500 underline">See more {jobPosting.experienceLevel} jobs</p>
   </Link>
-  <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location)}`}>
-    <p className="text-lime-500 underline">See jobs in {jobPosting.location}</p>
+  <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
+    <p className="text-lime-500 underline">See jobs in {jobPosting.location.trim()}</p>
   </Link>
-  <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title)}`}>
-    <p className="text-lime-500 underline">See more '{jobPosting.title}' jobs</p>
+  <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
+    <p className="text-lime-500 underline">See more '{jobPosting.title.trim()}' jobs</p>
   </Link>
 </div>
       <Accordion type="single" collapsible className="w-full" defaultValue="item-description">
@@ -270,19 +282,15 @@ export default async function JobPostingPage({ params }) {
         ))}
       </Accordion>
 
-      <h2 className="text-xl font-bold mt-10 mb-4">Similar Job Postings</h2>
-      <div className="grid gap-4">
-        {relatedPostings.similarPostings.map((posting) => (
-          <JobCard key={posting.id} job={posting} />
-        ))}
-      </div>
+      <CollapsibleDemo 
+        title="Similar Job Postings" 
+        jobPostings={relatedPostings.similarPostings} 
+      />
 
-      <h2 className="text-xl font-bold mt-10 mb-4">Other Jobs at {jobPosting.companyName}</h2>
-      <div className="grid gap-4">
-        {relatedPostings.sameCompanyPostings.map((posting) => (
-          <JobCard key={posting.id} job={posting} />
-        ))}
-      </div>
+      <CollapsibleDemo
+        title={`More Jobs at ${jobPosting.companyName}`}
+        jobPostings={relatedPostings.sameCompanyPostings}
+      />
     </div>
   );
 }

@@ -7,43 +7,43 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { NavbarMenu } from '@/components/navbar-menu';
 import {
-    Info,
-    BriefcaseBusiness,
-    LayoutDashboard,
-    LogOut
-  } from "lucide-react"
-  import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuPortal,
-    DropdownMenuSeparator,
-    DropdownMenuShortcut,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu"
+  Info,
+  BriefcaseBusiness,
+  LayoutDashboard,
+  LogOut
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Home } from 'lucide-react';
 import { User } from 'lucide-react';
 import { UserPlus } from 'lucide-react';
 import { Bell } from 'lucide-react';
 
-  export function DropdownMenuDemo() {
-    const { user, logout } = useAuth();
-    const [open, setOpen] = useState(false);
-    const router = useRouter();
+export function DropdownMenuDemo() {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
 
-    const handleLogout = () => {
-      logout();
-      router.push('/login');
-    };
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           className="group"
           variant="outline"
@@ -78,15 +78,15 @@ import { Bell } from 'lucide-react';
             />
           </svg>
         </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 mr-4 mt-3">
-          <DropdownMenuGroup>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56 mr-4 mt-3">
+        <DropdownMenuGroup>
           {user && (
             <>
-            <DropdownMenuLabel>
-              Welcome back, {user.username}
-            </DropdownMenuLabel>
-                          <Link href="/dashboard">
+              <DropdownMenuLabel>
+                Welcome back, {user.username}
+              </DropdownMenuLabel>
+              <Link href="/dashboard">
                 <DropdownMenuItem>
                   <LayoutDashboard />
                   <span>Dashboard</span>
@@ -98,29 +98,33 @@ import { Bell } from 'lucide-react';
                   <span>Notifications</span>
                 </DropdownMenuItem>
               </Link>
-              </>
+            </>
           )}
           <Link href="/">
-          <DropdownMenuItem>
+            <DropdownMenuItem>
               <Home />
               <span>Home</span>
             </DropdownMenuItem>
-            </Link>
-            <DropdownMenuSeparator />
+          </Link>
+          <DropdownMenuSeparator />
 
-            <Link href="/about">
-          <DropdownMenuItem>
+          <Link href="/about">
+            <DropdownMenuItem>
               <Info />
               <span>About</span>
             </DropdownMenuItem>
-            </Link>
-            <DropdownMenuSub>
+          </Link>
+          <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <BriefcaseBusiness />
               <span>Job Postings</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => router.push('/job-postings')}>
+                  <span>Browse</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/job-postings?explevel=internship')}>
                   <span>Internships</span>
                 </DropdownMenuItem>
@@ -143,15 +147,11 @@ import { Bell } from 'lucide-react';
                 <DropdownMenuItem onClick={() => router.push('/job-postings?location=california')}>
                   <span>California</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/job-postings')}>
-                  <span>View All</span>
-                </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            {user ? (
+          <DropdownMenuSeparator />
+          {user ? (
             <>
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut />
@@ -174,12 +174,12 @@ import { Bell } from 'lucide-react';
               </Link>
             </>
           )}
-            </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-  
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -189,22 +189,22 @@ export default function Navbar() {
     router.push('/login');
   };
 
-    return (
-      <nav className="bg-background border-b border-muted-accent">
-        <div className="container mx-auto px-4 py-2 flex justify-between items-center max-w-4xl">
-          <div className="flex items-center space-x-2">
-            <Link href="/">
+  return (
+    <nav className="bg-background border-b border-muted-accent">
+      <div className="container mx-auto px-4 py-2 flex justify-between items-center max-w-4xl">
+        <div className="flex items-center space-x-2">
+          <Link href="/">
             <span className="text-2xl">🌳</span>
-            </Link>
-            <span className="text-sm font-mono">junera</span>
-          </div>
-          <div className="hidden md:flex space-x-4">
-<NavbarMenu />
-          </div>
-          <div className="md:hidden">
-<DropdownMenuDemo />
-          </div>
+          </Link>
+          <span className="text-sm font-mono">junera</span>
         </div>
-      </nav>
-    );
-  }
+        <div className="hidden md:flex space-x-4">
+          <NavbarMenu />
+        </div>
+        <div className="md:hidden">
+          <DropdownMenuDemo />
+        </div>
+      </div>
+    </nav>
+  );
+}

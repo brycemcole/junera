@@ -11,6 +11,7 @@ import { User } from "lucide-react";
 import { BriefcaseBusiness } from "lucide-react";
 import { ToastProvider } from "@/components/ui/toast";
 import { ToastViewport } from "@/components/ui/toast";
+import Footer from "./footer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -45,96 +46,7 @@ export default function RootLayout({ children }) {
               <Navbar />
               {children}
               <ToastViewport />
-              <footer className="row-start-3 flex gap-6 mb-6 flex-wrap items-center justify-center">
-  {/* Existing Links */}
-  <Link href="/job-postings">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <BriefcaseBusiness size={16} />
-      Job Postings
-    </p>
-  </Link>
-  <Link href="/job-postings?explevel=entry">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <User size={16} />
-      Entry Level Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?location=California">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Pin size={16} />
-      Jobs in California
-    </p>
-  </Link>
-  <Link href="/job-postings?location=New%20York">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Pin size={16} />
-      Jobs in New York
-    </p>
-  </Link>
-  <Link href="/job-postings?title=Software%20Engineer">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Software Engineer Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?title=Project%20Manager">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Project Manager Jobs
-    </p>
-  </Link>
-
-  {/* Additional Links */}
-  <Link href="/job-postings?explevel=mid">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <User size={16} />
-      Mid-Level Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?explevel=senior">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <User size={16} />
-      Senior Level Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?location=Texas">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Pin size={16} />
-      Jobs in Texas
-    </p>
-  </Link>
-  <Link href="/job-postings?location=Florida">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Pin size={16} />
-      Jobs in Florida
-    </p>
-  </Link>
-  <Link href="/job-postings?title=Data%20Scientist">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Data Scientist Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?title=Product%20Manager">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Product Manager Jobs
-    </p>
-  </Link>
-  <Link href="/job-postings?company=86">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Microsoft Jobs
-    </p>
-  </Link>
-
-  <Link href="/job-postings?company=421">
-    <p className="flex items-center gap-2 hover:underline hover:underline-offset-4">
-      <Code size={16} />
-      Anthropic Jobs
-    </p>
-  </Link>
-</footer>
+              <Footer />
             </ThemeProvider>
           </AuthProvider>
         </ToastProvider>
