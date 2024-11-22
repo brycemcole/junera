@@ -1,11 +1,16 @@
 import { getConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
-import jwt from 'jsonwebtoken'; // Ensure you have this package installed
+import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
-const SECRET_KEY = process.env.SESSION_SECRET || 'your-secret-key'; // Use environment variables for secrets
+const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function POST(req) {
+  if (!SECRET_KEY) {
+    console.error("JWT secret key is not configured");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
+
   console.log("POST /api/login");
   try {
     const { username, password } = await req.json();
@@ -25,8 +30,15 @@ export async function POST(req) {
       return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '24h' });
+    // Generate JWT token with explicit expiration
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        username: user.username,
+        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+      }, 
+      SECRET_KEY
+    );
 
     return NextResponse.json({ token });
 

@@ -13,7 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-
+import EnhanceJobPopover from "./enhance-popover";
 import Link from "next/link";
 import Button24 from "@/components/button24"
 import {
@@ -34,7 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Flag } from "lucide-react";
+import { Flag, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "../../../components/job-posting";
 import { CollapsibleDemo } from "./collapsible";
@@ -44,8 +44,10 @@ export function CompanyHoverCard({ companyName, companyLogo, companyDescription,
     <HoverCard>
       <HoverCardTrigger asChild className="p-0">
         <Button variant="link" className="p-0 text-lg font-semibold">
-          <img src={companyLogo || "https://via.placeholder.com/150"} alt={companyName} className="w-8 h-8 rounded-full" />
-          
+                                      <Avatar alt={companyName} className="w-8 h-8 rounded-full">
+                            <AvatarImage src={companyLogo} />
+                            <AvatarFallback>{companyName?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>          
           {companyName}</Button>
       </HoverCardTrigger>
       <HoverCardContent className="w-80 mx-4">
@@ -156,11 +158,29 @@ async function getJobPostingById(id) {
   const pool = await getConnection();
   const result = await pool
     .request()
-    .input("id", id) // Use parameterized query to prevent SQL injection
-    .query("SELECT jobPostings.*, companies.name AS companyName, companies.description AS companyDescription, companies.logo AS logo FROM jobPostings JOIN companies ON jobPostings.company_id = companies.id WHERE jobPostings.id = @id");
+    .input("id", id)
+    .query(`
+      SELECT jobPostings.*, 
+             companies.name AS companyName, 
+             companies.description AS companyDescription, 
+             companies.logo AS logo 
+      FROM jobPostings 
+      JOIN companies 
+      ON jobPostings.company_id = companies.id 
+      WHERE jobPostings.id = @id
+    `);
 
-  return result.recordset[0]; // Return the first (and only) result
+  const jobPosting = result.recordset[0];
+
+  if (jobPosting) {
+    // Remove the LinkHash field if it exists
+    delete jobPosting.LinkHash;
+  }
+
+  return jobPosting;
 }
+
+
 
 async function getRelatedJobPostings(jobPosting) {
   const pool = await getConnection();
@@ -209,11 +229,12 @@ export default async function JobPostingPage({ params }) {
   if (!jobPosting) {
     return <div>Job posting not found.</div>;
   }
+  
 
   const relatedPostings = await getRelatedJobPostings(jobPosting);
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -237,13 +258,14 @@ export default async function JobPostingPage({ params }) {
         companyId={jobPosting.company_id}
       />
       <h1 className="text-2xl font-bold mb-2">{jobPosting.title}</h1>
-      <p className="text-md">{jobPosting.location} | {new Date(jobPosting.postedDate).toLocaleDateString()} | {jobPosting.experienceLevel}</p>
+      <p className="text-md">{jobPosting.salary_range_str} | {jobPosting.location} | {new Date(jobPosting.postedDate).toLocaleDateString()} | {jobPosting.experienceLevel}</p>
       <p>{jobPosting.salary ? `${jobPosting.salary}` : ""}</p>
-      <div className="flex space-x-4 mt-4 mb-8">
+      <div className="flex flex-wrap gap-4 mt-4 mb-8">
         <Link href={`${jobPosting.link}`}>
           <Button className="bg-lime-500 text-white hover:bg-green-800 dark:bg-lime-600">Apply</Button>
         </Link>
         <ReportPopover />
+        <EnhanceJobPopover jobPosting={jobPosting} />
         <Button24 />
       </div>
       <div className="flex flex-col space-y-2 mb-4">

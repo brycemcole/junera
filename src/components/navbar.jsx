@@ -86,6 +86,12 @@ export function DropdownMenuDemo() {
               <DropdownMenuLabel>
                 Welcome back, {user.username}
               </DropdownMenuLabel>
+              <Link href={`/p/${user.username}`}>
+                <DropdownMenuItem>
+                  <User />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+              </Link>
               <Link href="/dashboard">
                 <DropdownMenuItem>
                   <LayoutDashboard />

@@ -6,11 +6,13 @@ export async function GET(req) {
   const limit = parseInt(searchParams.get("limit")) || 20;
   const offset = (page - 1) * limit;
 
-  // Extracting search filters from URL
+  // Extract and sanitize search filters
   const title = searchParams.get("title") || "";
   const experienceLevel = searchParams.get("experienceLevel") || "";
   const location = searchParams.get("location") || "";
   const company = searchParams.get("company") || "";
+
+  const sanitizedTitle = title && title.trim() ? `"${title.trim()}"` : null;
 
   try {
     const pool = await getConnection();
@@ -27,26 +29,22 @@ export async function GET(req) {
       FROM jobPostings jp
       INNER JOIN companies c ON jp.company_id = c.id
       WHERE 
-        jp.title LIKE @title AND
-        jp.experienceLevel LIKE @experienceLevel AND
-        jp.location LIKE @location 
-        ${company ? `AND jp.company_id = @company` : ""}
+        (${!title ? "1 = 1" : "CONTAINS(jp.title, @title)"}) AND
+        (@experienceLevel IS NULL OR jp.experienceLevel LIKE '%' + @experienceLevel + '%') AND
+        (@location IS NULL OR jp.location LIKE '%' + @location + '%') 
+        ${company ? "AND jp.company_id = @company" : ""}
       ORDER BY jp.postedDate DESC
       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
     `;
 
-    const request = pool.request()
-      .input('title', `%${title}%`)
-      .input('experienceLevel', `%${experienceLevel}%`)
-      .input('location', `%${location}%`)
+    const result = await pool.request()
+      .input('title', sanitizedTitle || null)
+      .input('experienceLevel', experienceLevel || null)
+      .input('location', location || null)
+      .input('company', company || null)
       .input('offset', offset)
-      .input('limit', limit);
-
-    if (company) {
-      request.input('company', company);
-    }
-
-    const result = await request.query(query);
+      .input('limit', limit)
+      .query(query);
 
     const jobPostings = result.recordset.map((job) => ({
       id: job.id,

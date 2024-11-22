@@ -1,4 +1,6 @@
 "use client";
+import React, { memo } from 'react';
+import { formatDistanceToNow } from "date-fns";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,6 +11,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import SelectSearch from "@/components/select-search";
 import Select47 from "@/components/multi-select";
+import { JobPostingsChart } from "@/components/job-postings-chart";
 
 import {
     Card,
@@ -51,8 +54,15 @@ import { ChevronRight } from "lucide-react";
 import { BriefcaseBusiness } from "lucide-react";
 import { useSearchParams } from 'next/navigation';
 import { useDebounce } from 'use-debounce';
+import { User } from 'lucide-react';
+import { Bot } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
+import { Calendar } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 
-export function ExperienceLevelSelect({ onChange, value }) {
+export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
     return (
         <Select onValueChange={onChange} value={value}>
             <SelectTrigger className="w-[180px]">
@@ -74,9 +84,9 @@ export function ExperienceLevelSelect({ onChange, value }) {
             </SelectContent>
         </Select>
     );
-}
+});
 
-export function LocationSelect({ onChange, value }) {
+export const LocationSelect = memo(function LocationSelect({ onChange, value }) {
     const states = {
         "new york": "New York",
         "california": "California",
@@ -145,7 +155,7 @@ export function LocationSelect({ onChange, value }) {
             </SelectContent>
         </Select>
     );
-}
+});
 
 export function Input26({ onSearch, value }) {
     const [searchValue, setSearchValue] = useState(value || "");
@@ -189,6 +199,256 @@ export function Input26({ onSearch, value }) {
     );
 }
 
+export const MemoizedInput26 = memo(Input26);
+
+const LLMChat = memo(function LLMChat({ user }) {
+    const [messages, setMessages] = useState([]);
+    const [userInput, setUserInput] = useState("");
+    const [llmResponse, setLlmResponse] = useState("");
+    const [userProfile, setUserProfile] = useState(null);
+    const [showSystemMessage, setShowSystemMessage] = useState(false);
+    const [isChatVisible, setIsChatVisible] = useState(false);
+
+    const toggleChatVisibility = () => {
+        setIsChatVisible(!isChatVisible);
+    };
+
+    useEffect(() => {
+        async function fetchUserProfile() {
+            if (user) {
+                try {
+                    const response = await fetch('/api/user/profile', {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const profile = await response.json();
+                    setUserProfile(profile);
+        
+                    // Extract skills as strings
+                    const technicalSkills = profile.user.technical_skills || 'None specified';
+                    const softSkills = profile.user.soft_skills || 'None specified';
+                    const otherSkills = profile.user.other_skills || 'None specified';
+        
+                    // Create a detailed system message with profile information
+                    const systemMessage = {
+                        role: "system",
+                        content: `
+        You are a helpful career assistant. You are talking to ${user.username}.
+        Here is their profile:
+        
+        ### Professional Summary
+        ${profile.user.professionalSummary || 'No summary available.'}
+        
+        ### Work Experience
+        ${profile.experience && profile.experience.length > 0 
+            ? profile.experience.map(exp => 
+                `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+          - **Location**: ${exp.location || 'Not specified'}
+          - **Description**: ${exp.description || 'No description available'}
+          - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
+            : 'No work experience available.'}
+        
+        ### Education
+        ${profile.education && profile.education.length > 0
+            ? profile.education.map(edu => 
+                `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+          - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
+          - **Grade**: ${edu.grade || 'Not specified'}
+          - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
+            : 'No education details available.'}
+        
+        ### Skills
+        - **Technical Skills**: ${technicalSkills}
+        - **Soft Skills**: ${softSkills}
+        - **Other Skills**: ${otherSkills}
+        
+        ### Job Preferences
+        - **Desired Job Title**: ${profile.user.desired_job_title || 'Not specified'}
+        - **Preferred Location**: ${profile.user.desired_location || 'Any location'}
+        - **Preferred Salary**: $${profile.user.jobPreferredSalary || 'Not specified'}
+        - **Employment Type**: ${profile.user.employment_type || 'Not specified'}
+        - **Preferred Industries**: ${profile.user.preferred_industries || 'Not specified'}
+        - **Willing to Relocate**: ${profile.user.willing_to_relocate ? 'Yes' : 'No'}
+        
+        Please provide relevant career advice and job search assistance based on their profile.
+                        `,
+                    };
+        
+                    setMessages([systemMessage]);
+                } catch (error) {
+                    console.error("Error fetching user profile:", error);
+                    // Fallback to basic system message if profile fetch fails
+                    setMessages([{
+                        role: "system",
+                        content: `You are a helpful assistant. You are talking to ${user.username}. They are looking for job opportunities.`,
+                    }]);
+                }
+            }
+        }
+        
+        fetchUserProfile();
+    }, [user]);
+
+    const handleLLMRequest = async () => {
+        if (!userInput.trim()) return;
+        
+        const newMessages = [...messages, { role: "user", content: userInput }];
+        setMessages(newMessages);
+        setUserInput("");
+        
+        try {
+            const response = await fetch("http://localhost:1234/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "llama-3.2-3b-instruct",
+                    messages: newMessages,
+                    temperature: 0.7,
+                    max_tokens: -1,
+                    stream: true,
+                }),
+            });
+
+            if (!response.body) return;
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = "";
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.trim().split('\n');
+                
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    
+                    const dataStr = line.replace(/^data: /, '');
+                    if (dataStr === '[DONE]') break;
+                    
+                    try {
+                        const data = JSON.parse(dataStr);
+                        const content = data.choices[0].delta.content;
+                        if (content) {
+                            fullText += content;
+                            setLlmResponse(fullText);
+                        }
+                    } catch (error) {
+                        console.error("Error parsing JSON:", error);
+                    }
+                }
+            }
+            setMessages([...newMessages, { role: "assistant", content: fullText }]);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    };
+    const resetChat = () => {
+        if (user) {
+            setMessages([{
+                role: "system",
+                content: `You are a helpful assistant. You are talking to ${user.username}. They are looking for job opportunities.`
+            }]);
+        }
+        setUserInput("");
+        setLlmResponse("");
+    };
+
+    // Don't render if no messages (which means no user context yet)
+    if (messages.length === 0) return null;
+    const toggleSystemMessage = () => {
+        setShowSystemMessage(showSystemMessage);
+    };
+
+    return (
+        <div>
+            {/* Chat Toggle Button */}
+            <Button
+                onClick={toggleChatVisibility}
+                className="fixed bg-accent/50 border text-primary bottom-4 right-4 shadow-lg z-50 hover:bg-accent/60 pointer-events-auto"
+            >
+                {isChatVisible ? "Close Chat" : "Chat with Assistant"}
+            </Button>
+
+            {/* Chat Window */}
+            {isChatVisible && (
+                <div
+                    className="fixed bottom-16 right-4 w-full max-w-xs sm:max-w-md border rounded-lg shadow-lg border bg-background z-50"
+                >
+                    {/* Chat Header */}
+                    <div className=" text-white rounded-xl p-2 font-bold flex justify-between items-center">
+                        <span>Chat with Assistant</span>
+                        <button
+                            className="text-foreground"
+                            onClick={toggleChatVisibility}
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div
+                        className="p-4 overflow-y-auto"
+                        style={{ maxHeight: '300px' }}
+                    >
+                        {messages.length === 0 ? (
+                            <p className="text-gray-500">Start the conversation...</p>
+                        ) : (
+                            messages.map((msg, index) => (
+                                <div
+                                    key={index}
+                                    className={`mb-2 flex ${
+                                        msg.role === 'assistant'
+                                            ? 'justify-start'
+                                            : 'justify-end'
+                                    }`}
+                                >
+                                    <div
+                                        className={`p-2 rounded-lg text-sm ${
+                                            msg.role === 'assistant'
+                                                ? 'border border-blue-100 text-blue-800 dark:border-blue-800 dark:text-blue-100'
+                                                : 'border border-green-100 text-green-800 dark:border-green-800 dark:text-green-100'
+                                        }`}
+                                    >
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Chat Input */}
+                    <div className="flex items-center p-3 border-t bg-background">
+                        <Input
+                            type="text"
+                            value={userInput}
+                            onChange={(e) => setUserInput(e.target.value)}
+                            placeholder="Type your message..."
+                            className="flex-1 px-3 py-2 border rounded-md text-sm"
+                        />
+                        <Button
+                            onClick={() => {
+                                setMessages([
+                                    ...messages,
+                                    { role: 'user', content: userInput },
+                                ]);
+                                setUserInput('');
+                            }}
+                            className="ml-2 text-sm bg-background text-primary hover:bg-accent/50"
+                            disabled={!userInput.trim()}
+                        >
+                            <Send size={16} strokeWidth={1.5} />
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+});
+
 export default function JobPostingsPage() {
     const { user, loading } = useAuth(); // Destructure loading
     const router = useRouter();
@@ -215,56 +475,79 @@ export default function JobPostingsPage() {
 
     useEffect(() => {
         if (!loading) { 
-            if (!user) {
-                router.push('/login');
-            } else {
-                // Fetch totalJobs whenever filters change
-                const cacheKeyTotal = `totalJobs_${title}_${experienceLevel}_${location}_${company}`;
-                const cachedTotal = sessionStorage.getItem(cacheKeyTotal);
+            const cacheKeyTotal = `totalJobs_${title}_${experienceLevel}_${location}_${company}`;
+            const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
+            const cachedTotal = sessionStorage.getItem(cacheKeyTotal);
+            const cachedData = sessionStorage.getItem(cacheKey);
+            const cacheExpiry = 3600 * 1000; // 1 hour in milliseconds
+            const now = Date.now();
+    
+            const isCacheValid = (key) => {
+                const cacheTimestamp = sessionStorage.getItem(`${key}_timestamp`);
+                return cacheTimestamp && now - parseInt(cacheTimestamp, 10) < cacheExpiry;
+            };
 
-                if (cachedTotal) {
+            async function fetchData() {
+                try {
+                    const response = await fetch(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`, {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const result = await response.json();
+                    setData(result.jobPostings);
+                    sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
+                    sessionStorage.setItem(`${cacheKey}_timestamp`, now);
+                } catch (error) {
+                    console.error("Error fetching job postings:", error);
+                }
+            }
+
+            async function fetchTotalJobs() {
+                try {
+                    const response = await fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const result = await response.json();
+                    setTotalJobs(result.totalJobs);
+                    sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
+                    sessionStorage.setItem(`${cacheKeyTotal}_timestamp`, now);
+                } catch (error) {
+                    console.error("Error fetching total jobs:", error);
+                }
+            }
+
+            const resetCache = () => {
+                sessionStorage.removeItem(cacheKeyTotal);
+                sessionStorage.removeItem(`${cacheKeyTotal}_timestamp`);
+                sessionStorage.removeItem(cacheKey);
+                sessionStorage.removeItem(`${cacheKey}_timestamp`);
+            };
+    
+            if (isCacheValid(cacheKeyTotal)) {
+                try {
                     setTotalJobs(parseInt(cachedTotal, 10));
-                } else {
-                    async function fetchTotalJobs() {
-                        try {
-                            const response = await fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${user.token}`,
-                                },
-                            });
-                            const result = await response.json();
-                            setTotalJobs(result.totalJobs);
-                            sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
-                        } catch (error) {
-                            console.error("Error fetching total jobs:", error);
-                        }
-                    }
+                } catch (error) {
+                    resetCache();
                     fetchTotalJobs();
+                    console.error("Error parsing cached total jobs:", error);
                 }
-
-                const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
-                const cachedData = sessionStorage.getItem(cacheKey);
-
-                if (cachedData) {
+            } else {
+                fetchTotalJobs();
+            }
+    
+            if (isCacheValid(cacheKey)) {
+                try {
                     setData(JSON.parse(cachedData));
-                } else {
-                    async function fetchData() {
-                        try {
-                            const response = await fetch(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${user.token}`,
-                                },
-                            });
-                            const result = await response.json();
-                            console.log("Fetched job postings:", result);
-                            setData(result.jobPostings);
-                            sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
-                        } catch (error) {
-                            console.error("Error fetching job postings:", error);
-                        }
-                    }
+                } catch (error) {
+                    resetCache();
                     fetchData();
+                    console.error("Error parsing cached job postings:", error);
                 }
+            } else {
+                fetchData();
             }
         }
     }, [user, loading, router, currentPage, title, experienceLevel, location, company]);
@@ -288,18 +571,6 @@ export default function JobPostingsPage() {
         router.push(`/job-postings/?${params.toString()}`);
     }, [title, experienceLevel, location, company, currentPage]);
 
-    useEffect(() => {
-        async function fetchCompanies() {
-            try {
-                const response = await fetch(`/api/companies?search=${debouncedSearch}`);
-                const result = await response.json();
-                setCompanies(result);
-            } catch (error) {
-                console.error("Error fetching companies:", error);
-            }
-        }
-        fetchCompanies();
-    }, [debouncedSearch]);
 
     const handleNextPage = () => {
         setCurrentPage((prevPage) => prevPage + 1);
@@ -345,6 +616,14 @@ export default function JobPostingsPage() {
             <h1 className="text-2xl font-bold mb-4">
                 {totalJobs} Job Postings{filterText && ` - ${filterText}`}
             </h1>
+
+            <JobPostingsChart 
+                title={title}
+                experienceLevel={experienceLevel}
+                location={location}
+                company={company}
+            />
+
                         {user && (
                             <>
                 <div className="flex flex-row mb-2 gap-4">
@@ -361,33 +640,67 @@ export default function JobPostingsPage() {
                     </>
                 
             )}
-            <Input26 onSearch={handleSearch} value={title} />
+            <MemoizedInput26 onSearch={handleSearch} value={title} />
             <div className="flex space-x-4 overflow-x-auto">
                 <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
                 <LocationSelect onChange={handleLocationChange} value={location} />
-                <Select onValueChange={handleCompanyChange} value={company}>
-                    <SelectTrigger className="w-[180px]">
-                        <Input 
-                            placeholder="Search Company" 
-                            value={companySearch} 
-                            onChange={handleCompanySearch} 
-                            className="w-full"
-                        />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            <SelectLabel>Company</SelectLabel>
-                            {companies.map(company => (
-                                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
+                {!loading && user && <LLMChat user={user} />}
+
             </div>
+
             <div className="mt-4">
-                {data.map((job) => (
-                    <JobCard key={job.id} job={job} />
-                ))}
+            {data && data.length > 0 ? (
+                <div>
+                    {data.map((job) => (
+                        <>
+               <div key={job.id} 
+                    className="rounded-md mb-4 border px-4 py-3 font-mono text-sm cursor-pointer hover:bg-accent transition duration-200 ease-in-out" 
+                    onClick={() => router.push(`/job-postings/${job.id}`)}
+                >
+                    {/* Header Section */}
+                    <div className="flex items-center gap-4 mb-3">
+                        {job.logo && (
+                            <Avatar>
+                            <AvatarImage src={job.logo} />
+                            <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="flex flex-col">
+                            <span className="font-bold text-base">{job?.title || "No job titles available"}</span>
+                            <span className="text-sm text-muted-foreground">{job?.company || "No company name available"}</span>
+                        </div>
+                    </div>
+                    {/* Details Section */}
+                    <div className="flex flex-row flex-wrap gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-foreground" />
+                            <span>{job?.location || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-foreground" />
+                            <span>{job?.experienceLevel || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-foreground" />
+                            <span>
+    {job?.postedDate 
+        ? `${formatDistanceToNow(new Date(job.postedDate), { addSuffix: true })}` 
+        : "N/A"}
+</span>
+
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-foreground" />
+                            <span>{job?.salary || "N/A"}</span>
+                        </div>
+                    </div>
+                </div>
+                        </>
+                    ))}
+                </div>
+            ) : (
+                <p>No job postings found. Adjust your search criteria.</p>
+            )}
             </div>
             <div className="flex justify-between mt-4">
                 <Pagination>

@@ -12,12 +12,17 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
+        // Use a try-catch here since client-side jwt.decode doesn't verify the signature
         const decoded = jwt.decode(token);
-        if (decoded && decoded.username && decoded.id) { // Check if decoded, username, and id exist
-          setUser({ token, username: decoded.username, id: decoded.id }); // Ensure 'id' is included
+        if (decoded && decoded.exp * 1000 > Date.now()) { // Check token expiration
+          setUser({ token, username: decoded.username, id: decoded.id });
+        } else {
+          localStorage.removeItem('token'); // Remove expired token
+          setUser(null);
         }
       } catch (error) {
         console.error("Token decoding failed:", error);
+        localStorage.removeItem('token');
         setUser(null);
       }
     }

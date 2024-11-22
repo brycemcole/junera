@@ -33,7 +33,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "src/**/*.tsx"
-  ],
+, "src/components/job-postings-chart.js"  ],
   "exclude": [
     "node_modules"
   ]
