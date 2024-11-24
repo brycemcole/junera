@@ -1,5 +1,5 @@
 "use client";
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { formatDistanceToNow } from "date-fns";
 import {
   Breadcrumb,
@@ -9,20 +9,19 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import SelectSearch from "@/components/select-search";
-import Select47 from "@/components/multi-select";
 import { JobPostingsChart } from "@/components/job-postings-chart";
-
 import {
-    Card,
-    CardDescription,
-    CardTitle,
-} from "@/components/ui/card";
-import Link from "next/link";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Search } from "lucide-react";
-import { useState, useEffect } from "react";
-import { JobCard } from "@/components/job-posting";
+import { ArrowRight, Search, Info } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -61,11 +60,46 @@ import { Briefcase } from 'lucide-react';
 import { Calendar } from 'lucide-react';
 import { MapPin } from 'lucide-react';
 import { DollarSign } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Plus } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
+
+export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose, title, experienceLevel, location, company }) {
+    return (
+        <Sheet>
+        <SheetTrigger asChild>
+          <Button size="sm" variant="outline">View Search Insights</Button>
+        </SheetTrigger>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Search Insights for {title}</SheetTitle>
+            <SheetDescription>
+              Make changes to your profile here. Click save when you're done.
+            </SheetDescription>
+          </SheetHeader>
+          <JobPostingsChart 
+                      title={title}
+                      experienceLevel={experienceLevel}
+                      location={location}
+                      company={company}
+                  />
+          <SheetFooter>
+            <SheetClose asChild>
+              <Button type="button" onClick={onClose}>Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    );
+    });
 
 export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="h-8 w-[180px]">
                 <SelectValue placeholder="Experience Level" />
             </SelectTrigger>
             <SelectContent>
@@ -140,7 +174,7 @@ export const LocationSelect = memo(function LocationSelect({ onChange, value }) 
 
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] h-8">
                 <SelectValue placeholder="Select State" />
             </SelectTrigger>
             <SelectContent>
@@ -449,6 +483,53 @@ const LLMChat = memo(function LLMChat({ user }) {
     );
 });
 
+export const SaveSearchButton = memo(function SaveSearchButton({ 
+    title, 
+    experienceLevel, 
+    location, 
+    savedSearches, 
+    onSave, 
+    className 
+}) {
+    // Check if current search parameters match any saved search
+    const isAlreadySaved = savedSearches.some(search => {
+        const params = JSON.parse(search.search_params);
+        return params.jobTitle === title && 
+               params.experienceLevel === experienceLevel && 
+               params.location === location;
+    });
+
+    if (isAlreadySaved) return null;
+
+    // Only show save button if there are actual search parameters
+    if (!title && !experienceLevel && !location) return null;
+
+    return (
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={onSave}
+            className={className}
+        >
+            <Bookmark className="h-4 w-4 mr-2" />
+            Save Search
+        </Button>
+    );
+});
+
+export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms }) {
+  if (!title || !synonyms?.length) return null;
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+      <Info className="h-4 w-4" />
+      <span>
+        Including results for: {synonyms.map(s => s.related_title).join(', ')}
+      </span>
+    </div>
+  );
+});
+
 export default function JobPostingsPage() {
     const { user, loading } = useAuth(); // Destructure loading
     const router = useRouter();
@@ -464,6 +545,9 @@ export default function JobPostingsPage() {
     const [companies, setCompanies] = useState([]);
     const [companySearch, setCompanySearch] = useState("");
     const [debouncedSearch] = useDebounce(companySearch, 300);
+    const [savedSearches, setSavedSearches] = useState([]);
+    const [currentController, setCurrentController] = useState(null);
+    const [titleSynonyms, setTitleSynonyms] = useState([]);
 
     // Add a computed variable for filter text
     const filterText = [
@@ -472,6 +556,37 @@ export default function JobPostingsPage() {
         location && `Location: ${location}`,
         company && `Company: ${companies.find(c => c.id === company)?.name || company}`,
     ].filter(Boolean).join(', ');
+
+    // Helper function to cancel pending requests
+    const cancelPendingRequests = () => {
+        if (currentController) {
+            currentController.abort();
+        }
+    };
+
+    // Modified fetch function with cancellation
+    const fetchWithCancel = async (url, options = {}) => {
+        cancelPendingRequests();
+        const controller = new AbortController();
+        setCurrentController(controller);
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+            });
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('Request cancelled');
+                return null;
+            }
+            throw error;
+        } finally {
+            setCurrentController(null);
+        }
+    };
 
     useEffect(() => {
         if (!loading) { 
@@ -489,15 +604,16 @@ export default function JobPostingsPage() {
 
             async function fetchData() {
                 try {
-                    const response = await fetch(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`, {
+                    const result = await fetchWithCancel(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`, {
                         headers: {
                             'Authorization': `Bearer ${user.token}`,
                         },
                     });
-                    const result = await response.json();
-                    setData(result.jobPostings);
-                    sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
-                    sessionStorage.setItem(`${cacheKey}_timestamp`, now);
+                    if (result) {
+                        setData(result.jobPostings);
+                        sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
+                        sessionStorage.setItem(`${cacheKey}_timestamp`, now);
+                    }
                 } catch (error) {
                     console.error("Error fetching job postings:", error);
                 }
@@ -505,15 +621,16 @@ export default function JobPostingsPage() {
 
             async function fetchTotalJobs() {
                 try {
-                    const response = await fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
+                    const result = await fetchWithCancel(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
                         headers: {
                             'Authorization': `Bearer ${user.token}`,
                         },
                     });
-                    const result = await response.json();
-                    setTotalJobs(result.totalJobs);
-                    sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
-                    sessionStorage.setItem(`${cacheKeyTotal}_timestamp`, now);
+                    if (result) {
+                        setTotalJobs(result.totalJobs);
+                        sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
+                        sessionStorage.setItem(`${cacheKeyTotal}_timestamp`, now);
+                    }
                 } catch (error) {
                     console.error("Error fetching total jobs:", error);
                 }
@@ -550,6 +667,11 @@ export default function JobPostingsPage() {
                 fetchData();
             }
         }
+
+        // Cleanup function to cancel pending requests when component unmounts or dependencies change
+        return () => {
+            cancelPendingRequests();
+        };
     }, [user, loading, router, currentPage, title, experienceLevel, location, company]);
 
     useEffect(() => {
@@ -571,6 +693,25 @@ export default function JobPostingsPage() {
         router.push(`/job-postings/?${params.toString()}`);
     }, [title, experienceLevel, location, company, currentPage]);
 
+    useEffect(() => {
+      if (title) {
+        fetch(`/api/job-postings/synonyms?title=${encodeURIComponent(title)}`)
+          .then(res => res.json())
+          .then(data => setTitleSynonyms(data.synonyms))
+          .catch(error => console.error('Error fetching synonyms:', error));
+      } else {
+        setTitleSynonyms([]);
+      }
+    }, [title]);
+
+    const handleResetFilters = () => {
+        setTitle("");
+        setExperienceLevel("");
+        setLocation("");
+        setCompany("");
+        setCurrentPage(1);
+        router.push('/job-postings');
+    };
 
     const handleNextPage = () => {
         setCurrentPage((prevPage) => prevPage + 1);
@@ -582,16 +723,23 @@ export default function JobPostingsPage() {
         }
     };
 
-    const handleSearch = (searchValue) => {
+    const handleSearch = async (searchValue) => {
         setTitle(searchValue);
+        setCurrentPage(1);
     };
 
-    const handleExperienceLevelChange = (value) => {
+    const handleExperienceLevelChange = async (value) => {
+        cancelPendingRequests();
         setExperienceLevel(value);
+        setCurrentPage(1);
+
     };
 
-    const handleLocationChange = (value) => {
+    const handleLocationChange = async (value) => {
+        cancelPendingRequests();
         setLocation(value);
+        setCurrentPage(1);
+
     };
 
     const handleCompanyChange = (value) => {
@@ -600,6 +748,64 @@ export default function JobPostingsPage() {
 
     const handleCompanySearch = (e) => {
         setCompanySearch(e.target.value);
+    };
+
+    useEffect(() => {
+        if (!loading && user) {
+            fetch('/api/saved-searches', {
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            })
+                .then(response => response.json())
+                .then(data => setSavedSearches(data.savedSearches))
+                .catch(error => console.error('Error fetching saved searches:', error));
+        }
+    }, [user, loading]);
+
+    const applySavedSearch = (searchParams) => {
+        const params = JSON.parse(searchParams);
+        setTitle(params.jobTitle || '');
+        setExperienceLevel(params.experienceLevel || '');
+        setLocation(params.location || '');
+        setCurrentPage(1);
+    };
+
+    const handleSaveSearch = async () => {
+        if (!user) return;
+
+        const searchParams = {
+            jobTitle: title,
+            experienceLevel: experienceLevel,
+            location: location,
+        };
+
+        try {
+            const response = await fetch('/api/saved-searches', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+                body: JSON.stringify({ searchParams }),
+            });
+
+            if (response.ok) {
+                const newSavedSearch = await response.json();
+                setSavedSearches([...savedSearches, newSavedSearch]);
+                toast({
+                    title: "Search saved",
+                    description: "Your search has been saved successfully.",
+                });
+            }
+        } catch (error) {
+            console.error('Error saving search:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to save search. Please try again.",
+            });
+        }
     };
 
     return (
@@ -614,39 +820,144 @@ export default function JobPostingsPage() {
 </Breadcrumb>
 
             <h1 className="text-2xl font-bold mb-4">
-                {totalJobs} Job Postings{filterText && ` - ${filterText}`}
+                {totalJobs.toLocaleString()} Job Postings
             </h1>
 
-            <JobPostingsChart 
-                title={title}
-                experienceLevel={experienceLevel}
-                location={location}
-                company={company}
-            />
+            {/* Active Filters */}
+            {(title || experienceLevel || location || company) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {title && (
+                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
+                            Title: {title}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-4 w-4 p-0 hover:bg-accent"
+                                onClick={() => setTitle("")}
+                            >
+                                <X size={12} strokeWidth={2} />
+                            </Button>
+                        </Badge>
+                    )}
+                    {experienceLevel && (
+                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
+                            Experience: {experienceLevel}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-4 w-4 p-0 hover:bg-accent"
+                                onClick={() => setExperienceLevel("")}
+                            >
+                                <X size={12} strokeWidth={2} />
+                            </Button>
+                        </Badge>
+                    )}
+                    {location && (
+                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
+                            Location: {location}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-4 w-4 p-0 hover:bg-accent"
+                                onClick={() => setLocation("")}
+                            >
+                                <X size={12} strokeWidth={2} />
+                            </Button>
+                        </Badge>
+                    )}
+                    {company && (
+                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
+                            Company: {companies.find(c => c.id === company)?.name || company}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-4 w-4 p-0 hover:bg-accent"
+                                onClick={() => setCompany("")}
+                            >
+                                <X size={12} strokeWidth={2} />
+                            </Button>
+                        </Badge>
+                    )}
+                </div>
+            )}
 
-                        {user && (
+            <div className="max-w-md mx-auto">
+
+            </div>
+
+            {user && (
                             <>
                 <div className="flex flex-row mb-2 gap-4">
                     <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
                       <BriefcaseBusiness size={16} strokeWidth={1.5} />
                         <span>Applied</span>
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/saved-searches')}>
-                      <Search size={16} strokeWidth={1.5} />
-                        <span>Saved Searches</span>
-                    </Button>
-                    </div>
-                    
-                    </>
-                
+                    <SearchInsightsSheet title={title} />
+                </div>
+                </>
             )}
-            <MemoizedInput26 onSearch={handleSearch} value={title} />
-            <div className="flex space-x-4 overflow-x-auto">
-                <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
-                <LocationSelect onChange={handleLocationChange} value={location} />
-                {!loading && user && <LLMChat user={user} />}
 
+            <MemoizedInput26 onSearch={handleSearch} value={title} />
+            <SearchSynonymsInfo title={title} synonyms={titleSynonyms} />
+            <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex space-x-4 pb-2">
+            {user && (
+                    <SaveSearchButton
+                        title={title}
+                        experienceLevel={experienceLevel}
+                        location={location}
+                        savedSearches={savedSearches}
+                        onSave={handleSaveSearch}
+                        className="whitespace-nowrap"
+                    />
+                )}
+            <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
+                <LocationSelect onChange={handleLocationChange} value={location} />
+                <Button 
+                    variant="outline"  
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="whitespace-nowrap"
+                >
+                    Reset Filters
+                </Button>
+                {!loading && user && <LLMChat user={user} />}
             </div>
+            </ScrollArea>
+
+            {savedSearches.length > 0 && (
+                <div className="mt-4 mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-sm font-semibold">Saved Searches</h2>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => router.push('/job-postings/saved-searches')}
+                            className="h-8 w-8 p-0"
+                        >
+                            <Plus  size={16} strokeWidth={1.5} />
+                        </Button>
+                    </div>
+                    <ScrollArea className="w-full whitespace-nowrap">
+                        <div className="flex space-x-4 pb-2">
+                            {savedSearches.map((search) => {
+                                const params = JSON.parse(search.search_params);
+                                return (
+                                    <Badge
+                                        key={search.id}
+                                        variant="outline"
+                                        className="cursor-pointer hover:bg-accent"
+                                        onClick={() => applySavedSearch(search.search_params)}
+                                    >
+                                        {params.jobTitle} • {params.experienceLevel} • {params.location}
+                                    </Badge>
+                                );
+                            })}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </div>
+            )}
 
             <div className="mt-4">
             {data && data.length > 0 ? (
@@ -689,10 +1000,16 @@ export default function JobPostingsPage() {
 </span>
 
                         </div>
-                        <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-foreground" />
-                            <span>{job?.salary || "N/A"}</span>
-                        </div>
+                        {(job?.salary && Number(job.salary) > 0) || job?.salary_string ? (
+        <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-foreground" />
+            <span>
+                {Number(job.salary) > 0 
+                    ? Number(job.salary).toLocaleString() 
+                    : job.salary_string}
+            </span>
+        </div>
+    ) : null}
                     </div>
                 </div>
                         </>

@@ -263,14 +263,6 @@ export default function DashboardPage() {
       <span className="block text-sm text-muted-foreground">Location</span>
       <span className="block text-lg font-semibold">{params.location}</span>
     </div>
-    <div>
-      <span className="block text-sm text-muted-foreground">Created At</span>
-      <span className="block text-lg font-semibold">{new Date(search.created_at).toLocaleString()}</span>
-    </div>
-    <div>
-      <span className="block text-sm text-muted-foreground">Updated At</span>
-      <span className="block text-lg font-semibold">{new Date(search.updated_at).toLocaleString()}</span>
-    </div>
   </div>
 
   {/* Edit Button */}

@@ -11,8 +11,8 @@ export async function GET(req, { params }) {
       .input("username", username)
       .query(`
         SELECT 
-          id, username, firstname, lastname,
-          avatar, desired_job_title, professionalSummary
+          id, username, firstname, lastname, employment_type, desired_location, willing_to_relocate, desired_salary_min, availability_date, skills, languages, certifications, preferred_industries, phone_number, soft_skills, technical_skills, other_skills, twitter,
+          avatar, desired_job_title, professionalSummary, github_url, leetcode_url, link, link2, linkedin_url
         FROM users 
         WHERE username = @username
       `);

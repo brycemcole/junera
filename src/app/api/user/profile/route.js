@@ -107,22 +107,66 @@ export async function PUT(req) {
         const decoded = verifyToken(token);
         const userId = decoded.id;
 
-        const { firstname, lastname, desired_job_title, professionalSummary } = await req.json();
+        const updates = await req.json();
+
+        // Handle numeric fields
+        const desired_salary_min = updates.desired_salary_min === '' ? null : Number(updates.desired_salary_min);
+        
+        // Convert date string to SQL date format or null
+        const availability_date = updates.availability_date ? new Date(updates.availability_date).toISOString() : null;
 
         const pool = await getConnection();
         await pool.request()
             .input("userId", userId)
-            .input("firstname", firstname)
-            .input("lastname", lastname)
-            .input("desired_job_title", desired_job_title)
-            .input("professionalSummary", professionalSummary)
+            .input("firstname", updates.firstname)
+            .input("lastname", updates.lastname)
+            .input("desired_job_title", updates.desired_job_title)
+            .input("professionalSummary", updates.professionalSummary)
+            .input("employment_type", updates.employment_type)
+            .input("desired_location", updates.desired_location)
+            .input("willing_to_relocate", updates.willing_to_relocate)
+            .input("desired_salary_min", desired_salary_min)
+            .input("availability_date", availability_date)
+            .input("skills", updates.skills)
+            .input("languages", updates.languages)
+            .input("certifications", updates.certifications)
+            .input("preferred_industries", updates.preferred_industries)
+            .input("phone_number", updates.phone_number)
+            .input("soft_skills", updates.soft_skills)
+            .input("technical_skills", updates.technical_skills)
+            .input("other_skills", updates.other_skills)
+            .input("twitter", updates.twitter)
+            .input("github_url", updates.github_url)
+            .input("leetcode_url", updates.leetcode_url)
+            .input("linkedin_url", updates.linkedin_url)
+            .input("link", updates.link)
+            .input("link2", updates.link2)
             .query(`
                 UPDATE users
                 SET 
                     firstname = @firstname,
                     lastname = @lastname,
                     desired_job_title = @desired_job_title,
-                    professionalSummary = @professionalSummary
+                    professionalSummary = @professionalSummary,
+                    employment_type = @employment_type,
+                    desired_location = @desired_location,
+                    willing_to_relocate = @willing_to_relocate,
+                    desired_salary_min = @desired_salary_min,
+                    availability_date = @availability_date,
+                    skills = @skills,
+                    languages = @languages,
+                    certifications = @certifications,
+                    preferred_industries = @preferred_industries,
+                    phone_number = @phone_number,
+                    soft_skills = @soft_skills,
+                    technical_skills = @technical_skills,
+                    other_skills = @other_skills,
+                    twitter = @twitter,
+                    github_url = @github_url,
+                    leetcode_url = @leetcode_url,
+                    linkedin_url = @linkedin_url,
+                    link = @link,
+                    link2 = @link2
                 WHERE id = @userId
             `);
 
