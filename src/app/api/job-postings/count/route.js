@@ -6,6 +6,7 @@ function formatForFullTextSearch(text) {
 }
 
 export async function GET(req) {
+  // Remove any auth token checks here - make this endpoint public
   const { searchParams } = new URL(req.url);
   
   // Extracting search filters from URL

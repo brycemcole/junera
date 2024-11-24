@@ -604,11 +604,7 @@ export default function JobPostingsPage() {
 
             async function fetchData() {
                 try {
-                    const result = await fetchWithCancel(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`, {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                        },
-                    });
+                    const result = await fetchWithCancel(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`);
                     if (result) {
                         setData(result.jobPostings);
                         sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
@@ -621,11 +617,7 @@ export default function JobPostingsPage() {
 
             async function fetchTotalJobs() {
                 try {
-                    const result = await fetchWithCancel(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`, {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                        },
-                    });
+                    const result = await fetchWithCancel(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`);
                     if (result) {
                         setTotalJobs(result.totalJobs);
                         sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
@@ -885,6 +877,7 @@ export default function JobPostingsPage() {
 
             </div>
 
+            {/* Only show auth-required features when user is logged in */}
             {user && (
                             <>
                 <div className="flex flex-row mb-2 gap-4">
@@ -894,6 +887,15 @@ export default function JobPostingsPage() {
                     </Button>
                     <SearchInsightsSheet title={title} />
                 </div>
+                <SaveSearchButton
+                    title={title}
+                    experienceLevel={experienceLevel}
+                    location={location}
+                    savedSearches={savedSearches}
+                    onSave={handleSaveSearch}
+                    className="whitespace-nowrap"
+                />
+                <LLMChat user={user} />
                 </>
             )}
 
