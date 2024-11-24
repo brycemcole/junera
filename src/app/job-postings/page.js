@@ -1000,13 +1000,13 @@ export default function JobPostingsPage() {
 </span>
 
                         </div>
-                        {(job?.salary && Number(job.salary) > 0) || job?.salary_string ? (
+                        {(job?.salary && Number(job.salary) > 0) || job?.salary_range_str ? (
         <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-foreground" />
             <span>
                 {Number(job.salary) > 0 
                     ? Number(job.salary).toLocaleString() 
-                    : job.salary_string}
+                    : job.salary_range_str}
             </span>
         </div>
     ) : null}

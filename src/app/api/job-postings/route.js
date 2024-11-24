@@ -80,7 +80,7 @@ export async function GET(req) {
         jp.location, 
         jp.postedDate, 
         jp.salary,
-        jp.salary_string,
+        jp.salary_range_str,
         jp.experienceLevel,
         c.name AS companyName,
         c.logo AS companyLogo
