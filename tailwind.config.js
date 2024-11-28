@@ -66,6 +66,10 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
+			'colorChange': {
+				'0%, 100%': { color: '#16a34a' }, 
+				'50%': { color: '#84cc16' }, // Purple 500
+			  },
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -85,7 +89,9 @@ module.exports = {
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+			'colorChange': 'colorChange 2s infinite', 
+
   		}
   	}
   },

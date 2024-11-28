@@ -30,13 +30,14 @@ export async function GET(request) {
                     n.type, 
                     n.important_message,
                     n.senderUserId,
+                    n.jobId,
                     n.createdAt,
-                    u.username AS senderUsername,
-                    u.firstname AS senderFirstName,
-                    u.lastname AS senderLastName,
-                    u.avatar AS senderAvatar
+                    COALESCE(u.username, 'system') AS senderUsername,
+                    COALESCE(u.firstname, 'System') AS senderFirstName,
+                    COALESCE(u.lastname, 'Notification') AS senderLastName,
+                    COALESCE(u.avatar, '/default-system-avatar.png') AS senderAvatar
                 FROM notifications n
-                JOIN users u ON n.senderUserId = u.id
+                LEFT JOIN users u ON n.senderUserId = u.id
                 WHERE n.receiverUserId = @userId
                 ORDER BY n.createdAt DESC;
             `);
@@ -45,5 +46,35 @@ export async function GET(request) {
     } catch (error) {
         console.error('Authentication error:', error);
         return new Response(JSON.stringify({ message: 'Invalid or expired token' }), { status: 401 });
+    }
+}
+
+export async function DELETE(request) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+        return new Response(JSON.stringify({ message: 'Authorization header missing' }), { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const url = new URL(request.url);
+    const notificationId = url.searchParams.get('id');
+
+    try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const userId = decoded.id;
+
+        const pool = await getConnection();
+        await pool.request()
+            .input('notificationId', notificationId)
+            .input('userId', userId)
+            .query(`
+                DELETE FROM notifications 
+                WHERE id = @notificationId AND receiverUserId = @userId
+            `);
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error) {
+        console.error('Delete notification error:', error);
+        return new Response(JSON.stringify({ message: 'Error deleting notification' }), { status: 500 });
     }
 }

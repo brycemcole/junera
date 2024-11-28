@@ -21,7 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Search, Info } from "lucide-react";
+import { ArrowRight, Search, Info, Sparkle, SparkleIcon } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -66,35 +66,37 @@ import { Badge } from "@/components/ui/badge";
 import { Plus } from 'lucide-react';
 import { X } from 'lucide-react';
 import { Bookmark } from 'lucide-react';
+import { TriangleAlert } from "lucide-react";
+import AlertDemo from "./[id]/AlertDemo";
 
 export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose, title, experienceLevel, location, company }) {
     return (
         <Sheet>
-        <SheetTrigger asChild>
-          <Button size="sm" variant="outline">View Search Insights</Button>
-        </SheetTrigger>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Search Insights for {title}</SheetTitle>
-            <SheetDescription>
-              Make changes to your profile here. Click save when you're done.
-            </SheetDescription>
-          </SheetHeader>
-          <JobPostingsChart 
-                      title={title}
-                      experienceLevel={experienceLevel}
-                      location={location}
-                      company={company}
-                  />
-          <SheetFooter>
-            <SheetClose asChild>
-              <Button type="button" onClick={onClose}>Close</Button>
-            </SheetClose>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            <SheetTrigger asChild>
+                <Button size="sm" variant="outline">View Search Insights</Button>
+            </SheetTrigger>
+            <SheetContent className="w-full max-w-md mx-auto sm:max-w-lg"> {/* Added responsive classes */}
+                <SheetHeader>
+                    <SheetTitle>Search Insights for {title}</SheetTitle>
+                    <SheetDescription>
+                        Make changes to your profile here. Click save when you're done.
+                        </SheetDescription>
+                    </SheetHeader>
+                <JobPostingsChart 
+                    title={title}
+                    experienceLevel={experienceLevel}
+                    location={location}
+                    company={company}
+                />
+                <SheetFooter>
+                    <SheetClose asChild>
+                        <Button type="button" onClick={onClose}>Close</Button>
+                    </SheetClose>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     );
-    });
+});
 
 export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
     return (
@@ -106,7 +108,7 @@ export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onCha
                 <SelectGroup>
                     <SelectLabel>Experience Level</SelectLabel>
                     <SelectItem value="internship">Internships</SelectItem>
-                    <SelectItem value="entry">Entry Level / Associate</SelectItem>
+                    <SelectItem value="entry level">Entry Level / Associate</SelectItem>
                     <SelectItem value="mid">Mid Level</SelectItem>
                     <SelectItem value="senior">Senior Level</SelectItem>
                     <SelectItem value="lead">Lead</SelectItem>
@@ -235,254 +237,6 @@ export function Input26({ onSearch, value }) {
 
 export const MemoizedInput26 = memo(Input26);
 
-const LLMChat = memo(function LLMChat({ user }) {
-    const [messages, setMessages] = useState([]);
-    const [userInput, setUserInput] = useState("");
-    const [llmResponse, setLlmResponse] = useState("");
-    const [userProfile, setUserProfile] = useState(null);
-    const [showSystemMessage, setShowSystemMessage] = useState(false);
-    const [isChatVisible, setIsChatVisible] = useState(false);
-
-    const toggleChatVisibility = () => {
-        setIsChatVisible(!isChatVisible);
-    };
-
-    useEffect(() => {
-        async function fetchUserProfile() {
-            if (user) {
-                try {
-                    const response = await fetch('/api/user/profile', {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                        },
-                    });
-                    const profile = await response.json();
-                    setUserProfile(profile);
-        
-                    // Extract skills as strings
-                    const technicalSkills = profile.user.technical_skills || 'None specified';
-                    const softSkills = profile.user.soft_skills || 'None specified';
-                    const otherSkills = profile.user.other_skills || 'None specified';
-        
-                    // Create a detailed system message with profile information
-                    const systemMessage = {
-                        role: "system",
-                        content: `
-        You are a helpful career assistant. You are talking to ${user.username}.
-        Here is their profile:
-        
-        ### Professional Summary
-        ${profile.user.professionalSummary || 'No summary available.'}
-        
-        ### Work Experience
-        ${profile.experience && profile.experience.length > 0 
-            ? profile.experience.map(exp => 
-                `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-          - **Location**: ${exp.location || 'Not specified'}
-          - **Description**: ${exp.description || 'No description available'}
-          - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-            : 'No work experience available.'}
-        
-        ### Education
-        ${profile.education && profile.education.length > 0
-            ? profile.education.map(edu => 
-                `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-          - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-          - **Grade**: ${edu.grade || 'Not specified'}
-          - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-            : 'No education details available.'}
-        
-        ### Skills
-        - **Technical Skills**: ${technicalSkills}
-        - **Soft Skills**: ${softSkills}
-        - **Other Skills**: ${otherSkills}
-        
-        ### Job Preferences
-        - **Desired Job Title**: ${profile.user.desired_job_title || 'Not specified'}
-        - **Preferred Location**: ${profile.user.desired_location || 'Any location'}
-        - **Preferred Salary**: $${profile.user.jobPreferredSalary || 'Not specified'}
-        - **Employment Type**: ${profile.user.employment_type || 'Not specified'}
-        - **Preferred Industries**: ${profile.user.preferred_industries || 'Not specified'}
-        - **Willing to Relocate**: ${profile.user.willing_to_relocate ? 'Yes' : 'No'}
-        
-        Please provide relevant career advice and job search assistance based on their profile.
-                        `,
-                    };
-        
-                    setMessages([systemMessage]);
-                } catch (error) {
-                    console.error("Error fetching user profile:", error);
-                    // Fallback to basic system message if profile fetch fails
-                    setMessages([{
-                        role: "system",
-                        content: `You are a helpful assistant. You are talking to ${user.username}. They are looking for job opportunities.`,
-                    }]);
-                }
-            }
-        }
-        
-        fetchUserProfile();
-    }, [user]);
-
-    const handleLLMRequest = async () => {
-        if (!userInput.trim()) return;
-        
-        const newMessages = [...messages, { role: "user", content: userInput }];
-        setMessages(newMessages);
-        setUserInput("");
-        
-        try {
-            const response = await fetch("http://localhost:1234/v1/chat/completions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: "llama-3.2-3b-instruct",
-                    messages: newMessages,
-                    temperature: 0.7,
-                    max_tokens: -1,
-                    stream: true,
-                }),
-            });
-
-            if (!response.body) return;
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText = "";
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.trim().split('\n');
-                
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    
-                    const dataStr = line.replace(/^data: /, '');
-                    if (dataStr === '[DONE]') break;
-                    
-                    try {
-                        const data = JSON.parse(dataStr);
-                        const content = data.choices[0].delta.content;
-                        if (content) {
-                            fullText += content;
-                            setLlmResponse(fullText);
-                        }
-                    } catch (error) {
-                        console.error("Error parsing JSON:", error);
-                    }
-                }
-            }
-            setMessages([...newMessages, { role: "assistant", content: fullText }]);
-        } catch (error) {
-            console.error("Error:", error);
-        }
-    };
-    const resetChat = () => {
-        if (user) {
-            setMessages([{
-                role: "system",
-                content: `You are a helpful assistant. You are talking to ${user.username}. They are looking for job opportunities.`
-            }]);
-        }
-        setUserInput("");
-        setLlmResponse("");
-    };
-
-    // Don't render if no messages (which means no user context yet)
-    if (messages.length === 0) return null;
-    const toggleSystemMessage = () => {
-        setShowSystemMessage(showSystemMessage);
-    };
-
-    return (
-        <div>
-            {/* Chat Toggle Button */}
-            <Button
-                onClick={toggleChatVisibility}
-                className="fixed bg-accent/50 border text-primary bottom-4 right-4 shadow-lg z-50 hover:bg-accent/60 pointer-events-auto"
-            >
-                {isChatVisible ? "Close Chat" : "Chat with Assistant"}
-            </Button>
-
-            {/* Chat Window */}
-            {isChatVisible && (
-                <div
-                    className="fixed bottom-16 right-4 w-full max-w-xs sm:max-w-md border rounded-lg shadow-lg border bg-background z-50"
-                >
-                    {/* Chat Header */}
-                    <div className=" text-white rounded-xl p-2 font-bold flex justify-between items-center">
-                        <span>Chat with Assistant</span>
-                        <button
-                            className="text-foreground"
-                            onClick={toggleChatVisibility}
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    {/* Chat Messages */}
-                    <div
-                        className="p-4 overflow-y-auto"
-                        style={{ maxHeight: '300px' }}
-                    >
-                        {messages.length === 0 ? (
-                            <p className="text-gray-500">Start the conversation...</p>
-                        ) : (
-                            messages.map((msg, index) => (
-                                <div
-                                    key={index}
-                                    className={`mb-2 flex ${
-                                        msg.role === 'assistant'
-                                            ? 'justify-start'
-                                            : 'justify-end'
-                                    }`}
-                                >
-                                    <div
-                                        className={`p-2 rounded-lg text-sm ${
-                                            msg.role === 'assistant'
-                                                ? 'border border-blue-100 text-blue-800 dark:border-blue-800 dark:text-blue-100'
-                                                : 'border border-green-100 text-green-800 dark:border-green-800 dark:text-green-100'
-                                        }`}
-                                    >
-                                        {msg.content}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    {/* Chat Input */}
-                    <div className="flex items-center p-3 border-t bg-background">
-                        <Input
-                            type="text"
-                            value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
-                            placeholder="Type your message..."
-                            className="flex-1 px-3 py-2 border rounded-md text-sm"
-                        />
-                        <Button
-                            onClick={() => {
-                                setMessages([
-                                    ...messages,
-                                    { role: 'user', content: userInput },
-                                ]);
-                                setUserInput('');
-                            }}
-                            className="ml-2 text-sm bg-background text-primary hover:bg-accent/50"
-                            disabled={!userInput.trim()}
-                        >
-                            <Send size={16} strokeWidth={1.5} />
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-});
-
 export const SaveSearchButton = memo(function SaveSearchButton({ 
     title, 
     experienceLevel, 
@@ -548,6 +302,7 @@ export default function JobPostingsPage() {
     const [savedSearches, setSavedSearches] = useState([]);
     const [currentController, setCurrentController] = useState(null);
     const [titleSynonyms, setTitleSynonyms] = useState([]);
+    const [userProfile, setUserProfile] = useState(null);
 
     // Add a computed variable for filter text
     const filterText = [
@@ -607,6 +362,7 @@ export default function JobPostingsPage() {
                     const result = await fetchWithCancel(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`);
                     if (result) {
                         setData(result.jobPostings);
+                        console.log(result.jobPostings);
                         sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
                         sessionStorage.setItem(`${cacheKey}_timestamp`, now);
                     }
@@ -800,6 +556,129 @@ export default function JobPostingsPage() {
         }
     };
 
+    // Add state for showing alert
+
+    // Add state for LLM response
+    const [llmResponse, setLlmResponse] = useState("");
+
+    // Define predefined questions
+    const predefinedQuestions = [
+        "How can I improve my resume?",
+        "What skills are in high demand?",
+        "How to prepare for a job interview?",
+    ];
+
+    // Handle predefined question click with profile context
+    const handlePredefinedQuestion = async (question) => {
+        if (!user) return;
+
+        if (!userProfile) {
+            setLlmResponse("Loading user profile...");
+            return;
+        }
+
+        const technicalSkills = userProfile.user.technical_skills || 'None specified';
+        const softSkills = userProfile.user.soft_skills || 'None specified';
+        const otherSkills = userProfile.user.other_skills || 'None specified';
+
+        // Create a detailed system message with profile information
+        const systemMessage = {
+            role: "system",
+            content: `
+You are a helpful career assistant. You are talking to ${userProfile.user.username}.
+Here is their profile:
+
+### Professional Summary
+${userProfile.user.professionalSummary || 'No summary available.'}
+
+### Work Experience
+${userProfile.experience && userProfile.experience.length > 0 
+? userProfile.experience.map(exp => 
+    `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+- **Location**: ${exp.location || 'Not specified'}
+- **Description**: ${exp.description || 'No description available'}
+- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
+: 'No work experience available.'}
+
+### Education
+${userProfile.education && userProfile.education.length > 0
+? userProfile.education.map(edu => 
+    `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
+- **Grade**: ${edu.grade || 'Not specified'}
+- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
+: 'No education details available.'}
+
+### Skills
+- **Technical Skills**: ${technicalSkills}
+- **Soft Skills**: ${softSkills}
+- **Other Skills**: ${otherSkills}
+
+### Job Preferences
+- **Desired Job Title**: ${userProfile.user.desired_job_title || 'Not specified'}
+- **Preferred Location**: ${userProfile.user.desired_location || 'Any location'}
+- **Preferred Salary**: $${userProfile.user.jobPreferredSalary || 'Not specified'}
+- **Employment Type**: ${userProfile.user.employment_type || 'Not specified'}
+- **Preferred Industries**: ${userProfile.user.preferred_industries || 'Not specified'}
+- **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
+
+Please provide relevant career advice and job search assistance based on their profile.
+            `,
+        };
+
+        const userMessage = { role: "user", content: question };
+        const newMessages = [systemMessage, userMessage];
+        setLlmResponse("Loading...");
+
+        try {
+            const response = await fetch("http://localhost:1234/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    model: "qwen2-0.5b-instruct",
+                    messages: newMessages,
+                    temperature: 0.7,
+                    max_tokens: 500,
+                    stream: false,
+                }),
+            });
+
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content || "No response.";
+            setLlmResponse(content);
+        } catch (error) {
+            console.error("Error fetching LLM response:", error);
+            setLlmResponse("Failed to get a response. Please try again.");
+        }
+    };
+
+    useEffect(() => {
+        async function fetchUserProfile() {
+            if (user) {
+                try {
+                    const response = await fetch('/api/user/profile', {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                        },
+                    });
+                    const profile = await response.json();
+                    setUserProfile(profile);
+        
+                    // Extract skills as strings
+                    const technicalSkills = profile.user.technical_skills || 'None specified';
+                    const softSkills = profile.user.soft_skills || 'None specified';
+                    const otherSkills = profile.user.other_skills || 'None specified';
+        
+                    // ...additional processing if needed...
+                } catch (error) {
+                    console.error('Error fetching user profile:', error);
+                }
+            }
+        }
+        
+        fetchUserProfile();
+    }, [user]);
+
     return (
         <div className="container mx-auto py-10 px-4 max-w-4xl">
         <Breadcrumb className="mb-4">
@@ -812,7 +691,7 @@ export default function JobPostingsPage() {
 </Breadcrumb>
 
             <h1 className="text-2xl font-bold mb-4">
-                {totalJobs.toLocaleString()} Job Postings
+                {totalJobs ? `${totalJobs} Job Postings` : "Job Postings"}
             </h1>
 
             {/* Active Filters */}
@@ -895,7 +774,6 @@ export default function JobPostingsPage() {
                     onSave={handleSaveSearch}
                     className="whitespace-nowrap"
                 />
-                <LLMChat user={user} />
                 </>
             )}
 
@@ -923,7 +801,6 @@ export default function JobPostingsPage() {
                 >
                     Reset Filters
                 </Button>
-                {!loading && user && <LLMChat user={user} />}
             </div>
             </ScrollArea>
 
@@ -961,30 +838,59 @@ export default function JobPostingsPage() {
                 </div>
             )}
 
+            {/* Predefined Questions */}
+            <div className="mb-4">
+                {predefinedQuestions.map((question, index) => (
+                    <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        className="mr-2 mb-2 bg-green-500/10 border-blue-50 shadow-none hover:bg-green-100"
+                        onClick={() => handlePredefinedQuestion(question)} // Pass userProfile is now handled internally
+                    >
+                        <SparkleIcon className="h-3 w-3 animate-colorChange" />
+                        <p className="text-sm font-semibold text-green-600 hover:text-green-700">
+                        {question}
+                        </p>
+                    </Button>
+                ))}
+            </div>
+
+            {/* LLM Response */}
+            {llmResponse && (
+                <div className="mb-6 p-4 border rounded-md bg-gray-100">
+                    <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
+                </div>
+            )}
+
             <div className="mt-4">
             {data && data.length > 0 ? (
                 <div>
                     {data.map((job) => (
                         <>
                <div key={job.id} 
-                    className="rounded-md mb-4 border px-4 py-3 font-mono text-sm cursor-pointer hover:bg-accent transition duration-200 ease-in-out" 
+                    className="rounded-md mb-4 border px-4 py-3 text-sm cursor-pointer hover:bg-accent transition duration-200 ease-in-out" 
                     onClick={() => router.push(`/job-postings/${job.id}`)}
                 >
                     {/* Header Section */}
-                    <div className="flex items-center gap-4 mb-3">
-                        {job.logo && (
+                    <div className="flex items-center gap-4 mb-1">
+                        {job.logo ? (
                             <Avatar>
                             <AvatarImage src={job.logo} />
                             <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
+                        )  : (
+                            <Avatar>
+                            <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
                         )}
                         <div className="flex flex-col">
-                            <span className="font-bold text-base">{job?.title || "No job titles available"}</span>
                             <span className="text-sm text-muted-foreground">{job?.company || "No company name available"}</span>
+                            <span className="font-semibold text-md">{job?.title || "No job titles available"}</span>
                         </div>
                     </div>
                     {/* Details Section */}
-                    <div className="flex flex-row flex-wrap gap-4 text-sm text-muted-foreground">
+                    <div className="flex flex-row flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-foreground" />
                             <span>{job?.location || "N/A"}</span>

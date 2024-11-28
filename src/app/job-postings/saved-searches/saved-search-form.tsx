@@ -100,7 +100,7 @@ export function SavedSearchForm({ onSubmit, initialData }) {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="internship">Internship</SelectItem>
-                    <SelectItem value="entry">Entry Level</SelectItem>
+                    <SelectItem value="entry level">Entry Level</SelectItem>
                     <SelectItem value="mid">Mid Level</SelectItem>
                     <SelectItem value="senior">Senior Level</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>

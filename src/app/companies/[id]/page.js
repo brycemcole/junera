@@ -1,4 +1,6 @@
 import { getConnection } from "@/lib/db";
+import { ChevronRight, Globe, MapPin, Building } from "lucide-react";
+
 import {
     Accordion,
     AccordionContent,
@@ -14,7 +16,10 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
   } from "@/components/ui/breadcrumb"
-  
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {Badge} from "@/components/ui/badge";
+import {Separator} from "@/components/ui/separator";
+
 async function getCompanyById(id) {
   const pool = await getConnection();
   const result = await pool
@@ -34,86 +39,154 @@ async function getJobPostingsByCompanyId(companyId) {
     return result.recordset;
 }
 
+
 export default async function CompanyPage({ params }) {
-  const { id } = await params; // Extract id from the URL
-  const company = await getCompanyById(id);
-  const jobPostings = await getJobPostingsByCompanyId(id);
-  const MAX_POSTINGS = 20; // Maximum number of job postings to display
+    const { id } = await params; // Extract id from the URL
+    const company = await getCompanyById(id);
+    const jobPostings = await getJobPostingsByCompanyId(id);
+    const MAX_POSTINGS = 20; // Maximum number of job postings to display
 
     if (!company) {
-        return <div>Company not found.</div>;
+        return (
+            <div className="container mx-auto py-10 px-4 max-w-4xl">
+                <Alert variant="destructive">
+                    <AlertTitle>Company not found</AlertTitle>
+                    <AlertDescription>
+                        The company you're looking for does not exist. Please check the URL or go back to the job postings page.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
     }
 
-return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl">
-        <Breadcrumb className="mb-4">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbPage>{company.name}</BreadcrumbPage>
-                </BreadcrumbItem>
-            </BreadcrumbList>
-        </Breadcrumb>
-        <h1 className="text-2xl font-bold mb-2">{company.name}</h1>
-        {company.location && <p className="text-md font-medium">{company.location}</p>}
-        {company.website && <p>{company.website}</p>}
-        <Accordion type="single" collapsible className="w-full" defaultValue="item-description">
-            {[
-                { key: "description", label: "Company Description", content: company.description },
-                { key: "location", label: "Location", content: company.location },
-                { key: "link", label: "Website", content: company.link },
-                { key: "industry", label: "Industry", content: company.industry },
-                { key: "founded_size_stock", label: "Founded, Size & Stock Symbol", content: (
-                    <>
-                        {company.founded && <p>Founded: {new Date(company.founded).toLocaleDateString()}</p>}
-                        {company.size && <p>Size: {company.size}</p>}
-                        {company.stock_symbol && <p>Stock Symbol: {company.stock_symbol}</p>}
-                    </>
-                )},
-                { key: "company_issues", label: "Company Issues", content: company.company_issues },
-                { key: "company_engineer_choice", label: "Engineer Choice", content: company.company_engineer_choice },
-                { key: "company_sentiment", label: "Company Sentiment", content: company.company_sentiment },
-                { key: "company_recent_news_sentiment", label: "Recent News Sentiment", content: company.company_recent_news_sentiment },
-                { key: "company_stage", label: "Company Stage", content: company.company_stage },
-                { key: "twitter_username", label: "Twitter Username", content: company.twitter_username },
-                { key: "company_website", label: "Company Website", content: company.company_website },
-            ].map(({ key, label, content }) => content && (
-                <AccordionItem key={key} value={`item-${key}`}>
-                    <AccordionTrigger className="text-md">{label}</AccordionTrigger>
-                    <AccordionContent className="text-md font-medium">{content}</AccordionContent>
-                </AccordionItem>
-            ))}
-        </Accordion>
-        <h2 className="text-xl font-bold mt-8 mb-4">Job Postings</h2>
-        <ul className="mb-8">
-            {jobPostings.slice(0, MAX_POSTINGS).map(job => (
-                <li key={job.id} className="mb-2">
-                    <Link href={`/job-postings/${job.id}`}>
-                    <p className="text-lime-500 hover:underline">{job.title}</p>
-                    <p>
-  {job.location && <span>{job.location}</span>}
-  {job.location && job.experienceLevel && <span> | </span>}
-  {job.experienceLevel && <span>{job.experienceLevel}</span>}
-  {(job.location || job.experienceLevel) && job.postedDate && <span> | </span>}
-  {job.postedDate && <span>{new Date(job.postedDate).toLocaleDateString()}</span>}
-  {(job.location || job.experienceLevel || job.postedDate) && job.salary !== undefined && job.salary !== null && <span> | </span>}
-  {job.salary !== undefined && job.salary !== null && <span>{job.salary > 0 ? `$${job.salary}` : "N/A"}</span>}
-</p>
-                    </Link>
-                </li>
-            ))}
-        </ul>
-        {jobPostings.length > MAX_POSTINGS && (
-            <Link 
-                href={`/job-postings?company=${id}`}
-                className="text-lime-500 hover:underline"   
-            >
-                View All Job Postings
-            </Link>
-        )}
-    </div>
-);
+    return (
+        <div className="container mx-auto py-10 px-4 max-w-4xl">
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center text-sm text-muted-foreground mb-6">
+                <a href="/job-postings" className="text-lime-500 hover:underline flex items-center gap-1">
+                    <Building size={16} /> Jobs
+                </a>
+                <ChevronRight className="mx-2" size={16} />
+                <span>{company.name}</span>
+            </div>
+
+            {/* Company Header */}
+            <h1 className="text-3xl font-bold mb-4">{company.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                {company.location && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                        <MapPin size={14} /> {company.location}
+                    </Badge>
+                )}
+                {company.industry && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                        {company.industry}
+                    </Badge>
+                )}
+                {company.size && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                        Size: {company.size}
+                    </Badge>
+                )}
+                {company.stock_symbol && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                        Stock: {company.stock_symbol}
+                    </Badge>
+                )}
+            </div>
+            {company.website && (
+                <p className="mb-4">
+                    <a
+                        href={company.website}
+                        className="text-lime-500 hover:underline flex items-center gap-1"
+                    >
+                        <Globe size={14} /> Visit Website
+                    </a>
+                </p>
+            )}
+            {company.description && <p className="text-muted-foreground mb-6">{company.description}</p>}
+
+            <Separator className="my-6" />
+
+            {/* Additional Company Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                {company.founded && (
+                    <div>
+                        <h3 className="text-md font-semibold">Founded</h3>
+                        <p>{new Date(company.founded).toLocaleDateString()}</p>
+                    </div>
+                )}
+                {company.company_stage && (
+                    <div>
+                        <h3 className="text-md font-semibold">Stage</h3>
+                        <p>{company.company_stage}</p>
+                    </div>
+                )}
+                {company.company_sentiment && (
+                    <div>
+                        <h3 className="text-md font-semibold">Sentiment</h3>
+                        <p>{company.company_sentiment}</p>
+                    </div>
+                )}
+                {company.twitter_username && (
+                    <div>
+                        <h3 className="text-md font-semibold">Twitter</h3>
+                        <p>
+                            <a
+                                href={`https://twitter.com/${company.twitter_username}`}
+                                className="text-lime-500 hover:underline"
+                            >
+                                @{company.twitter_username}
+                            </a>
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Job Postings Section */}
+            <h2 className="text-xl font-bold mb-4">Job Postings</h2>
+            {jobPostings.length === 0 ? (
+                <Alert variant="warning">
+                    <AlertTitle>No Job Postings Available</AlertTitle>
+                    <AlertDescription>
+                        This company does not have any active job postings at the moment.
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <ul className="space-y-4">
+                    {jobPostings.slice(0, MAX_POSTINGS).map(job => (
+                        <li key={job.id} className="p-4 border rounded-lg hover:shadow-md transition">
+                            <a href={`/job-postings/${job.id}`} className="text-lime-500 hover:underline">
+                                <h3 className="font-bold">{job.title}</h3>
+                            </a>
+                            <p className="text-sm text-muted-foreground">
+                                {job.location && <Badge className="mr-2">{job.location}</Badge>}
+                                {job.experienceLevel && <Badge className="mr-2">Level: {job.experienceLevel}</Badge>}
+                                {job.salary && (
+                                    <Badge variant="outline">{job.salary > 0 ? `$${job.salary}` : "N/A"}</Badge>
+                                )}
+                                {job.postedDate && (
+                                    <span className="ml-2">
+                                        Posted on: {new Date(job.postedDate).toLocaleDateString()}
+                                    </span>
+                                )}
+                            </p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {jobPostings.length > MAX_POSTINGS && (
+                <div className="mt-6">
+                    <a
+                        href={`/job-postings?company=${id}`}
+                        className="text-lime-500 hover:underline font-medium"
+                    >
+                        View All Job Postings
+                    </a>
+                </div>
+            )}
+        </div>
+    );
 }

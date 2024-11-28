@@ -20,11 +20,12 @@ export default function Login() {
   return (
     <div className="flex items-center justify-center min-h-screen p-4 sm:p-8">
       <main className="flex flex-col gap-8 items-center w-full max-w-md sm:max-w-lg">
-        <Card className="w-full p-4 sm:p-8">
-          <h1 className="text-4xl font-bold text-center mb-4">Login</h1>
+        <div className="w-full p-4 sm:p-8">
+          <div className="mb-16">
           <Button44 />
+          </div>
           <LoginForm />
-        </Card>
+        </div>
       </main>
     </div>
   );

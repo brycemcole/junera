@@ -43,12 +43,9 @@ export async function POST(req) {
             skills_string: { type: "string" }
           },
           required: [
-            "salary_range_str", "experienceLevel", "location", "benefits",
+            "salary_range_str", "experienceLevel", "location",
             "PreferredQualifications", "MinimumQualifications", "Responsibilities",
-            "description",
-            "Requirements", "NiceToHave", "Schedule",
-            "H1BVisaSponsorship", "IsRemote", "EqualOpportunityEmployerInfo",
-            "Relocation", "employmentType", "accepted_college_majors", "skills_string"
+            "description","IsRemote", "accepted_college_majors", "skills_string"
           ]
         }
       }
@@ -87,6 +84,7 @@ Respond only with JSON format data.`
         content: `Based on this job posting, generate complete information following the system requirements:
 Job Title: ${currentData.title}
 Current Description: ${currentData.description}
+Full Job Posting JSON: ${JSON.stringify(currentData)}
 
 Important: Ensure all fields are populated with realistic, relevant information based on the job context. If information isn't explicitly stated, infer it from similar roles in the industry.`
       }

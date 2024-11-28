@@ -6,6 +6,8 @@ import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { LayoutDashboard, LogOut } from "lucide-react"; // Ensure correct icons
 import { JobCard } from '@/components/job-posting'; // Import JobCard
 import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+
 
 export default function DashboardPage() {
   const { user, loading } = useAuth(); // Destructure loading
@@ -14,6 +16,7 @@ export default function DashboardPage() {
   const [recentlyApplied, setRecentlyApplied] = useState([]);
   const [matchingJobs, setMatchingJobs] = useState([]);
   const [recentCompanies, setRecentCompanies] = useState([]);
+  const [bookmarkedJobs, setBookmarkedJobs] = useState([]); // Add new state
 
   useEffect(() => {
     if (!loading) { // Check if loading is complete
@@ -72,6 +75,19 @@ export default function DashboardPage() {
           } catch (error) {
             console.error("Error fetching recent companies:", error);
           }
+
+          try {
+            // Fetch bookmarked jobs
+            const responseBookmarks = await fetch('/api/dashboard/bookmarked-jobs', {
+              headers: {
+                'Authorization': `Bearer ${user.token}`,
+              },
+            });
+            const dataBookmarks = await responseBookmarks.json();
+            setBookmarkedJobs(dataBookmarks);
+          } catch (error) {
+            console.error("Error fetching bookmarked jobs:", error);
+          }
         }
 
         fetchData();
@@ -113,16 +129,38 @@ export default function DashboardPage() {
     <div className="container mx-auto py-10 p-4 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card className="p-4 col-span-2">
+          <CardTitle className="mb-2">Bookmarked Jobs</CardTitle>
+          <CardDescription>
+            {bookmarkedJobs.length > 0 ? (
+              bookmarkedJobs.map(job => (
+                <Link href={`/job-postings/${job.id}`} key={job.id}>
+                  <div className="mb-2">
+                    <p id="companyTitle" className="text-lime-500 hover:underline">{job.company}</p>
+                    <p id="jobTitle" className="text-foreground font-medium">{job.title}</p>
+                    <p id="jobViewDate" className="text-muted-foreground text-xs font-medium">{formatDistanceToNow(job.bookmarkedAt)}</p>
+
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p>No bookmarked jobs.</p>
+            )}
+          </CardDescription>
+        </Card>
+
         <Card className="p-4">
-          <CardTitle>Recently Viewed Jobs</CardTitle>
+          <CardTitle className="mb-2">Recently Viewed Jobs</CardTitle>
           <CardDescription>
             {recentlyViewed.length > 0 ? (
               recentlyViewed.map(job => (
                 <Link href={`/job-postings/${job.id}`} key={job.id}>
                 <div className="mb-2" key={job.id} >
                   <p id="companyTitle" className="text-lime-500 hover:underline">{job.company}</p>
-                  <p id="jobTitle" className="text-foreground font-medium">{job.title}</p>
+                  <p id="jobTitle" className="text-foreground text-md font-medium">{job.title}</p>
+                  <p id="jobViewDate" className="text-muted-foreground text-xs font-medium">{formatDistanceToNow(job.viewedAt)}</p>
+
                 </div>
                 </Link>
               ))
@@ -133,12 +171,14 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="p-4">
-          <CardTitle>Recently Applied Jobs</CardTitle>
+          <CardTitle className="mb-2">Recently Applied Jobs</CardTitle>
           <CardDescription>
             {recentlyApplied.slice(0, 3).map(job => (
               <div className="mb-2" key={job.id} onClick={() => router.push(`/job-postings/${job.id}`)}>              
                 <p id="companyTitle" className="text-lime-500 hover:underline">{job.company}</p>
                 <p id="jobTitle" className="text-foreground font-medium">{job.title}</p>
+                <p id="jobViewDate" className="text-muted-foreground text-xs font-medium">{formatDistanceToNow(job.postedDate)}</p>
+
               </div>
             ))}
             {recentlyApplied.length > 3 && (
@@ -152,7 +192,7 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="p-4">
-          <CardTitle>New Jobs Matching Your Searches</CardTitle>
+          <CardTitle className="mb-2">New Jobs Matching Your Searches</CardTitle>
           <CardDescription>
             {matchingJobs.length > 0 ? (
               matchingJobs.map(job => (
@@ -165,7 +205,7 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="p-4">
-          <CardTitle>Recently Launched Companies</CardTitle>
+          <CardTitle className="mb-2">Recently Launched Companies</CardTitle>
           <CardDescription>
             {recentCompanies.length > 0 ? (
               recentCompanies.map(company => (
@@ -176,6 +216,8 @@ export default function DashboardPage() {
             )}
           </CardDescription>
         </Card>
+
+
       </div>
     </div>
   );

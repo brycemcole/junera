@@ -1,0 +1,234 @@
+'use server';
+
+import { NextResponse } from 'next/server';
+import { getConnection } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+import sql from 'mssql';
+
+// Add Redis client if you want to implement caching
+// import { Redis } from '@upstash/redis';
+
+export async function GET(req, { params }) {
+  const { id } = await params;
+  const authHeader = await req.headers.get('Authorization');
+  
+  console.log(authHeader);
+  try {
+    const timeout = 5000; // 5 seconds
+    const jobPromise = getJobPostingById(id, authHeader);
+    const relatedPromise = getRelatedJobPostings(jobPromise); // Fetch related postings
+    const bookmarkPromise = checkIfBookmarked(id, authHeader?.split(' ')[1]); // Check bookmark status
+
+    let [jobPosting, relatedPostings, isBookmarked] = await Promise.all([
+      Promise.race([
+        jobPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout')), timeout)
+        )
+      ]),
+      relatedPromise,
+      bookmarkPromise
+    ]);
+
+    const response = {
+      jobPosting,
+      relatedPostings,
+      isBookmarked
+    };
+
+    // After fetching jobPosting
+    const keywords = scanKeywords(jobPosting.description);
+    const { salary, salary_max } = extractSalaryRange(jobPosting.description);
+    response.keywords = keywords;
+    jobPosting.salary = salary;
+    jobPosting.salary_max = salary_max;
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('Error fetching job data:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' }, 
+      { status: error.name === 'QueryTimeout' ? 504 : 500 }
+    );
+  }
+}
+
+async function getJobPostingById(id, authHeader) {
+  const pool = await getConnection();
+  
+  try {
+    // Use transaction with timeout
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    
+    const request = transaction.request();
+    request.timeout = 3000; // 3 second timeout for this specific query
+
+    // Optimize query by selecting only needed fields
+    const result = await request
+      .input("id", id)
+      .query(`
+        SELECT 
+          j.id, j.title, j.location, j.description, j.views,
+          j.salary, j.salary_range_str, j.experienceLevel,
+          j.postedDate, j.company_id, j.applicants, j.link,
+          c.name AS companyName, c.description AS companyDescription,
+          c.logo
+        FROM jobPostings j
+        JOIN companies c ON j.company_id = c.id 
+        WHERE j.id = @id
+      `);
+
+    // Handle user view tracking asynchronously
+    if (authHeader) {
+      trackUserView(pool, id, authHeader).catch(console.error);
+    }
+
+    await transaction.commit();
+    
+    return result.recordset[0];
+  } catch (error) {
+    await transaction?.rollback();
+    throw error;
+  }
+}
+
+async function getRelatedJobPostings(jobPosting) {
+  if (!jobPosting) return null;
+  let job = await jobPosting;
+  
+  const pool = await getConnection();
+  const request = pool.request();
+  request.timeout = 2000; // 2 second timeout
+
+  // Ensure title is not null or empty
+  const title = job.title && job.title.trim() !== '' ? job.title.trim() : null;
+  console.log('Related Postings - Title:', title);
+
+  let similarPostings = [];
+  let companyPostings = [];
+
+  if (title) {
+    // Fetch similar job postings based on title
+    try {
+      similarPostings = await request
+        .input('id', job.id)
+        .input('title', `"${title}"`)
+        .query(`
+          SELECT TOP 5
+            j.id, j.title, j.location, j.salary_range_str, 
+            j.experienceLevel, j.postedDate,
+            c.name AS company, c.logo AS companyLogo
+          FROM jobPostings j
+          JOIN companies c ON j.company_id = c.id
+          WHERE j.id != @id
+            AND FREETEXT(j.title, @title)
+          ORDER BY j.postedDate DESC
+        `);
+      console.log('Similar Postings:', similarPostings.recordset);
+    } catch (error) {
+      console.error('Error fetching similar postings:', error);
+    }
+  } else {
+    console.log('No valid title provided for similar postings.');
+  }
+
+  // Fetch job postings from the same company
+  try {
+    companyPostings = await request
+      .input('companyId', job.company_id)
+      .input('jobId', job.id)
+      .query(`
+        SELECT TOP 5
+          j.id, j.title, j.location, j.salary_range_str, 
+          j.experienceLevel, j.postedDate,
+          c.name AS company, c.logo AS companyLogo
+        FROM jobPostings j
+        JOIN companies c ON j.company_id = c.id
+        WHERE j.company_id = @companyId
+          AND j.id != @jobId
+        ORDER BY j.postedDate DESC
+      `);
+    console.log('Company Postings:', companyPostings.recordset);
+  } catch (error) {
+    console.error('Error fetching company postings:', error);
+  }
+
+  return {
+    similarPostings: similarPostings.recordset || [],
+    sameCompanyPostings: companyPostings.recordset || []
+  };
+}
+
+// Moved to background task
+async function trackUserView(pool, jobId, authHeader) {
+  try {
+    const token = await authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+    
+    await pool.request()
+      .input('userId', sql.NVarChar, decoded.id)
+      .input('jobId', sql.NVarChar, jobId)
+      .query(`
+        MERGE user_recent_viewed_jobs AS target
+        USING (SELECT @userId as user_id, @jobId as jobPostings_id) AS source
+        ON target.user_id = source.user_id AND target.jobPostings_id = source.jobPostings_id
+        WHEN MATCHED THEN
+          UPDATE SET viewed_at = GETDATE()
+        WHEN NOT MATCHED THEN
+          INSERT (user_id, jobPostings_id, viewed_at, company_id)
+          VALUES (
+            @userId, 
+            @jobId, 
+            GETDATE(),
+            (SELECT company_id FROM jobPostings WHERE id = @jobId)
+          );
+      `);
+  } catch (error) {
+    console.error('Failed to track user view:', error);
+  }
+}
+
+// Simplified bookmark check
+async function checkIfBookmarked(jobId, token) {
+  if (!token) return false;
+
+  try {
+    const pool = await getConnection();
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+    
+    const result = await pool.request()
+      .input('userId', decoded.id)
+      .input('jobId', jobId)
+      .query(`
+        SELECT TOP 1 1 
+        FROM favorites_jobs 
+        WHERE user_id = @userId AND job_posting_id = @jobId
+      `);
+
+    return result.recordset.length > 0;
+  } catch (error) {
+    console.error('Error checking bookmark:', error);
+    return false;
+  }
+}
+
+// Add the scanKeywords function
+function scanKeywords(text) {
+    const keywordsList = ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++', 'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS'];
+    const foundKeywords = keywordsList.filter(keyword => text.includes(keyword));
+    return foundKeywords;
+}
+
+// Add a function to extract salary range from text
+function extractSalaryRange(text) {
+    const salaryRegex = /\$([\d,]+)\s*(?:to|\-)\s*\$([\d,]+)/;
+    const match = text.match(salaryRegex);
+    if (match) {
+        const salary = parseInt(match[1].replace(/,/g, ''), 10);
+        const salary_max = parseInt(match[2].replace(/,/g, ''), 10);
+        console.log('Parsed salary:', salary, salary_max);
+        return { salary, salary_max };
+    }
+    return { salary: null, salary_max: null };
+}

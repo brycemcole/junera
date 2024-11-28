@@ -35,7 +35,9 @@ export default function EnhanceJobPopover({ jobPosting }) {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline"><Wand2 /></Button>
+          <Button size="sm" variant="outline">
+            <Wand2/>
+            </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80 mx-4">
           <div className="grid gap-4">

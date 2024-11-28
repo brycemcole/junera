@@ -9,7 +9,7 @@ export async function GET(request) {
   if (!authHeader) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const token = authHeader.split(' ')[1];
+    const token = localStorage.getItem('token');
   
   // Verify token and get user_id
   try {
