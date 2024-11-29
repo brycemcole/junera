@@ -101,7 +101,7 @@ export function SavedSearchForm({ onSubmit, initialData }) {
                   <SelectContent>
                     <SelectItem value="internship">Internship</SelectItem>
                     <SelectItem value="entry level">Entry Level</SelectItem>
-                    <SelectItem value="mid">Mid Level</SelectItem>
+                    <SelectItem value="mid level">Mid Level</SelectItem>
                     <SelectItem value="senior">Senior Level</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="director">Director</SelectItem>

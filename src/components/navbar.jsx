@@ -134,7 +134,7 @@ export function DropdownMenuDemo() {
                 <DropdownMenuItem onClick={() => router.push('/job-postings?explevel=internship')}>
                   <span>Internships</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/job-postings?explevel=entry')}>
+                <DropdownMenuItem onClick={() => router.push('/job-postings?explevel=entry%20level')}>
                   <span>Entry Level</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

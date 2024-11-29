@@ -4,9 +4,7 @@ import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
-
-// Add Redis client if you want to implement caching
-// import { Redis } from '@upstash/redis';
+import { getCompanies } from "@/lib/companyCache";
 
 export async function GET(req, { params }) {
   const { id } = await params;
@@ -55,27 +53,24 @@ export async function GET(req, { params }) {
 
 async function getJobPostingById(id, authHeader) {
   const pool = await getConnection();
-  
+  const companies = await getCompanies();
+  let transaction = null;
+
   try {
-    // Use transaction with timeout
-    const transaction = new sql.Transaction(pool);
+    transaction = new sql.Transaction(pool);
     await transaction.begin();
     
     const request = transaction.request();
     request.timeout = 3000; // 3 second timeout for this specific query
 
-    // Optimize query by selecting only needed fields
     const result = await request
       .input("id", id)
       .query(`
         SELECT 
           j.id, j.title, j.location, j.description, j.views,
           j.salary, j.salary_range_str, j.experienceLevel,
-          j.postedDate, j.company_id, j.applicants, j.link,
-          c.name AS companyName, c.description AS companyDescription,
-          c.logo
+          j.postedDate, j.company_id, j.applicants, j.link
         FROM jobPostings j
-        JOIN companies c ON j.company_id = c.id 
         WHERE j.id = @id
       `);
 
@@ -86,16 +81,34 @@ async function getJobPostingById(id, authHeader) {
 
     await transaction.commit();
     
-    return result.recordset[0];
+    let jobPosting = result.recordset[0];
+    if (!jobPosting) {
+      throw new Error('Job posting not found');
+    }
+    
+    if (jobPosting.company_id) {
+      const company = companies[jobPosting.company_id];
+      jobPosting.companyName = company?.name || 'Unknown';
+      jobPosting.companyLogo = company?.logo || null;
+      jobPosting.companyDescription = company?.description || null; 
+    }
+
+    return jobPosting;
   } catch (error) {
-    await transaction?.rollback();
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error('Error rolling back transaction:', rollbackError);
+      }
+    }
     throw error;
   }
 }
 
 async function getRelatedJobPostings(jobPosting) {
-  if (!jobPosting) return null;
   let job = await jobPosting;
+  if (!job) return null;
   
   const pool = await getConnection();
   const request = pool.request();
@@ -149,7 +162,6 @@ async function getRelatedJobPostings(jobPosting) {
           AND j.id != @jobId
         ORDER BY j.postedDate DESC
       `);
-    console.log('Company Postings:', companyPostings.recordset);
   } catch (error) {
     console.error('Error fetching company postings:', error);
   }

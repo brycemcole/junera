@@ -30,7 +30,7 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "Entry Level",
-    href: "/job-postings?explevel=entry",
+    href: "/job-postings?explevel=entry%20level",
     description: "Jobs for candidates with minimal professional experience.",
   },
   {

@@ -1,96 +1,74 @@
+// /pages/api/jobPostingsCount.js (or your appropriate file)
 import { getConnection } from "@/lib/db";
 import sql from 'mssql';
 
 function formatForFullTextSearch(text) {
+  // Escape double quotes for SQL
   return `"${text.replace(/"/g, '""')}"`;
 }
 
 export async function GET(req) {
-  // Remove any auth token checks here - make this endpoint public
   const { searchParams } = new URL(req.url);
-  
-  // Extracting search filters from URL
-  const title = searchParams.get("title") || "";
-  const experienceLevel = searchParams.get("experienceLevel") || "";
-  const location = searchParams.get("location") || "";
-  const company = searchParams.get("company") || "";
+
+  // Extract and sanitize search filters
+  const title = searchParams.get("title")?.trim() || "";
+  const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
+  const location = searchParams.get("location")?.trim() || "";
+  const company = searchParams.get("company")?.trim() || "";
 
   try {
     const pool = await getConnection();
-    let titleCondition = "1=1";
-    let parameters = [];
 
-    if (title && title.trim()) {
-      const synonymsQuery = await pool.request()
-        .input('searchTitle', sql.NVarChar, title.toLowerCase())
-        .query(`
-          SELECT related_title, weight
-          FROM (
-            SELECT synonym_title as related_title, weight
-            FROM job_title_synonyms
-            WHERE LOWER(primary_title) = @searchTitle
-            UNION
-            SELECT primary_title as related_title, weight
-            FROM job_title_synonyms
-            WHERE LOWER(synonym_title) = @searchTitle
-            UNION
-            SELECT @searchTitle as related_title, 1.0 as weight
-          ) AS combined_titles;
-        `);
-
-      const synonyms = synonymsQuery.recordset;
-      
-      if (synonyms.length > 0) {
-        titleCondition = `(${
-          synonyms.map((syn, i) => `CONTAINS(jp.title, @title${i})`).join(' OR ')
-        })`;
-        
-        synonyms.forEach((syn, i) => {
-          parameters.push({ 
-            name: `title${i}`, 
-            value: formatForFullTextSearch(syn.related_title)
-          });
-        });
-      } else {
-        titleCondition = "CONTAINS(jp.title, @title)";
-        parameters.push({ 
-          name: 'title', 
-          value: formatForFullTextSearch(title) 
-        });
-      }
-    }
-
+    // Build the count query without JOIN
     let query = `
       SELECT COUNT(*) AS totalJobs
-      FROM jobPostings jp
-      WHERE ${titleCondition}
+      FROM jobPostings jp WITH (NOLOCK)
+      WHERE jp.deleted = 0
     `;
 
-    if (experienceLevel) {
-      query += ` AND jp.experienceLevel LIKE '%' + @experienceLevel + '%'`;
-    }
-    if (location) {
-      query += ` AND jp.location LIKE '%' + @location + '%'`;
-    }
-    if (company) {
-      query += ` AND jp.company_id = @company`;
+    // Initialize an array to hold query conditions
+    const conditions = [];
+
+    if (title) conditions.push(`CONTAINS(jp.title, @title)`);
+    if (experienceLevel) conditions.push(`jp.experienceLevel = @experienceLevel`);
+    if (location) conditions.push(`CONTAINS(jp.location, @location)`);
+    if (company) conditions.push(`jp.company_id = @company_id`); // We'll handle company_id later
+
+    // Append conditions to the query
+    if (conditions.length > 0) {
+      query += " AND " + conditions.join(" AND ");
     }
 
     const request = pool.request();
-    
-    // Add title parameters
-    if (parameters.length > 0) {
-      parameters.forEach(param => request.input(param.name, sql.NVarChar, param.value));
+
+    // Add parameters with proper formatting for full-text search
+    if (title) request.input('title', sql.NVarChar, formatForFullTextSearch(title));
+    if (location) request.input('location', sql.NVarChar, formatForFullTextSearch(location));
+    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
+    if (company) {
+      // If filtering by company, map company name to company_id
+      // Assuming you have a cached companies object similar to the first optimization
+      // For this example, we'll perform a separate query to get the company_id
+
+      const companyQuery = `
+        SELECT id FROM companies WITH (NOLOCK)
+        WHERE LOWER(name) = LOWER(@companyName) AND deleted = 0
+      `;
+      const companyRequest = pool.request();
+      companyRequest.input('companyName', sql.NVarChar, company);
+      const companyResult = await companyRequest.query(companyQuery);
+
+      if (companyResult.recordset.length === 0) {
+        // No matching company found, return totalJobs as 0
+        return new Response(JSON.stringify({ totalJobs: 0 }), { status: 200 });
+      }
+
+      const companyId = companyResult.recordset[0].id;
+      request.input('company_id', sql.Int, companyId);
     }
 
-    // Add other parameters
-    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
-    if (location) request.input('location', sql.NVarChar, location);
-    if (company) request.input('company', sql.NVarChar, company);
-
     const result = await request.query(query);
-
-    const totalJobs = result.recordset[0].totalJobs;
+    const totalJobs = result.recordset[0]?.totalJobs || 0;
 
     return new Response(JSON.stringify({ totalJobs }), { status: 200 });
   } catch (error) {

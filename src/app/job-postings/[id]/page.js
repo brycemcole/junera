@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { formatDistanceToNow } from "date-fns";
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
@@ -133,6 +133,37 @@ export function CopyButton() {
   );
 }
 
+// Create a separate component for Similar Jobs
+const SimilarJobs = ({ jobId }) => {
+  const [similarJobs, setSimilarJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSimilarJobs = async () => {
+      try {
+        const response = await fetch(`/api/job-postings/similar?id=${jobId}`);
+        const data = await response.json();
+        setSimilarJobs(data.similarJobs);
+      } catch (error) {
+        console.error('Error fetching similar jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSimilarJobs();
+  }, [jobId]);
+
+  if (loading) return <div>Loading similar jobs...</div>;
+  
+  return (
+    <CollapsibleDemo 
+      title="Similar Job Postings" 
+      open={true}
+      jobPostings={similarJobs} 
+    />
+  );
+};
 
 export default function JobPostingPage({ params }) {
   const { id } = params;
@@ -320,7 +351,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
   if (error) return <div>Error: {error}</div>;
   if (!data?.jobPosting) return <div>Job posting not found.</div>;
 
-  const { jobPosting, relatedPostings = { similarPostings: [], sameCompanyPostings: [] }, isBookmarked, keywords } = data;
+  const { jobPosting, keywords, relatedPostings } = data;
 
   return (
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
@@ -534,17 +565,9 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
         </p>
       </div>
-      <CollapsibleDemo 
-        title="Similar Job Postings" 
-        open={true}
-        jobPostings={relatedPostings.similarPostings} 
-      />
-      
-      {relatedPostings.similarPostings.length === 0 && (
-        <div className="text-center text-gray-500 mt-4">
-          No similar job postings found.
-        </div>
-      )}
+      <Suspense fallback={<div>Loading similar jobs...</div>}>
+        <SimilarJobs jobId={id} />
+      </Suspense>
 
       <CollapsibleDemo
         title={`More Jobs at ${jobPosting.companyName}`}

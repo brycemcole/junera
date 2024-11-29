@@ -109,7 +109,7 @@ export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onCha
                     <SelectLabel>Experience Level</SelectLabel>
                     <SelectItem value="internship">Internships</SelectItem>
                     <SelectItem value="entry level">Entry Level / Associate</SelectItem>
-                    <SelectItem value="mid">Mid Level</SelectItem>
+                    <SelectItem value="mid level">Mid Level</SelectItem>
                     <SelectItem value="senior">Senior Level</SelectItem>
                     <SelectItem value="lead">Lead</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>

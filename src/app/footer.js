@@ -9,7 +9,7 @@ const footerLinks = [
     text: "Job Postings",
   },
   {
-    href: "/job-postings?explevel=entry",
+    href: "/job-postings?explevel=entry%20level",
     icon: <User size={16} />,
     text: "Entry Level Jobs",
   },
@@ -34,7 +34,7 @@ const footerLinks = [
     text: "Project Manager Jobs",
   },
   {
-    href: "/job-postings?explevel=mid",
+    href: "/job-postings?explevel=mid%20level",
     icon: <User size={16} />,
     text: "Mid-Level Jobs",
   },
