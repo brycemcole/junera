@@ -10,6 +10,14 @@ function formatSearchTerms(text) {
   return terms.map(term => `"*${term}*"`).join(' AND ');
 }
 
+
+function scanKeywords(text) {
+  const keywordsList = ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++', 'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS'];
+  const foundKeywords = keywordsList.filter(keyword => text.includes(keyword));
+  return foundKeywords;
+}
+
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const jobId = searchParams.get("id");
@@ -125,6 +133,7 @@ export async function GET(req) {
         jp.id, 
         jp.title, 
         jp.location, 
+        jp.description,
         jp.postedDate, 
         jp.salary,
         jp.salary_range_str,
@@ -183,15 +192,22 @@ export async function GET(req) {
 
     const jobPostings = result.recordset.map((job) => {
       const companyInfo = companies[job.company_id] || { name: "Unknown", logo: null };
+      const keywords = scanKeywords(job.description);
+      const remoteKeyword = job.location.toLowerCase().includes('remote') ? 'Remote' : null;
+
+      console.log(keywords);
       return {
         id: job.id,
         title: job.title,
         company: companyInfo.name,
         experienceLevel: job.experienceLevel,
+        description: job.description,
         location: job.location,
         salary: job.salary,
         logo: companyInfo.logo,
         postedDate: job.postedDate,
+        remoteKeyword,
+        keywords
       };
     });
 

@@ -1,6 +1,7 @@
 "use client";
 import React, { memo, useState, useEffect } from 'react';
 import { formatDistanceToNow } from "date-fns";
+import { debounce } from "lodash";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +22,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Search, Info, Sparkle, SparkleIcon } from "lucide-react";
+import { ArrowRight, Search, Info, Sparkle, SparkleIcon, FilterX, Clock, Zap } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -101,8 +102,12 @@ export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, o
 export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="h-8 w-[180px]">
-                <SelectValue placeholder="Experience Level" />
+            <SelectTrigger className="relative text-muted-foreground  ps-9 h-[30px] w-[100px] text-xs rounded-lg border-transparent bg-muted dark:bg-neutral-900 shadow-none">
+
+          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+            <Zap size={14} strokeWidth={2} aria-hidden="true" />
+          </div>
+                <SelectValue placeholder="Level" />
             </SelectTrigger>
             <SelectContent>
                 <SelectGroup>
@@ -124,6 +129,7 @@ export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onCha
 
 export const LocationSelect = memo(function LocationSelect({ onChange, value }) {
     const states = {
+        "remote": "Remote",
         "new york": "New York",
         "california": "California",
         "texas": "Texas",
@@ -176,8 +182,11 @@ export const LocationSelect = memo(function LocationSelect({ onChange, value }) 
 
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="w-[180px] h-8">
-                <SelectValue placeholder="Select State" />
+            <SelectTrigger className="relative ps-9 w-[120px] text-muted-foreground text-xs rounded-lg h-[30px] border-transparent bg-muted dark:bg-neutral-900 shadow-none">
+            <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+            <MapPin  size={14} strokeWidth={2} aria-hidden="true" />
+          </div>
+                <SelectValue placeholder="Location" />
             </SelectTrigger>
             <SelectContent>
                 <SelectGroup>
@@ -213,13 +222,13 @@ export function Input26({ onSearch, value }) {
             <div className="relative">
                 <Input 
                     id="input-26" 
-                    className="peer pe-9 ps-9" 
+                    className="peer pe-9 ps-12 h-12 rounded-xl" 
                     placeholder="Search..." 
                     type="search" 
                     value={searchValue} 
                     onChange={handleInputChange} 
                 />
-                <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+                <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5 text-muted-foreground/80 peer-disabled:opacity-50">
                     <Search size={16} strokeWidth={2} />
                 </div>
                 <button
@@ -265,8 +274,7 @@ export const SaveSearchButton = memo(function SaveSearchButton({
             onClick={onSave}
             className={className}
         >
-            <Bookmark className="h-4 w-4 mr-2" />
-            Save Search
+            <Bookmark className="h-4 w-4" />
         </Button>
     );
 });
@@ -284,10 +292,15 @@ export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, syno
   );
 });
 
+
+
 export default function JobPostingsPage() {
     const { user, loading } = useAuth(); // Destructure loading
     const router = useRouter();
+    const enabled = false;
     const searchParams = useSearchParams();
+    const [insightsShown, setInsightsShown] = useState(false);
+    const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [data, setData] = useState([]);
     const [totalJobs, setTotalJobs] = useState(0);
@@ -681,83 +694,30 @@ Please provide relevant career advice and job search assistance based on their p
 
     return (
         <div className="container mx-auto py-10 px-4 max-w-4xl">
-        <Breadcrumb className="mb-4">
-        <BreadcrumbList>
-    <BreadcrumbItem>
-      <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbSeparator />
-  </BreadcrumbList>
-</Breadcrumb>
-
-            <h1 className="text-2xl font-bold mb-4">
-                {totalJobs ? `${totalJobs} Job Postings` : "Job Postings"}
-            </h1>
-
-            {/* Active Filters */}
-            {(title || experienceLevel || location || company) && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {title && (
-                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
-                            Title: {title}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-4 w-4 p-0 hover:bg-accent"
-                                onClick={() => setTitle("")}
-                            >
-                                <X size={12} strokeWidth={2} />
-                            </Button>
-                        </Badge>
-                    )}
-                    {experienceLevel && (
-                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
-                            Experience: {experienceLevel}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-4 w-4 p-0 hover:bg-accent"
-                                onClick={() => setExperienceLevel("")}
-                            >
-                                <X size={12} strokeWidth={2} />
-                            </Button>
-                        </Badge>
-                    )}
-                    {location && (
-                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
-                            Location: {location}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-4 w-4 p-0 hover:bg-accent"
-                                onClick={() => setLocation("")}
-                            >
-                                <X size={12} strokeWidth={2} />
-                            </Button>
-                        </Badge>
-                    )}
-                    {company && (
-                        <Badge variant="secondary" className="text-sm pr-1 flex items-center gap-1">
-                            Company: {companies.find(c => c.id === company)?.name || company}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-4 w-4 p-0 hover:bg-accent"
-                                onClick={() => setCompany("")}
-                            >
-                                <X size={12} strokeWidth={2} />
-                            </Button>
-                        </Badge>
-                    )}
-                </div>
-            )}
-
-            <div className="max-w-md mx-auto">
-
-            </div>
-
-            {/* Only show auth-required features when user is logged in */}
+            <MemoizedInput26 onSearch={handleSearch} value={title} />
+            <div className="flex w-full gap-4 pb-2">
             {user && (
+                    <SaveSearchButton
+                        title={title}
+                        experienceLevel={experienceLevel}
+                        location={location}
+                        savedSearches={savedSearches}
+                        onSave={handleSaveSearch}
+                        className="whitespace-nowrap bg-muted h-[30px] rounded-lg dark:bg-neutral-900 border-none w-[30px]"
+                    />
+                )}
+            <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
+                <LocationSelect onChange={handleLocationChange} value={location} />
+                <Button 
+                    variant="outline"  
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="whitespace-nowrap w-[30px] h-[30px] rounded-lg ml-auto"
+                >
+                    <FilterX size={14} strokeWidth={1.5} />
+                </Button>
+            </div>
+            {user && enabled && (
                             <>
                 <div className="flex flex-row mb-2 gap-4">
                     <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
@@ -776,35 +736,7 @@ Please provide relevant career advice and job search assistance based on their p
                 />
                 </>
             )}
-
-            <MemoizedInput26 onSearch={handleSearch} value={title} />
-            <SearchSynonymsInfo title={title} synonyms={titleSynonyms} />
-            <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex space-x-4 pb-2">
-            {user && (
-                    <SaveSearchButton
-                        title={title}
-                        experienceLevel={experienceLevel}
-                        location={location}
-                        savedSearches={savedSearches}
-                        onSave={handleSaveSearch}
-                        className="whitespace-nowrap"
-                    />
-                )}
-            <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
-                <LocationSelect onChange={handleLocationChange} value={location} />
-                <Button 
-                    variant="outline"  
-                    size="sm"
-                    onClick={handleResetFilters}
-                    className="whitespace-nowrap"
-                >
-                    Reset Filters
-                </Button>
-            </div>
-            </ScrollArea>
-
-            {savedSearches.length > 0 && (
+            { savedSearchesVisible && savedSearches.length > 0 && (
                 <div className="mt-4 mb-6">
                     <div className="flex justify-between items-center mb-2">
                         <h2 className="text-sm font-semibold">Saved Searches</h2>
@@ -817,7 +749,6 @@ Please provide relevant career advice and job search assistance based on their p
                             <Plus  size={16} strokeWidth={1.5} />
                         </Button>
                     </div>
-                    <ScrollArea className="w-full whitespace-nowrap">
                         <div className="flex space-x-4 pb-2">
                             {savedSearches.map((search) => {
                                 const params = JSON.parse(search.search_params);
@@ -833,28 +764,27 @@ Please provide relevant career advice and job search assistance based on their p
                                 );
                             })}
                         </div>
-                        <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
                 </div>
             )}
 
-            {/* Predefined Questions */}
-            <div className="mb-4">
-                {predefinedQuestions.map((question, index) => (
+{insightsShown && (
+            <div>
+                { predefinedQuestions.map((question, index) => (
                     <Button
                         key={index}
                         variant="outline"
                         size="sm"
-                        className="mr-2 mb-2 bg-green-500/10 border-blue-50 shadow-none hover:bg-green-100"
+                        className="mr-2 mb-2 shadow-none bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10 text-muted-foreground/60"
                         onClick={() => handlePredefinedQuestion(question)} // Pass userProfile is now handled internally
                     >
-                        <SparkleIcon className="h-3 w-3 animate-colorChange" />
-                        <p className="text-sm font-semibold text-green-600 hover:text-green-700">
+                        <SparkleIcon className="h-3 w-3 text-muted-foreground/60" />
+                        <p className="text-sm font-medium">
                         {question}
                         </p>
                     </Button>
                 ))}
             </div>
+        )}
 
             {/* LLM Response */}
             {llmResponse && (
@@ -863,44 +793,60 @@ Please provide relevant career advice and job search assistance based on their p
                 </div>
             )}
 
-            <div className="mt-4">
+            <div>
             {data && data.length > 0 ? (
                 <div>
                     {data.map((job) => (
                         <>
                <div key={job.id} 
-                    className="rounded-md mb-4 border px-4 py-3 text-sm cursor-pointer hover:bg-accent transition duration-200 ease-in-out" 
+                    className="border-b md:px-6 py-6 md:py-4 space-y-2 text-sm cursor-pointer md:border md:rounded-xl md:mb-4 transition duration-200 ease-in-out" 
                     onClick={() => router.push(`/job-postings/${job.id}`)}
                 >
                     {/* Header Section */}
                     <div className="flex items-center gap-4 mb-1">
                         {job.logo ? (
-                            <Avatar>
+                            <Avatar className="w-6 h-6">
                             <AvatarImage src={job.logo} />
                             <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
                         )  : (
-                            <Avatar>
+                            <Avatar className="w-6 h-6">
                             <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                         )}
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">{job?.company || "No company name available"}</span>
-                            <span className="font-semibold text-md">{job?.title || "No job titles available"}</span>
                         </div>
                     </div>
-                    {/* Details Section */}
-                    <div className="flex flex-row flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span className="font-semibold text-xl">{job?.title || "No job titles available"}</span>
+                    <div className="text-md text-foreground line-clamp-3 leading-relaxed
+                    ">{job?.description || "No description available"}</div>
                     <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-foreground" />
+                        {job.remoteKeyword && (
+                                                             <Badge key={job.remoteKeyword} variant="secondary" className="inline-flex my-1 items-center rounded-md bg-green-500/10 px-2 py-[2px] text-xs font-medium text-green-600 sm:text-[13px]"
+                                                             >{job.remoteKeyword}</Badge>
+                        )}
+                        {job.keywords && job.keywords.length > 0 && (
+                            <div className="flex flex-wrap gap-1 space-x-3">
+                                {job.keywords.map((keyword) => (
+                                    <Badge key={keyword} variant="secondary" className="inline-flex my-1 items-center rounded-md bg-blue-500/10 px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]"
+                                    >{keyword}</Badge>
+                                ))}
+                            </div>
+                        )}
+</div>
+                    <div className="my-1 flex gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
+
+                    <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
                             <span>{job?.location || "N/A"}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-foreground" />
+                            <Briefcase className="h-3 w-3 text-muted-foreground"  />
                             <span>{job?.experienceLevel || "N/A"}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-foreground" />
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
                             <span>
     {job?.postedDate 
         ? `${formatDistanceToNow(new Date(job.postedDate), { addSuffix: true })}` 

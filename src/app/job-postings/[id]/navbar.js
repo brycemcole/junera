@@ -25,6 +25,7 @@ export function StickyNavbar({ title, companyName, companyLogo, companyId }) {
   return (
     <div className="fixed top-0 left-0 right-0 bg-background border-b shadow-sm z-50 py-1 px-4">
       <div className="container mx-auto max-w-4xl flex flex-col">
+        <div className="flex flex-row w-full items-center">
         <Link href={`/companies/${companyId}`}>
           <Button variant="link" className="p-0 text-sm font-medium">
             <Avatar className="w-5 h-5 mr-1">
@@ -34,6 +35,10 @@ export function StickyNavbar({ title, companyName, companyLogo, companyId }) {
             {companyName}
           </Button>
         </Link>
+        <Button className="ml-auto" variant="ghost" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          Back To Top
+        </Button>
+        </div>
         <p className="text-lg font-semibold truncate">{title}</p>
       </div>
     </div>

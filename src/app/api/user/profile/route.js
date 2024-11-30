@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 
 export async function GET(req) {
     try {
-        // Get token from Authorization header
         const authHeader = req.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,76 +15,49 @@ export async function GET(req) {
 
         const pool = await getConnection();
 
-        // Fetch education experience
-        const educationResult = await pool.request()
+        // Combined query using CTEs
+        const result = await pool.request()
             .input("userId", userId)
             .query(`
+                WITH UserInfo AS (
+                    SELECT 
+                        firstname, lastname, desired_job_title, employment_type,
+                        jobPreferredSalary, jobPreferredIndustry, desired_location,
+                        jobPreferredSkills, willing_to_relocate, certifications,
+                        preferred_industries, preferred_companies, professionalSummary,
+                        soft_skills, technical_skills, other_skills, zipcode
+                    FROM users 
+                    WHERE id = @userId
+                ),
+                Education AS (
+                    SELECT 
+                        id, institutionName, degree, fieldOfStudy, startDate,
+                        endDate, isCurrent, grade, activities, description
+                    FROM education_experiences
+                    WHERE userId = @userId
+                ),
+                WorkExperience AS (
+                    SELECT 
+                        id, title, companyName, employmentType, location,
+                        startDate, endDate, description, tags, isCurrent
+                    FROM job_experiences 
+                    WHERE userId = @userId
+                )
                 SELECT 
-                    id,
-                    institutionName,
-                    degree,
-                    fieldOfStudy,
-                    startDate,
-                    endDate,
-                    isCurrent,
-                    grade,
-                    activities,
-                    description
-                FROM education_experiences
-                WHERE userId = @userId
-                ORDER BY endDate DESC
+                    (SELECT * FROM UserInfo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) as userData,
+                    (SELECT * FROM Education ORDER BY endDate DESC FOR JSON PATH) as educationData,
+                    (SELECT * FROM WorkExperience ORDER BY endDate DESC FOR JSON PATH) as experienceData
             `);
 
-        // Fetch work experience
-        const workResult = await pool.request()
-            .input("userId", userId)
-            .query(`
-                SELECT 
-                    id,
-                    title,
-                    companyName,
-                    employmentType,
-                    location,
-                    startDate,
-                    endDate,
-                    description,
-                    tags,
-                    isCurrent
-                FROM job_experiences 
-                WHERE userId = @userId
-                ORDER BY endDate DESC
-            `);
-
-        // Fetch user's basic info
-        const userResult = await pool.request()
-            .input("userId", userId)
-            .query(`
-                SELECT 
-                    firstname,
-                    lastname,
-                    desired_job_title,
-                    employment_type,
-                    jobPreferredSalary,
-                    jobPreferredIndustry,
-                    desired_location,
-                    jobPreferredSkills,
-                    willing_to_relocate,
-                    certifications,
-                    preferred_industries,
-                    preferred_companies,
-                    professionalSummary,
-                    soft_skills,
-                    technical_skills,
-                    other_skills,
-                    zipcode
-                FROM users 
-                WHERE id = @userId
-            `);
+        // Parse JSON strings from the result
+        const userData = JSON.parse(result.recordset[0].userData || '{}');
+        const educationData = JSON.parse(result.recordset[0].educationData || '[]');
+        const experienceData = JSON.parse(result.recordset[0].experienceData || '[]');
 
         const profile = {
-            user: userResult.recordset[0],
-            education: educationResult.recordset,
-            experience: workResult.recordset
+            user: userData,
+            education: educationData,
+            experience: experienceData
         };
 
         return NextResponse.json(profile);

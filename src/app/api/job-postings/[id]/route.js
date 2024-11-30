@@ -14,24 +14,12 @@ export async function GET(req, { params }) {
   try {
     const timeout = 5000; // 5 seconds
     const jobPromise = getJobPostingById(id, authHeader);
-    const relatedPromise = getRelatedJobPostings(jobPromise); // Fetch related postings
     const bookmarkPromise = checkIfBookmarked(id, authHeader?.split(' ')[1]); // Check bookmark status
 
-    let [jobPosting, relatedPostings, isBookmarked] = await Promise.all([
-      Promise.race([
-        jobPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Query timeout')), timeout)
-        )
-      ]),
-      relatedPromise,
-      bookmarkPromise
-    ]);
+    let jobPosting = await jobPromise;
 
     const response = {
-      jobPosting,
-      relatedPostings,
-      isBookmarked
+      jobPosting
     };
 
     // After fetching jobPosting
@@ -74,10 +62,6 @@ async function getJobPostingById(id, authHeader) {
         WHERE j.id = @id
       `);
 
-    // Handle user view tracking asynchronously
-    if (authHeader) {
-      trackUserView(pool, id, authHeader).catch(console.error);
-    }
 
     await transaction.commit();
     
@@ -121,50 +105,7 @@ async function getRelatedJobPostings(jobPosting) {
   let similarPostings = [];
   let companyPostings = [];
 
-  if (title) {
-    // Fetch similar job postings based on title
-    try {
-      similarPostings = await request
-        .input('id', job.id)
-        .input('title', `"${title}"`)
-        .query(`
-          SELECT TOP 5
-            j.id, j.title, j.location, j.salary_range_str, 
-            j.experienceLevel, j.postedDate,
-            c.name AS company, c.logo AS companyLogo
-          FROM jobPostings j
-          JOIN companies c ON j.company_id = c.id
-          WHERE j.id != @id
-            AND FREETEXT(j.title, @title)
-          ORDER BY j.postedDate DESC
-        `);
-      console.log('Similar Postings:', similarPostings.recordset);
-    } catch (error) {
-      console.error('Error fetching similar postings:', error);
-    }
-  } else {
-    console.log('No valid title provided for similar postings.');
-  }
 
-  // Fetch job postings from the same company
-  try {
-    companyPostings = await request
-      .input('companyId', job.company_id)
-      .input('jobId', job.id)
-      .query(`
-        SELECT TOP 5
-          j.id, j.title, j.location, j.salary_range_str, 
-          j.experienceLevel, j.postedDate,
-          c.name AS company, c.logo AS companyLogo
-        FROM jobPostings j
-        JOIN companies c ON j.company_id = c.id
-        WHERE j.company_id = @companyId
-          AND j.id != @jobId
-        ORDER BY j.postedDate DESC
-      `);
-  } catch (error) {
-    console.error('Error fetching company postings:', error);
-  }
 
   return {
     similarPostings: similarPostings.recordset || [],

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
+import { React, use } from 'react';
 import { formatDistanceToNow } from "date-fns";
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
@@ -38,7 +39,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ArrowRight, Briefcase, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign } from "lucide-react";
+import { ArrowRight, Briefcase, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "../../../components/job-posting";
 import { CollapsibleDemo } from "./collapsible";
@@ -165,55 +166,102 @@ const SimilarJobs = ({ jobId }) => {
   );
 };
 
+const CompanySimilarJobs = ({ companyId }) => {
+  const [similarJobs, setSimilarJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSimilarJobs = async () => {
+      try {
+        const response = await fetch(`/api/job-postings/similar-company?company_id=${companyId}`);
+        const data = await response.json();
+        setSimilarJobs(data.similarJobs);
+      } catch (error) {
+        console.error('Error fetching similar jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSimilarJobs();
+  }, [companyId]);
+
+  if (loading) return <div>Loading similar jobs...</div>;
+
+  return (
+    <CollapsibleDemo
+      title="Similar Job Postings"
+      open={true}
+      jobPostings={similarJobs}
+    />
+  );
+};
+
+
+
+export function InsightsButton({ onClick }) {
+  return (
+    <Button variant="outline" onClick={onClick}>
+      Show Insights
+      <Sparkles className="-me-1 ms-2" size={16} strokeWidth={2} aria-hidden="true" />
+    </Button>
+  );
+}
+
 export default function JobPostingPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [insightsShown, setInsightsShown] = useState(false);
   const { user } = useAuth(); 
   const [showAlert, setShowAlert] = useState(false);
   const [llmResponse, setLlmResponse] = useState("");
   const [userProfile, setUserProfile] = useState(null);
 
+  const handleInghtsClick = () => {
+    setInsightsShown(!insightsShown);
+  };
 
-    // Handle predefined question click with profile context
-    const handlePredefinedQuestion = async (e) => {
-        if (!user) return;
-        let question = e.currentTarget.textContent;
-        if (!question) return;
-        console.log('Predefined question:', question);
+  const handleBadgeClick = () => {
+    setShowAlert(true);
+};
 
-        if (!userProfile) {
-            setLlmResponse("Loading user profile...");
-            return;
+  const handlePredefinedQuestion = async (e) => {
+    if (!user) return;
+    let question = e.currentTarget.textContent;
+    if (!question) return;
+    console.log('Predefined question:', question);
+
+    if (!userProfile) {
+      setLlmResponse("Loading user profile...");
+      return;
+    }
+    const jobPosting = data.jobPosting;
+
+    const technicalSkills = userProfile.user.technical_skills || 'None specified';
+    const softSkills = userProfile.user.soft_skills || 'None specified';
+    const otherSkills = userProfile.user.other_skills || 'None specified';
+
+    const modifiedQuestion = `Does ${userProfile.user.firstname} qualify for the job titled "${jobPosting.title}" at ${jobPosting.companyName}? Please provide a match score out of 100 and a brief explanation.`;
+    const matchSchema = {
+      type: "json_schema",
+      json_schema: {
+        name: "job_match",
+        schema: {
+          type: "object",
+          properties: {
+            field: { type: "string" },
+          },
+          required: [
+            "field"
+          ]
         }
-        const jobPosting = data.jobPosting;
-
-        const technicalSkills = userProfile.user.technical_skills || 'None specified';
-        const softSkills = userProfile.user.soft_skills || 'None specified';
-        const otherSkills = userProfile.user.other_skills || 'None specified';
-
-        // Modify the question for better clarity
-        const modifiedQuestion = `Does ${userProfile.user.firstname} qualify for the job titled "${jobPosting.title}" at ${jobPosting.companyName}? Please provide a match score out of 100 and a brief explanation.`;
-        const matchSchema = {
-          type: "json_schema",
-          json_schema: {
-            name: "job_match",
-            schema: {
-              type: "object",
-              properties: {
-                field: { type: "string" },
-              },
-              required: [
-                "field"
-              ]
-            }
-          }
-        };
-        // Create a detailed system message with prioritized job posting information
-        const systemMessage = {
-            role: "system",
-            content: `
+      }
+    };
+    const systemMessage = {
+      role: "system",
+      content: `
 You are a helpful career assistant evaluating job fit for ${userProfile.user.firstname} ${userProfile.user.lastname}.
 
 ### User Profile:
@@ -251,101 +299,110 @@ ${JSON.stringify(jobPosting)}
 
 Please assess the qualifications and provide a brief explanation of whether the user is a good fit for this job.
             `,
-        };
-        console.log('System message:', systemMessage.content);
-
-        const userMessage = { role: "user", content: modifiedQuestion };
-        const newMessages = [systemMessage, userMessage];
-        setLlmResponse("Loading...");
-
-        try {
-            const response = await fetch("http://localhost:1234/v1/chat/completions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: "qwen2-7b-instruct",
-                    messages: newMessages,
-                    temperature: 0.7,
-                    max_tokens: 500,
-                    stream: false,
-                }),
-            });
-
-            const data = await response.json();
-            const content = data.choices[0]?.message?.content || "No response.";
-            setLlmResponse(content);
-        } catch (error) {
-            console.error("Error fetching LLM response:", error);
-            setLlmResponse("Failed to get a response. Please try again.");
-        }
     };
+    console.log('System message:', systemMessage.content);
 
-    useEffect(() => {
-        async function fetchUserProfile() {
-            if (user) {
-                try {
-                    const response = await fetch('/api/user/profile', {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                        },
-                    });
-                    const profile = await response.json();
-                    setUserProfile(profile);
-        
-                } catch (error) {
-                    console.error('Error fetching user profile:', error);
-                }
-            }
-        }
-        
-        fetchUserProfile();
-    }, [user]);
+    const userMessage = { role: "user", content: modifiedQuestion };
+    const newMessages = [systemMessage, userMessage];
+    setLlmResponse("Loading...");
 
-  // Add handler for badge clicks
-  const handleBadgeClick = () => {
-      setShowAlert(true);
+    try {
+      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "qwen2-7b-instruct",
+          messages: newMessages,
+          temperature: 0.7,
+          max_tokens: 500,
+          stream: false,
+        }),
+      });
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || "No response.";
+      setLlmResponse(content);
+    } catch (error) {
+      console.error("Error fetching LLM response:", error);
+      setLlmResponse("Failed to get a response. Please try again.");
+    }
   };
+
+  // Combined useEffect for fetching both job data and user profile
   useEffect(() => {
-    const fetchJobData = async () => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    async function fetchUserProfile() {
+      if (!user || !isMounted) return;
+      try {
+        const response = await fetch('/api/user/profile', {
+          headers: { 'Authorization': `Bearer ${user.token}` },
+          signal: controller.signal
+        });
+        const profile = await response.json();
+        if (isMounted) setUserProfile(profile);
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        if (isMounted) console.error('Error fetching user profile:', error);
+      }
+    }
+
+    async function fetchJobData() {
       try {
         const token = localStorage.getItem('token');
-        console.log('Token found:', !!token); // Debug log
-        
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const response = await fetch(`/api/job-postings/${id}`, { headers });
         
+        // Fetch job data
+        const response = await fetch(`/api/job-postings/${id}`, { 
+          headers,
+          signal: controller.signal
+        });
+
         if (!response.ok) throw new Error('Failed to fetch job data');
         const result = await response.json();
-        setData(result);
-
-        // Track view in a separate try-catch block
-        if (token) {
-          try {
-            console.log('Attempting to track view...'); // Debug log
-            const viewResponse = await fetch(`/api/job-postings/${id}/view`, {
-              method: 'POST',
-              headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        if (isMounted) {
+          setData(result);
+          setLoading(false);
+          
+          // Only track view if we successfully fetched the job data and have a token
+          if (token && !sessionStorage.getItem(`viewed-${id}`)) {
+            try {
+              await fetch(`/api/job-postings/${id}/view`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                signal: controller.signal
+              });
+              // Mark this job as viewed in this session
+              sessionStorage.setItem(`viewed-${id}`, 'true');
+            } catch (viewError) {
+              if (viewError.name !== 'AbortError') {
+                console.error('Error tracking view:', viewError);
               }
-            });
-            if (!viewResponse.ok) {
-              console.error('Failed to track view:', await viewResponse.text());
             }
-          } catch (viewError) {
-            console.error('Error tracking view:', viewError);
           }
         }
       } catch (err) {
-        console.error('Error fetching job data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+        if (err.name === 'AbortError') return;
+        if (isMounted) {
+          console.error('Error fetching job data:', err);
+          setError(err.message);
+          setLoading(false);
+        }
       }
-    };
+    }
 
+    fetchUserProfile();
     fetchJobData();
-  }, [id]);
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [id, user]); // Only depend on id and user
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -353,7 +410,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   const { jobPosting, keywords, relatedPostings } = data;
 
-  return (
+  return (  
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
       <StickyNavbar 
         title={jobPosting.title}
@@ -376,7 +433,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <h3 className="text-md font-semibold text-neutral-600 hover:underline hover-offset-4">
+      <div>
+      <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
         
         <Link className="flex flex-row items-center gap-4" href={`/companies/${jobPosting.company_id}`}>
         <Avatar alt={jobPosting.companyName} className="w-8 h-8 rounded-full">
@@ -386,17 +444,18 @@ Please assess the qualifications and provide a brief explanation of whether the 
       {jobPosting.companyName}
       </Link>
       </h3>
+      </div>
       <h1 data-scroll-title className="text-2xl mb-2 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
       {keywords && keywords.length > 0 && (
   <div className="mb-4">
     <ul className="flex flex-wrap gap-2">
       {keywords.map((keyword, index) => {
         const colors = [
-          { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-50" },
-          { bg: "bg-green-50", text: "text-green-600", border: "border-green-50" },
-          { bg: "bg-yellow-50", text: "text-yellow-600", border: "border-yellow-50" },
-          { bg: "bg-red-50", text: "text-red-600", border: "border-red-50" },
-          { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-50" },
+          { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
+          { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-600/10" },
+          { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-600/10" },
+          { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-600/10" },
+          { bg: "bg-purple-500/10", text: "text-purple-600", border: "border-purple-600/10" },
         ];
 
         const color = colors[index % colors.length]; // Rotate colors based on index
@@ -459,10 +518,10 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </div>
       </div>
 
-      <div className="flex flex-wrap flex-row gap-4 mt-4 mb-4">
+      <div className="flex flex-wrap flex-row gap-4 gap-y-3 mt-4 mb-4">
       <Link className="w-full md:w-auto" href={`${jobPosting.link}`}>
       
-      <Button className="group text-md w-full md:w-auto font-semibold text-green-50 bg-green-950" variant="" >
+      <Button className="group text-md w-full md:w-auto font-medium text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500" variant="" >
       <Briefcase className="-ms-1 me-2 opacity-60" size={16} strokeWidth={2} aria-hidden="true" />
       Apply on {new URL(jobPosting.link).hostname.split('.').slice(-2, -1)[0]}
       <ArrowRight 
@@ -473,6 +532,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
       />
     </Button>
 </Link>
+< InsightsButton onClick={handleInghtsClick} />
 {/** 
  *         <ReportPopover />
         <EnhanceJobPopover jobPosting={jobPosting} />
@@ -483,21 +543,24 @@ Please assess the qualifications and provide a brief explanation of whether the 
         < CopyButton />
         </div>
 
-        <h3 className="text-md font-semibold mb-3">Job Insights</h3>
+{ user && insightsShown && (
+  <>
+        <h3 className="text-md font-semibold mb-3">Quick Insights</h3>
         <div className="flex flex-wrap gap-2 mb-4">
-                <Badge onClick={handleBadgeClick} className="cursor-pointer bg-green-500/10" variant="secondary">
-                <Sparkle size={14} strokeWidth={2} className="animate-colorChange" />                </Badge>
-                <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-green-500/10" variant="secondary">
-                <User size={14} strokeWidth={2} className="animate-colorChange mr-2" /> 
+                <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
+                <Sparkle size={14} strokeWidth={2} className="text-muted-foreground" />  
+              </Badge>
+                <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
+                <User size={14} strokeWidth={2} className="text-muted-foreground mr-2" /> 
 
-                  <p className="text-sm px-1 py-0.5 font-semibold text-green-700">
+                  <p className="text-sm px-1 py-0.5 font-medium text-muted-foreground">
                     Am I a good fit?
                     </p>
                 </Badge>
-                <Badge onClick={handleBadgeClick} className="cursor-pointer bg-green-500/10" variant="secondary">
-                <Briefcase size={14} strokeWidth={2} className="animate-colorChange mr-2" /> 
+                <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-foreground/10" variant="secondary">
+                <Briefcase size={14} strokeWidth={2} className="text-muted-foreground mr-2" /> 
 
-                <p className="text-sm px-1 py-0.5 font-semibold text-green-700">
+                <p className="text-sm px-1 py-0.5 font-semibold text-muted-foreground">
                 What should I say in my cover letter?
                     </p>
                 </Badge>
@@ -510,7 +573,9 @@ Please assess the qualifications and provide a brief explanation of whether the 
             )}
 
             {showAlert && <AlertDemo />}
-      <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto py-5 text-primary">
+            </>
+)}
+      <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
       <Accordion type="single" collapsible className="w-full" defaultValue="item-description">
         {[
           { key: 'companyDescription', label: 'Company Description' },
@@ -569,49 +634,22 @@ Please assess the qualifications and provide a brief explanation of whether the 
         <SimilarJobs jobId={id} />
       </Suspense>
 
-      <CollapsibleDemo
-        title={`More Jobs at ${jobPosting.companyName}`}
-        jobPostings={relatedPostings.sameCompanyPostings}
-      />
+      <Suspense fallback={<div>Loading similar jobs...</div>}>
+        <CompanySimilarJobs companyId={jobPosting.company_id} />
+      </Suspense>
 
-      {relatedPostings.sameCompanyPostings.length === 0 && (
-        <div className="text-center text-gray-500 mt-4">
-          No additional job postings from this company.
-        </div>
-      )}
+      {relatedPostings?.sameCompanyPostings && relatedPostings.sameCompanyPostings.length > 0 ? (
+  <CollapsibleDemo
+    title={`More Jobs at ${jobPosting?.companyName}`}
+    jobPostings={relatedPostings?.sameCompanyPostings}
+  />
+) : (
+  <div className="text-center text-gray-500 mt-4">
+    No additional job postings from this company.
+  </div>
+)}
     </div>
   );
-}
-
-export function CompanyHoverCard({ companyName, companyLogo, companyDescription, companyId }) {
-  return (
-    <HoverCard>
-      <HoverCardTrigger asChild className="p-0">
-        <Button variant="link" className="p-0 text-lg font-semibold">
-                                      <Avatar alt={companyName} className="w-8 h-8 rounded-full">
-                            <AvatarImage src={companyLogo} />
-                            <AvatarFallback>{companyName?.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>          
-          {companyName}</Button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-80 mx-4">
-        <Link href={`/companies/${companyId}`}>
-        <div className="flex justify-between space-x-4">
-          <Avatar>
-            <AvatarImage src={companyLogo || "https://via.placeholder.com/150"} />
-            <AvatarFallback>{companyName?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold">{companyName}</h4>
-            <p className="text-sm">
-              {companyDescription}
-            </p>
-          </div>
-        </div>
-        </Link>
-      </HoverCardContent>
-    </HoverCard>
-  )
 }
 
 export function ReportPopover() {
