@@ -85,7 +85,7 @@ export async function PUT(req) {
         const desired_salary_min = updates.desired_salary_min === '' ? null : Number(updates.desired_salary_min);
         
         // Convert date string to SQL date format or null
-        const availability_date = updates.availability_date ? new Date(updates.availability_date).toISOString() : null;
+        const availability_date = updates.availability_date ? new Date(updates?.availability_date)?.toISOString() : null;
 
         const pool = await getConnection();
         await pool.request()

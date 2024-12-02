@@ -232,12 +232,12 @@ export function Input26({ onSearch, value }) {
                     <Search size={16} strokeWidth={2} />
                 </div>
                 <button
-                    className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                    className="absolute inset-y-0 end-0 flex h-full w-9 items-center pr-4 justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Submit search"
                     type="button"
                     onClick={handleSearch}
                 >
-                    <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
+                    <ArrowRight id="loading-arrow" size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
             </div>
         </div>
@@ -274,7 +274,7 @@ export const SaveSearchButton = memo(function SaveSearchButton({
             onClick={onSave}
             className={className}
         >
-            <Bookmark className="h-4 w-4" />
+            <Bookmark className="h-3 w-3" />
         </Button>
     );
 });
@@ -695,7 +695,8 @@ Please provide relevant career advice and job search assistance based on their p
     return (
         <div className="container mx-auto py-10 px-4 max-w-4xl">
             <MemoizedInput26 onSearch={handleSearch} value={title} />
-            <div className="flex w-full gap-4 pb-2">
+            <ScrollArea>
+            <div className="flex w-full gap-4 pb-2 md:pb-8">
             {user && (
                     <SaveSearchButton
                         title={title}
@@ -703,9 +704,19 @@ Please provide relevant career advice and job search assistance based on their p
                         location={location}
                         savedSearches={savedSearches}
                         onSave={handleSaveSearch}
-                        className="whitespace-nowrap bg-muted h-[30px] rounded-lg dark:bg-neutral-900 border-none w-[30px]"
+                        className="whitespace-nowrap text-muted-foreground bg-muted h-[30px] rounded-lg dark:bg-neutral-900 border-none w-[30px]"
                     />
                 )}
+<Button 
+    className={`h-[30px] size-sm rounded-lg ${
+        location === "remote" 
+            ? "bg-neutral-600 text-white hover:bg-neutral-800" // Selected state
+            : "bg-muted dark:bg-neutral-900 shadow-none hover:text-background hover:bg-neutral-500 dark:hover:text-foreground dark:hover:bg-neutral-700 text-muted-foreground" // Default state
+    }`}
+    onClick={() => setLocation(location === "remote" ? "" : "remote")}
+>
+    Remote
+</Button>
             <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
                 <LocationSelect onChange={handleLocationChange} value={location} />
                 <Button 
@@ -717,6 +728,7 @@ Please provide relevant career advice and job search assistance based on their p
                     <FilterX size={14} strokeWidth={1.5} />
                 </Button>
             </div>
+            </ScrollArea>
             {user && enabled && (
                             <>
                 <div className="flex flex-row mb-2 gap-4">
@@ -823,17 +835,32 @@ Please provide relevant career advice and job search assistance based on their p
                     ">{job?.description || "No description available"}</div>
                     <div className="flex items-center gap-2">
                         {job.remoteKeyword && (
-                                                             <Badge key={job.remoteKeyword} variant="secondary" className="inline-flex my-1 items-center rounded-md bg-green-500/10 px-2 py-[2px] text-xs font-medium text-green-600 sm:text-[13px]"
-                                                             >{job.remoteKeyword}</Badge>
+          <Badge
+          variant="outline"
+          className={`bg-green-500/10 text-green-600 rounded-md text-sm sm:text-[13px] font-medium border-green-600/10`}
+        >
+          {job.remoteKeyword}
+        </Badge>
                         )}
-                        {job.keywords && job.keywords.length > 0 && (
-                            <div className="flex flex-wrap gap-1 space-x-3">
-                                {job.keywords.map((keyword) => (
-                                    <Badge key={keyword} variant="secondary" className="inline-flex my-1 items-center rounded-md bg-blue-500/10 px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]"
-                                    >{keyword}</Badge>
-                                ))}
-                            </div>
-                        )}
+     <ul className="flex flex-wrap gap-2">
+      {job.keywords.map((keyword, index) => {
+        const colors = [
+          { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
+        ];
+
+        const color = colors[index % colors.length]; // Rotate colors based on index
+
+        return (
+          <Badge
+            key={index}
+            variant="outline"
+            className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
+          >
+            {keyword}
+          </Badge>
+        );
+      })}
+    </ul>
 </div>
                     <div className="my-1 flex gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
 

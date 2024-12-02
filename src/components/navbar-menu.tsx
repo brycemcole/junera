@@ -14,6 +14,8 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { Navigation } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const { useAuth } = require('@/context/AuthContext');
 
@@ -22,6 +24,11 @@ const components: { title: string; href: string; description: string }[] = [
     title: "All Job Postings",
     href: "/job-postings",
     description: "Browse all available job postings.",
+  },
+  {
+    title: "Remote",
+    href: "/job-postings?location=remote",
+    description: "Find remote job opportunities.",
   },
   {
     title: "Internships",
@@ -55,8 +62,37 @@ const components: { title: string; href: string; description: string }[] = [
   },
 ];
 
+
+interface ProfileButtonProps {
+  image: string87;
+  username: string;
+}
+
+export function ProfileButton({ image, username }: ProfileButtonProps) {
+  return (
+    <Button className="rounded-full py-0 ps-0">
+      <div className="me-0.5 flex aspect-square h-full p-1.5">
+        <Image
+          className="h-auto w-full rounded-full"
+          src={image}
+          alt="Profile image"
+          width={24}
+          height={24}
+          aria-hidden="true"
+        />
+      </div>
+      @{username}
+    </Button>
+  );
+}
+
+
 export function NavbarMenu() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
+  let username;
+  if (!loading) {
+    username = user?.username || "unknown";
+  }
   return (
     <NavigationMenu>
       <NavigationMenuList>
@@ -66,17 +102,15 @@ export function NavbarMenu() {
             <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
-                  <a
-                    className="flex h-full w-full select-none flex-col justify-end rounded-md bg-lime-50 dark:bg-lime-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                    href="/"
-                  >
+                  <Link href="/" 
+                                      className="flex h-full w-full select-none flex-col justify-end rounded-md bg-lime-50 dark:bg-lime-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
                     <div className="mb-2 mt-4 text-lg font-medium">
                       🌳 junera
                     </div>
                     <p className="text-sm leading-tight text-muted-foreground">
                       A new job search experience, powering the future of work.
                     </p>
-                  </a>
+                    </Link>
                 </NavigationMenuLink>
               </li>
               <ListItem href="/" title="Introduction">
@@ -104,7 +138,7 @@ export function NavbarMenu() {
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
-        {user ? (
+        {user && !loading ? (
             <>
         <NavigationMenuItem>
           <Link href="/dashboard" legacyBehavior passHref>
@@ -118,6 +152,9 @@ export function NavbarMenu() {
                 Logout
               </NavigationMenuLink>
           </NavigationMenuItem>
+          <Link href="/p/[username]" as={`/p/${username}`} passHref>
+          <ProfileButton image={user.avatar} username={username} />
+          </Link>
         </>
         ) : (
           <>
@@ -149,7 +186,7 @@ const ListItem = React.forwardRef<
   return (
     <li>
       <NavigationMenuLink asChild>
-        <a
+        <Link
           ref={ref}
           className={cn(
             "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-lime-50/60 dark:hover:bg-lime-900/30 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
@@ -161,7 +198,7 @@ const ListItem = React.forwardRef<
           <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
             {children}
           </p>
-        </a>
+        </Link>
       </NavigationMenuLink>
     </li>
   )

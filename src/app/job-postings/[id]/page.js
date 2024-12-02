@@ -454,7 +454,11 @@ Please assess the qualifications and provide a brief explanation of whether the 
           { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
           { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-600/10" },
           { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-600/10" },
+          { bg: "bg-sky-500/10", text: "text-sky-600", border: "border-sky-600/10" },
+          { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-600/10" },
           { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-600/10" },
+          { bg: "bg-pink-500/10", text: "text-pink-600", border: "border-pink-600/10" },
+          { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-600/10" },
           { bg: "bg-purple-500/10", text: "text-purple-600", border: "border-purple-600/10" },
         ];
 

@@ -94,7 +94,7 @@ const FormTextarea = memo(({ label, name, value, onChange }) => {
 FormTextarea.displayName = 'FormTextarea';
 
 export default function EditProfilePage({ params }) {
-  const { username } = params;
+  const { username } = React.use(params);
   const { user, loading } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -384,7 +384,7 @@ export default function EditProfilePage({ params }) {
           />
           <Button
             type="submit"
-            className="px-4 py-2 bg-lime-500 w-full text-white rounded hover:bg-blue-700"
+            className="px-4 py-2"
           >
             Save Changes
           </Button>

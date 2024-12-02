@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
         // Use a try-catch here since client-side jwt.decode doesn't verify the signature
         const decoded = jwt.decode(token);
         if (decoded && decoded.exp * 1000 > Date.now()) { // Check token expiration
-          setUser({ token, username: decoded.username, id: decoded.id });
+          setUser({ token, username: decoded.username, id: decoded.id, avatar: decoded.avatar }); // Include avatar
         } else {
           localStorage.removeItem('token'); // Remove expired token
           setUser(null);
@@ -29,9 +29,9 @@ export const AuthProvider = ({ children }) => {
     setLoading(false); // Set loading to false after verification
   }, []);
 
-  const login = (token, username, id) => { // Accept id as a parameter
+  const login = (token, username, id, avatar) => {
     localStorage.setItem('token', token);
-    setUser({ token, username, id }); // Include username and id
+    setUser({ token, username, id, avatar}); 
   };
 
   const logout = () => {

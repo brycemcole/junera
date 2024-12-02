@@ -101,7 +101,7 @@ export default function LoginForm() {
           )}
         />
         {errorMessage && <div className="text-red-500">{errorMessage}</div>}
-        <Button className="w-full bg-lime-500" type="submit">Submit</Button>
+        <Button className="w-full" type="submit">Login</Button>
       </form>
     </Form>
   );

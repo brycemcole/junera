@@ -19,9 +19,9 @@ export default function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 sm:p-8">
-      <main className="flex flex-col gap-8 items-center w-full max-w-md sm:max-w-lg">
+      <main className="flex flex-col gap-8 w-full max-w-xs sm:max-w-lg">
         <div className="w-full p-4 sm:p-8">
-          <div className="mb-16">
+          <div className="mb-8">
           <Button44 />
           </div>
           <LoginForm />

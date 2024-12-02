@@ -35,7 +35,7 @@ import {
 
 export default function ProfilePage({ params }) {
   const { user } = useAuth();
-  const { username } = params;
+  const { username } = React.use(params);
   const [profile, setProfile] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [showMore, setShowMore] = React.useState(false);
@@ -113,12 +113,21 @@ return (
                         <p className="text-muted-foreground">{profile.desired_job_title}</p>
                         </div>
                         {isOwnProfile && (
+                            <>
+                            
+                            <Button
+                            variant="ghost"
+                            onClick={() => window.location.href = `/p/${username}/friends`}
+                        >
+                            Friends
+                        </Button>
                         <Button
                             variant="ghost"
                             onClick={() => window.location.href = `/p/${username}/edit`}
                         >
                             <UserRoundPen strokeWidth={1.5} className="h-5 w-5" />
                         </Button>
+                        </>
                     )}
                     </div>
                     
@@ -196,7 +205,11 @@ return (
         <Label>
             End Date
         </Label>
-        <Input type="date" className="col-span-3" value={new Date(job.endDate).toISOString().split('T')[0]} />
+        <Input 
+    type="date" 
+    className="col-span-3" 
+    value={job.endDate ? new Date(job.endDate).toISOString().split('T')[0] : ''}
+/>
         <Label>
             Description
         </Label>
