@@ -20,6 +20,10 @@ import {
 export function CollapsibleDemo({ title, jobPostings, open = false }) {
   const [isOpen, setIsOpen] = React.useState(open)
   const router = useRouter();
+
+  if (!jobPostings || jobPostings.length === 0) {
+    return null
+  }
 return (
     <Collapsible
         open={isOpen}

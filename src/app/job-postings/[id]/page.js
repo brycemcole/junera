@@ -359,7 +359,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
           signal: controller.signal
         });
 
-        if (!response.ok) throw new Error('Failed to fetch job data');
         const result = await response.json();
         if (isMounted) {
           setData(result);
@@ -394,9 +393,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
         }
       }
     }
-
-    fetchUserProfile();
     fetchJobData();
+    fetchUserProfile();
 
     return () => {
       isMounted = false;
@@ -406,9 +404,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
-  if (!data?.jobPosting) return <div>Job posting not found.</div>;
+  if (!data.success) return <div>Job posting not found.</div>;
+  console.log('Data:', data);
 
-  const { jobPosting, keywords, relatedPostings } = data;
+  const jobPosting = data.data;
+
+  const { keywords, relatedPostings } = data;
 
   return (  
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
@@ -516,11 +517,17 @@ Please assess the qualifications and provide a brief explanation of whether the 
           <Timer className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
           <span>{formatDistanceToNow(jobPosting.postedDate)}</span>
         </div>
+
+        {jobPosting?.experienceLevel && (
+          <>
         <div className="flex items-center gap-1">
           <Zap className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
           <span>{jobPosting.experienceLevel}</span>
         </div>
-      </div>
+    
+      </>
+        )}
+        </div>
 
       <div className="flex flex-wrap flex-row gap-4 gap-y-3 mt-4 mb-4">
       <Link className="w-full md:w-auto" href={`${jobPosting.link}`}>

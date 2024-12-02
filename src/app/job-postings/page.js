@@ -255,7 +255,7 @@ export const SaveSearchButton = memo(function SaveSearchButton({
     className 
 }) {
     // Check if current search parameters match any saved search
-    const isAlreadySaved = savedSearches.some(search => {
+    const isAlreadySaved = savedSearches?.some(search => {
         const params = JSON.parse(search.search_params);
         return params.jobTitle === title && 
                params.experienceLevel === experienceLevel && 
@@ -292,6 +292,11 @@ export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, syno
   );
 });
 
+const stripHTML = (str) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(str, 'text/html');
+    return doc.body.textContent || "";
+  };
 
 
 export default function JobPostingsPage() {
@@ -384,18 +389,6 @@ export default function JobPostingsPage() {
                 }
             }
 
-            async function fetchTotalJobs() {
-                try {
-                    const result = await fetchWithCancel(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`);
-                    if (result) {
-                        setTotalJobs(result.totalJobs);
-                        sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
-                        sessionStorage.setItem(`${cacheKeyTotal}_timestamp`, now);
-                    }
-                } catch (error) {
-                    console.error("Error fetching total jobs:", error);
-                }
-            }
 
             const resetCache = () => {
                 sessionStorage.removeItem(cacheKeyTotal);
@@ -404,17 +397,6 @@ export default function JobPostingsPage() {
                 sessionStorage.removeItem(`${cacheKey}_timestamp`);
             };
     
-            if (isCacheValid(cacheKeyTotal)) {
-                try {
-                    setTotalJobs(parseInt(cachedTotal, 10));
-                } catch (error) {
-                    resetCache();
-                    fetchTotalJobs();
-                    console.error("Error parsing cached total jobs:", error);
-                }
-            } else {
-                fetchTotalJobs();
-            }
     
             if (isCacheValid(cacheKey)) {
                 try {
@@ -677,12 +659,6 @@ Please provide relevant career advice and job search assistance based on their p
                     const profile = await response.json();
                     setUserProfile(profile);
         
-                    // Extract skills as strings
-                    const technicalSkills = profile.user.technical_skills || 'None specified';
-                    const softSkills = profile.user.soft_skills || 'None specified';
-                    const otherSkills = profile.user.other_skills || 'None specified';
-        
-                    // ...additional processing if needed...
                 } catch (error) {
                     console.error('Error fetching user profile:', error);
                 }
@@ -807,7 +783,7 @@ Please provide relevant career advice and job search assistance based on their p
 
             <div>
             {data && data.length > 0 ? (
-                <div>
+                <div key="job-postings">
                     {data.map((job) => (
                         <>
                <div key={job.id} 
@@ -832,7 +808,7 @@ Please provide relevant career advice and job search assistance based on their p
                     </div>
                     <span className="font-semibold text-xl">{job?.title || "No job titles available"}</span>
                     <div className="text-md text-foreground line-clamp-3 leading-relaxed
-                    ">{job?.description || "No description available"}</div>
+                    ">{stripHTML(job?.description) || "No description available"}</div>
                     <div className="flex items-center gap-2">
                         {job.remoteKeyword && (
           <Badge

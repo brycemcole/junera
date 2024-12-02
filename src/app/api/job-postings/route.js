@@ -19,6 +19,7 @@ function scanKeywords(text) {
 
 
 export async function GET(req) {
+  const [pool, companies] = await Promise.all([getConnection(), getCompanies()]);
   const { searchParams } = new URL(req.url);
   const jobId = searchParams.get("id");
 
@@ -117,13 +118,11 @@ export async function GET(req) {
   try {
     // Start timing for fetching companies
     const companiesStart = performance.now();
-    const companies = await getCompanies();
     const companiesEnd = performance.now();
     timings.getCompanies = companiesEnd - companiesStart;
 
     // Start timing for getting the DB connection
     const dbConnStart = performance.now();
-    const pool = await getConnection();
     const dbConnEnd = performance.now();
     timings.getConnection = dbConnEnd - dbConnStart;
 
@@ -144,14 +143,14 @@ export async function GET(req) {
     `;
 
     // Add filters
-    if (title) query += ` AND CONTAINS(jp.title, @title)`;
+    if (title) query += ` AND FREETEXT(jp.title, @title)`;
     if (experienceLevel) query += ` AND jp.experienceLevel = @experienceLevel`;
     if (location) query += ` AND CONTAINS(jp.location, @location)`;
-    if (company) query += ` AND jp.company_id = @company_id`; // Changed to company_id
+    if (company) query += ` AND jp.company_id = @company_id`;
 
     query += `
       ORDER BY 
-        jp.postedDate DESC, jp.id
+        jp.postedDate DESC, jp.id, jp.title, jp.location
       OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
     `;
 

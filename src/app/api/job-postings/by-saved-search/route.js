@@ -1,5 +1,7 @@
-// /pages/api/jobPostingsCount.js (or your appropriate file)
+
 import { getConnection } from "@/lib/db";
+import { getCompanies } from "@/lib/companyCache";
+
 import sql from 'mssql';
 
 function formatForFullTextSearch(text) {
@@ -15,14 +17,15 @@ export async function GET(req) {
   const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
+  const limit = parseInt(searchParams.get("limit")) || 10;
 
   try {
-    const pool = await getConnection();
+    const [pool, companies] = await Promise.all([getConnection(), getCompanies()]);
 
-    // Build the count query without JOIN
+    // Build the query to fetch job postings
     let query = `
       SELECT 
-        COUNT(jp.id) AS totalJobs
+        jp.id, jp.title, jp.experienceLevel, jp.location, jp.company_id, jp.postedDate
       FROM jobPostings jp WITH (NOLOCK)
       WHERE jp.deleted = 0
     `;
@@ -31,6 +34,8 @@ export async function GET(req) {
     if (experienceLevel) query += ` AND jp.experienceLevel = @experienceLevel`;
     if (location) query += ` AND CONTAINS(jp.location, @location)`;
     if (company) query += ` AND jp.company_id = @company_id`;
+
+    query += ` ORDER BY jp.postedDate DESC OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`;
 
     const request = pool.request();
 
@@ -49,20 +54,32 @@ export async function GET(req) {
       const companyResult = await companyRequest.query(companyQuery);
 
       if (companyResult.recordset.length === 0) {
-        // No matching company found, return totalJobs as 0
-        return new Response(JSON.stringify({ totalJobs: 0 }), { status: 200 });
+        // No matching company found, return empty result
+        return new Response(JSON.stringify({ jobs: [] }), { status: 200 });
       }
 
       const companyId = companyResult.recordset[0].id;
       request.input('company_id', sql.Int, companyId);
     }
 
-    const result = await request.query(query);
-    const totalJobs = result.recordset[0]?.totalJobs || 0;
+    request.input('limit', sql.Int, limit);
 
-    return new Response(JSON.stringify({ totalJobs }), { status: 200 });
+    const result = await request.query(query);
+    let jobs = result.recordset;
+
+    // Add company name to each job posting
+    jobs = jobs.map(job => {
+      const company = companies[job.company_id];
+      return {
+        ...job,
+        companyName: company ? company.name : "Unknown",
+        companyLogo: company ? company.logo : null,
+      };
+    });
+
+    return new Response(JSON.stringify({ jobs }), { status: 200 });
   } catch (error) {
-    console.error("Error fetching total jobs:", error);
-    return new Response(JSON.stringify({ error: "Error fetching total jobs" }), { status: 500 });
+    console.error("Error fetching jobs by saved search:", error);
+    return new Response(JSON.stringify({ error: "Error fetching jobs by saved search" }), { status: 500 });
   }
 }

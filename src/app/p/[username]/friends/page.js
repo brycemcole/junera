@@ -6,9 +6,79 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import { useAuth } from "@/context/AuthContext";
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+function StatusDot({ className }) {
+  return (
+    <svg
+      width="8"
+      height="8"
+      fill="currentColor"
+      viewBox="0 0 8 8"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="4" cy="4" r="4" />
+    </svg>
+  );
+}
+
+export function StatusSelect() {
+  return (
+    <div className="space-y-2">
+      <Select defaultValue="s1">
+        <SelectTrigger
+          id="select-32"
+          className="[&>span]:flex [&>span]:items-center [&>span]:gap-2 [&>span_svg]:shrink-0"
+        >
+          <SelectValue placeholder="Select status" />
+        </SelectTrigger>
+        <SelectContent className="[&_*[role=option]>span>svg]:shrink-0 [&_*[role=option]>span>svg]:text-muted-foreground/80 [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]>span]:flex [&_*[role=option]>span]:items-center [&_*[role=option]>span]:gap-2 [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
+          <SelectItem value="s1">
+            <span className="flex items-center gap-2">
+              <StatusDot className="text-emerald-600" />
+              <span className="truncate">Friends</span>
+            </span>
+          </SelectItem>
+          <SelectItem value="s2">
+            <span className="flex items-center gap-2">
+              <StatusDot className="text-blue-500" />
+              <span className="truncate">Associates</span>
+            </span>
+          </SelectItem>
+          <SelectItem value="s3">
+            <span className="flex items-center gap-2">
+              <StatusDot className="text-amber-500" />
+              <span className="truncate">Following</span>
+            </span>
+          </SelectItem>
+          <SelectItem value="s5">
+            <span className="flex items-center gap-2">
+              <StatusDot className="text-red-500" />
+              <span className="truncate">Remove</span>
+            </span>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export default function Page({ params }) {
   const { username } = params;
@@ -72,12 +142,12 @@ export default function Page({ params }) {
 
         <div>
           {/* Requests */}
+          <section className="mb-4">
           {requests.length > 0 ? (
             <div className="mb-6">
               <h2 className="text-lg font-bold mb-2">Requests</h2>
-              <ul className="list-disc pl-6">
                 {displayedRequests.map((request) => (
-                  <li key={request.id} className="mb-2">
+                  <div key={request.id} className="mb-2">
                     <div>
                       <strong>{request.username}</strong> ({request.firstname} {request.lastname})
                     </div>
@@ -87,9 +157,8 @@ export default function Page({ params }) {
                         ? new Date(request.followed_since).toLocaleDateString()
                         : "Unknown"}
                     </small>
-                  </li>
+                  </div>
                 ))}
-              </ul>
               {requests.length > 3 && (
                 <button
                   className="text-blue-500 underline mt-2"
@@ -102,54 +171,70 @@ export default function Page({ params }) {
           ) : (
             <p>No requests found.</p>
           )}
-
+          </section>
+          <section className="mb-4">
           {/* Friends */}
           {friends.length > 0 ? (
             <div>
-              <h2 className="text-lg font-bold mb-2">Friends</h2>
-              <ul className="list-disc pl-6">
+              <h2 className="text-lg font-bold mb-2">Friends ({friends.length})</h2>
                 {friends.map((friend) => (
-                  <li key={friend.id} className="mb-2">
-                    <div>
-                      <strong>{friend.username}</strong> ({friend.firstname} {friend.lastname})
+                  <div key={friend.id} className="mb-4 flex flex-row gap-4 items-center">
+                    <Avatar alt={friend.username} className="w-8 h-8 rounded-full">
+                      <AvatarImage src={friend.avatar} alt={friend.username} />
+                      <AvatarFallback>{friend.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col"> 
+                    <div onClick={() => router.push(`/p/${friend.username}`)} className="cursor-pointer">
+                    <p className="text-foreground font-medium">
+                    {friend.firstname} {friend.lastname}
+                    </p>
                     </div>
-                    <small>
-                      Friends since:{" "}
-                      {friend.follower_since
-                        ? new Date(friend.follower_since).toLocaleDateString()
-                        : "Unknown"}
-                    </small>
-                  </li>
+                    <p className="text-sm text-muted-foreground">
+                      @{friend.username}
+                    </p>
+                    </div>
+                    <div className="ml-auto"> 
+                    <StatusSelect />
+                    </div>
+                  </div>
                 ))}
-              </ul>
             </div>
           ) : (
             <p>No friends found.</p>
           )}
+          </section>
 
           {/* Following */}
+          <section className="mb-4">
           {following.length > 0 ? (
             <div>
-              <h2 className="text-lg font-bold mb-2">Following</h2>
-              <ul className="list-disc pl-6">
+              <h2 className="text-lg font-bold mb-2">Following ({following.length})</h2>
                 {following.map((follow) => (
-                  <li key={follow.id} className="mb-2">
-                    <div>
-                      <strong>{follow.username}</strong> ({follow.firstname} {follow.lastname})
-                    </div>
-                    <small>
-                      Following since:{" "}
-                      {follow.followed_since
-                        ? new Date(follow.followed_since).toLocaleDateString()
-                        : "Unknown"}
-                    </small>
-                  </li>
+                  <div key={follow.id} className="mb-4 flex flex-row gap-4 items-center">
+                  <Avatar alt={follow.username} className="w-8 h-8 rounded-full">
+                    <AvatarImage src={follow.avatar} alt={follow.username} />
+                    <AvatarFallback>{follow.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col"> 
+                  <div onClick={() => router.push(`/p/${follow.username}`)} className="cursor-pointer">
+                  <p className="text-foreground font-medium">
+                  {follow.firstname} {follow.lastname}
+                  </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    @{follow.username}
+                  </p>
+                  </div>
+                  <div className="ml-auto"> 
+                  <StatusSelect />
+                  </div>
+                </div>
                 ))}
-              </ul>
             </div>
           ) : (
             <p>No following found.</p>
           )}
+          </section>
         </div>
       </div>
     </div>
