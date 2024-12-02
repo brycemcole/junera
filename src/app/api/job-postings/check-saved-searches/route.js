@@ -31,7 +31,7 @@ export async function POST(req) {
         VALUES ${notifications.map(n => `(
           ${n.userId},
           'job_match',
-          '${n.message.replace("'", "''")}',
+          '${n.message.replace(/'/g, "''")}',
           ${jobId},
           GETDATE()
         )`).join(',')}
