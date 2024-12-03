@@ -426,27 +426,7 @@ export default function JobPostingsPage() {
         setCurrentPage(parseInt(params.page) || 1);
     }, [searchParams]);
 
-    useEffect(() => {
-        const params = new URLSearchParams();
-        if (title) params.set('title', title);
-        if (experienceLevel) params.set('explevel', experienceLevel);
-        if (location) params.set('location', location);
-        if (company) params.set('company', company);
-        params.set('page', currentPage);
-        router.push(`/job-postings/?${params.toString()}`);
-    }, [title, experienceLevel, location, company, currentPage]);
-
-    useEffect(() => {
-      if (title) {
-        fetch(`/api/job-postings/synonyms?title=${encodeURIComponent(title)}`)
-          .then(res => res.json())
-          .then(data => setTitleSynonyms(data.synonyms))
-          .catch(error => console.error('Error fetching synonyms:', error));
-      } else {
-        setTitleSynonyms([]);
-      }
-    }, [title]);
-
+    
     const handleResetFilters = () => {
         setTitle("");
         setExperienceLevel("");
