@@ -7,6 +7,7 @@ import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ import {
     SheetTitle,
     SheetTrigger,
   } from "@/components/ui/sheet"
-
+  import GitHubCalendar from 'react-github-calendar';
 export default function ProfilePage({ params }) {
   const { user } = useAuth();
   const { username } = React.use(params);
@@ -133,6 +134,14 @@ return (
                     
                 </div>
             </div>
+            {profile.github_url && (
+            <React.Suspense fallback={<Skeleton />}>
+            <Card className="mb-6 px-6 py-6">
+
+            <GitHubCalendar blockMargin={6} username={profile.github_url} />
+            </Card>
+            </React.Suspense>
+            )}
 
             {(profile.professionalSummary || profile.bio) && (
                 <Card className="mb-6">

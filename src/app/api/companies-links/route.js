@@ -1,10 +1,11 @@
 import { getConnection } from "@/lib/db";
+import sql from "mssql";
 
 // return an array of company links
 export async function GET(req) {
     try {
         const pool = await getConnection();
-        const result = await pool.request().query(`
+        const result = await sql.query(`
             SELECT 
                 link, id
             FROM JobPostings

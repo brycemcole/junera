@@ -2,6 +2,7 @@
 import React, { memo, useState, useEffect } from 'react';
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
+import { JobList } from "@/components/JobPostings";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -255,7 +256,7 @@ export const SaveSearchButton = memo(function SaveSearchButton({
     className 
 }) {
     // Check if current search parameters match any saved search
-    const isAlreadySaved = savedSearches.some(search => {
+    const isAlreadySaved = savedSearches?.some(search => {
         const params = JSON.parse(search.search_params);
         return params.jobTitle === title && 
                params.experienceLevel === experienceLevel && 
@@ -292,6 +293,11 @@ export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, syno
   );
 });
 
+const stripHTML = (str) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(str, 'text/html');
+    return doc.body.textContent || "";
+  };
 
 
 export default function JobPostingsPage() {
@@ -384,18 +390,6 @@ export default function JobPostingsPage() {
                 }
             }
 
-            async function fetchTotalJobs() {
-                try {
-                    const result = await fetchWithCancel(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`);
-                    if (result) {
-                        setTotalJobs(result.totalJobs);
-                        sessionStorage.setItem(cacheKeyTotal, result.totalJobs);
-                        sessionStorage.setItem(`${cacheKeyTotal}_timestamp`, now);
-                    }
-                } catch (error) {
-                    console.error("Error fetching total jobs:", error);
-                }
-            }
 
             const resetCache = () => {
                 sessionStorage.removeItem(cacheKeyTotal);
@@ -404,17 +398,6 @@ export default function JobPostingsPage() {
                 sessionStorage.removeItem(`${cacheKey}_timestamp`);
             };
     
-            if (isCacheValid(cacheKeyTotal)) {
-                try {
-                    setTotalJobs(parseInt(cachedTotal, 10));
-                } catch (error) {
-                    resetCache();
-                    fetchTotalJobs();
-                    console.error("Error parsing cached total jobs:", error);
-                }
-            } else {
-                fetchTotalJobs();
-            }
     
             if (isCacheValid(cacheKey)) {
                 try {
@@ -444,27 +427,7 @@ export default function JobPostingsPage() {
         setCurrentPage(parseInt(params.page) || 1);
     }, [searchParams]);
 
-    useEffect(() => {
-        const params = new URLSearchParams();
-        if (title) params.set('title', title);
-        if (experienceLevel) params.set('explevel', experienceLevel);
-        if (location) params.set('location', location);
-        if (company) params.set('company', company);
-        params.set('page', currentPage);
-        router.push(`/job-postings/?${params.toString()}`);
-    }, [title, experienceLevel, location, company, currentPage]);
-
-    useEffect(() => {
-      if (title) {
-        fetch(`/api/job-postings/synonyms?title=${encodeURIComponent(title)}`)
-          .then(res => res.json())
-          .then(data => setTitleSynonyms(data.synonyms))
-          .catch(error => console.error('Error fetching synonyms:', error));
-      } else {
-        setTitleSynonyms([]);
-      }
-    }, [title]);
-
+    
     const handleResetFilters = () => {
         setTitle("");
         setExperienceLevel("");
@@ -677,12 +640,6 @@ Please provide relevant career advice and job search assistance based on their p
                     const profile = await response.json();
                     setUserProfile(profile);
         
-                    // Extract skills as strings
-                    const technicalSkills = profile.user.technical_skills || 'None specified';
-                    const softSkills = profile.user.soft_skills || 'None specified';
-                    const otherSkills = profile.user.other_skills || 'None specified';
-        
-                    // ...additional processing if needed...
                 } catch (error) {
                     console.error('Error fetching user profile:', error);
                 }
@@ -807,94 +764,8 @@ Please provide relevant career advice and job search assistance based on their p
 
             <div>
             {data && data.length > 0 ? (
-                <div>
-                    {data.map((job) => (
-                        <>
-               <div key={job.id} 
-                    className="border-b md:px-6 py-6 md:py-4 space-y-2 text-sm cursor-pointer md:border md:rounded-xl md:mb-4 transition duration-200 ease-in-out" 
-                    onClick={() => router.push(`/job-postings/${job.id}`)}
-                >
-                    {/* Header Section */}
-                    <div className="flex items-center gap-4 mb-1">
-                        {job.logo ? (
-                            <Avatar className="w-6 h-6">
-                            <AvatarImage src={job.logo} />
-                            <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                        )  : (
-                            <Avatar className="w-6 h-6">
-                            <AvatarFallback>{job.company?.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                        )}
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">{job?.company || "No company name available"}</span>
-                        </div>
-                    </div>
-                    <span className="font-semibold text-xl">{job?.title || "No job titles available"}</span>
-                    <div className="text-md text-foreground line-clamp-3 leading-relaxed
-                    ">{job?.description || "No description available"}</div>
-                    <div className="flex items-center gap-2">
-                        {job.remoteKeyword && (
-          <Badge
-          variant="outline"
-          className={`bg-green-500/10 text-green-600 rounded-md text-sm sm:text-[13px] font-medium border-green-600/10`}
-        >
-          {job.remoteKeyword}
-        </Badge>
-                        )}
-     <ul className="flex flex-wrap gap-2">
-      {job.keywords.map((keyword, index) => {
-        const colors = [
-          { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
-        ];
-
-        const color = colors[index % colors.length]; // Rotate colors based on index
-
-        return (
-          <Badge
-            key={index}
-            variant="outline"
-            className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
-          >
-            {keyword}
-          </Badge>
-        );
-      })}
-    </ul>
-</div>
-                    <div className="my-1 flex gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
-
-                    <div className="flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span>{job?.location || "N/A"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Briefcase className="h-3 w-3 text-muted-foreground"  />
-                            <span>{job?.experienceLevel || "N/A"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span>
-    {job?.postedDate 
-        ? `${formatDistanceToNow(new Date(job.postedDate), { addSuffix: true })}` 
-        : "N/A"}
-</span>
-
-                        </div>
-                        {(job?.salary && Number(job.salary) > 0) || job?.salary_range_str ? (
-        <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-foreground" />
-            <span>
-                {Number(job.salary) > 0 
-                    ? Number(job.salary).toLocaleString() 
-                    : job.salary_range_str}
-            </span>
-        </div>
-    ) : null}
-                    </div>
-                </div>
-                        </>
-                    ))}
+                <div key="job-postings">
+                   <JobList data={data} />
                 </div>
             ) : (
                 <p>No job postings found. Adjust your search criteria.</p>

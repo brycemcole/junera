@@ -5,88 +5,45 @@ import { getConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
 import { getCompanies } from "@/lib/companyCache";
+import * as React from 'react';
 
 export async function GET(req, { params }) {
-  const { id } = await params;
-  const authHeader = await req.headers.get('Authorization');
-  
-  console.log(authHeader);
   try {
-    const timeout = 5000; // 5 seconds
-    const jobPromise = getJobPostingById(id, authHeader);
-    const bookmarkPromise = checkIfBookmarked(id, authHeader?.split(' ')[1]); // Check bookmark status
+    const id = await params.id;
+    const pool = await getConnection();
+    const companies = await getCompanies();
 
-    let jobPosting = await jobPromise;
-
-    const response = {
-      jobPosting
-    };
-
-    // After fetching jobPosting
-    const keywords = scanKeywords(jobPosting.description);
-    const { salary, salary_max } = extractSalaryRange(jobPosting.description);
-    response.keywords = keywords;
-    jobPosting.salary = salary;
-    jobPosting.salary_max = salary_max;
-
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('Error fetching job data:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' }, 
-      { status: error.name === 'QueryTimeout' ? 504 : 500 }
-    );
-  }
-}
-
-async function getJobPostingById(id, authHeader) {
-  const pool = await getConnection();
-  const companies = await getCompanies();
-  let transaction = null;
-
-  try {
-    transaction = new sql.Transaction(pool);
-    await transaction.begin();
-    
-    const request = transaction.request();
-    request.timeout = 3000; // 3 second timeout for this specific query
-
-    const result = await request
-      .input("id", id)
+    // Get job posting details
+    const result = await pool.request()
+      .input('id', id)
       .query(`
         SELECT 
-          j.id, j.title, j.location, j.description, j.views,
-          j.salary, j.salary_range_str, j.experienceLevel,
-          j.postedDate, j.company_id, j.applicants, j.link
-        FROM jobPostings j
-        WHERE j.id = @id
+          j.* FROM JobPostings j WHERE j.id = @id
       `);
 
+    if (!result.recordset.length) {
+      return NextResponse.json(
+        { error: 'Job posting not found' },
+        { status: 404 }
+      );
+    }
 
-    await transaction.commit();
-    
     let jobPosting = result.recordset[0];
-    if (!jobPosting) {
-      throw new Error('Job posting not found');
-    }
-    
-    if (jobPosting.company_id) {
-      const company = companies[jobPosting.company_id];
-      jobPosting.companyName = company?.name || 'Unknown';
-      jobPosting.companyLogo = company?.logo || null;
-      jobPosting.companyDescription = company?.description || null; 
-    }
+    jobPosting.companyLogo = companies[jobPosting.company_id].logo;
+    jobPosting.companyName = companies[jobPosting.company_id].name;
+    console.log('Job Posting:', jobPosting);
 
-    return jobPosting;
+    return NextResponse.json({
+      success: true,
+      data: jobPosting
+    });
+
   } catch (error) {
-    if (transaction) {
-      try {
-        await transaction.rollback();
-      } catch (rollbackError) {
-        console.error('Error rolling back transaction:', rollbackError);
-      }
-    }
-    throw error;
+    console.error('Error fetching job posting:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch job posting' },
+      { status: 500 }
+    );
   }
 }
 

@@ -1,4 +1,4 @@
-// /pages/api/jobPostingsCount.js (or your appropriate file)
+
 import { getConnection } from "@/lib/db";
 import sql from 'mssql';
 
@@ -15,6 +15,11 @@ export async function GET(req) {
   const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
+  const sinceDate = searchParams.get("sinceDate")?.trim() || "";
+
+  if (!sinceDate) {
+    return new Response(JSON.stringify({ error: "sinceDate parameter is required" }), { status: 400 });
+  }
 
   try {
     const pool = await getConnection();
@@ -24,7 +29,7 @@ export async function GET(req) {
       SELECT 
         COUNT(jp.id) AS totalJobs
       FROM jobPostings jp WITH (NOLOCK)
-      WHERE jp.deleted = 0
+      WHERE jp.deleted = 0 AND jp.postedDate >= @sinceDate
     `;
 
     if (title) query += ` AND FREETEXT(jp.title, @title)`;
@@ -35,6 +40,7 @@ export async function GET(req) {
     const request = pool.request();
 
     // Add parameters with proper formatting for full-text search
+    request.input('sinceDate', sql.DateTime, new Date(sinceDate));
     if (title) request.input('title', sql.NVarChar, formatForFullTextSearch(title));
     if (location) request.input('location', sql.NVarChar, formatForFullTextSearch(location));
     if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);

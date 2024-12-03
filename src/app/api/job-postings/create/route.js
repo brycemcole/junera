@@ -1,5 +1,6 @@
 import { getConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
+import sql from "mssql";
 
 const MAX_RETRIES = 3;
 const TIMEOUT = 30000; // 30 seconds
@@ -18,25 +19,28 @@ async function executeWithRetry(fn, retries = MAX_RETRIES) {
 }
 
 export async function POST(req) {
-  // Immediately respond with a success status to the client
-  const response = NextResponse.json({ success: true, message: "Request received" });
-  
+  // Immediate success response to the client
+  const response = NextResponse.json({
+    success: true,
+    message: "Request received. Processing in the background.",
+  });
+
   // Process the request asynchronously
   (async () => {
     try {
-      // Parse request body
       const rawBody = await req.text();
       let data;
 
+      // Parse the JSON body
       try {
         data = JSON.parse(rawBody);
-        console.log(data);
+        console.log("Received data:", data);
       } catch (e) {
-        console.log(rawBody)
         console.error("Invalid JSON format:", e.message);
-        return; // Log error and stop further processing
+        return; // Stop further processing
       }
 
+      // Destructure required fields
       const { title, company, location, description, source_url } = data;
 
       // Validate required fields
@@ -45,67 +49,78 @@ export async function POST(req) {
       if (!company) missingFields.push("company");
       if (!location) missingFields.push("location");
       if (!description) missingFields.push("description");
-      if (!source_url) missingFields.push("source_url");
+      if (!source_url) missingFields.push("link");
 
       if (missingFields.length > 0) {
         console.error("Missing required fields:", missingFields);
-        return; // Log error and stop further processing
+        return; // Stop further processing
       }
 
-      const pool = await getConnection();
-      
+      let companyId;
+
       try {
-        // Set timeout for all requests
-        pool.config.options.requestTimeout = TIMEOUT;
+        // get the company id from db
+        const result = await sql.query`
+        SELECT id FROM companies WHERE CONTAINS(name, ${company})
+      `;
 
-        // Check if company has too many failures
-        const failureCheck = await executeWithRetry(async () => {
-          return pool.request()
-            .input("company", company)
-            .query(`
-              IF NOT EXISTS (SELECT 1 FROM failedPostings WHERE company = @company)
-              BEGIN
-                CREATE TABLE IF NOT EXISTS failedPostings (
-                  company varchar(255) PRIMARY KEY,
-                  failures int DEFAULT 1
-                );
-                INSERT INTO failedPostings (company) VALUES (@company);
-              END
-              
-              SELECT failures FROM failedPostings WHERE company = @company;
-            `);
-        });
+        if (result.recordset.length === 0) {
+          console.error("Company not found:", company);
+          
+          // Add the company to the database
+          const insertCompanyResult = await sql.query`
+          DECLARE @InsertedCompanies TABLE (id INT);
 
-        if (failureCheck.recordset[0]?.failures >= MAX_FAILURES) {
-          // Remove all postings from this company
-          await executeWithRetry(async () => {
-            return pool.request()
-              .input("company", company)
-              .query(`
-                DELETE FROM jobPostings WHERE company_id IN (
-                  SELECT id FROM companies WHERE name = @company
-                );
-                DELETE FROM failedPostings WHERE company = @company;
-              `);
-          });
-          console.log(`Removed all postings from ${company} due to excessive failures`);
-          return;
+          INSERT INTO companies (name) 
+          OUTPUT INSERTED.id INTO @InsertedCompanies
+          VALUES (${company});
+          SELECT id FROM @InsertedCompanies;
+
+        `;
+
+          companyId = insertCompanyResult.recordset[0].id;
+          console.log("Company added successfully:", company);
+        } else {
+          companyId = result.recordset[0].id;
         }
-
-        // Atomic MERGE for company with retry
-        const companyResult = await executeWithRetry(async () => {
-          return pool.request()
-            .input("name", company)
-            .query(`
-
-        console.log("Job posting processed successfully");
       } catch (error) {
         console.error("Database error:", error);
+        return; // Stop further processing
+      }
+
+      try {
+        const result = await sql.query`
+        DECLARE @InsertedJobPostings TABLE (id INT);
+      
+        INSERT INTO JobPostings (
+          title,
+          description,
+          location,
+          company_id,
+          link
+        )
+        OUTPUT INSERTED.id INTO @InsertedJobPostings
+        VALUES (
+          ${title},
+          ${description},
+          ${location},
+          ${companyId},
+          ${source_url}
+        );
+      
+        SELECT id FROM @InsertedJobPostings;
+      `;
+      
+        const jobPostingId = result.recordset[0].id;
+        console.log("Job posting added successfully:", jobPostingId);
+      } catch (error) {
+        console.error("Database error:", error);
+        return; // Stop further processing
       }
     } catch (error) {
       console.error("Error processing request:", error);
     }
   })();
 
-  return response; // Immediate success response to the client
+  return response;
 }
