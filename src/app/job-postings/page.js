@@ -2,6 +2,7 @@
 import React, { memo, useState, useEffect } from 'react';
 import { formatDistanceToNow } from "date-fns";
 import { debounce } from "lodash";
+import { JobList } from "@/components/JobPostings";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -764,7 +765,7 @@ Please provide relevant career advice and job search assistance based on their p
             <div>
             {data && data.length > 0 ? (
                 <div key="job-postings">
-                   <JobPostings data={data} />
+                   <JobList data={data} />
                 </div>
             ) : (
                 <p>No job postings found. Adjust your search criteria.</p>
