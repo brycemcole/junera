@@ -22,15 +22,13 @@ export async function GET(request) {
         const userId = decoded.id;
 
         const pool = await getConnection();
-        const result = await pool.request()
-            .input('userId', sql.NVarChar, userId)
-            .input('jobId', sql.NVarChar, jobId)
-            .query(`
-                SELECT COUNT(1) as count
+        const query =`
+                        SELECT COUNT(1) as count
                 FROM favorites_jobs 
                 WHERE user_id = @userId 
-                AND job_posting_id = @jobId
-            `);
+                AND job_posting_id = @jobId`;
+
+        const result = await pool.executeQuery(query, { userId, jobId });
 
         return NextResponse.json({ 
             isBookmarked: result.recordset[0].count > 0 
@@ -62,11 +60,7 @@ export async function POST(request) {
     }
 
     const pool = await getConnection();
-    await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .input('jobId', sql.NVarChar, jobPostingId) // Changed to UniqueIdentifier
-      .query(`
-        IF NOT EXISTS (
+    const query = ` IF NOT EXISTS (
           SELECT 1 FROM favorites_jobs 
           WHERE user_id = @userId AND job_posting_id = @jobId
         )
@@ -74,8 +68,8 @@ export async function POST(request) {
           INSERT INTO favorites_jobs (user_id, job_posting_id, created_at)
           VALUES (@userId, @jobId, GETDATE());
         END;
-        SELECT 1 as success;
-      `);
+        SELECT 1 as success;`;
+    await pool.executeQuery(query, { userId, jobPostingId });
 
     return NextResponse.json({ success: true });
   } catch (error) {

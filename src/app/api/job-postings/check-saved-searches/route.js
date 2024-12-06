@@ -1,8 +1,14 @@
 
 import { getConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
+import NodeCache from 'node-cache';
+const cache = new NodeCache({ stdTTL: 300 });
 
 export async function POST(req) {
+  const savedSearchJobsCache = cache.get('savedSearchJobs');
+  if (savedSearchJobsCache) {
+    return NextResponse.json({ success: true, notificationCount: 0 });
+  }
   try {
     const { jobId, title, company, location } = await req.json();
     const pool = await getConnection();

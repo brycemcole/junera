@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  background-color: hsl(var(--background));
+}
 
 @layer base {
   :root {

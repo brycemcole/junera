@@ -1,16 +1,14 @@
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import sql from "mssql";
 
 // return an array of company links
 export async function GET(req) {
     try {
-        const pool = await getConnection();
-        const result = await sql.query(`
-            SELECT 
+        const db = await createDatabaseConnection();
+        const query = `SELECT 
                 link, id
-            FROM JobPostings
-            ORDER BY id ASC, link ASC;
-        `);
+            FROM JobPostings`;
+        const result = await db.executeQuery(query, []);
 
         const companiesLinks = result.recordset.map((companyLink) => ({
             id: companyLink.id,

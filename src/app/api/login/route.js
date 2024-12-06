@@ -1,4 +1,4 @@
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
@@ -14,11 +14,10 @@ export async function POST(req) {
   console.log("POST /api/login");
   try {
     const { username, password } = await req.json();
-    const pool = await getConnection();
+    const pool = await createDatabaseConnection();
+    const query = `SELECT * FROM users WHERE username = @username;`;
 
-    const result = await pool.request()
-      .input("username", username)
-      .query(`SELECT * FROM users WHERE username = @username;`);
+    const result = await pool.executeQuery(query, { username });
 
     if (result.recordset.length === 0) {
       return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });

@@ -1,4 +1,4 @@
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { NextResponse } from 'next/server';
 
@@ -13,19 +13,16 @@ export async function GET(req) {
         const decoded = verifyToken(token);
         const userId = decoded.id;
 
-        const pool = await getConnection();
+        const pool = await createDatabaseConnection();
 
         // Combined query using CTEs
-        const result = await pool.request()
-            .input("userId", userId)
-            .query(`
-                WITH UserInfo AS (
+        const query =`WITH UserInfo AS (
                     SELECT 
                         firstname, lastname, desired_job_title, employment_type,
                         jobPreferredSalary, jobPreferredIndustry, desired_location,
                         jobPreferredSkills, willing_to_relocate, certifications,
                         preferred_industries, preferred_companies, professionalSummary,
-                        soft_skills, technical_skills, other_skills, zipcode
+                        soft_skills, technical_skills, other_skills, zipcode, username, avatar
                     FROM users 
                     WHERE id = @userId
                 ),
@@ -46,8 +43,8 @@ export async function GET(req) {
                 SELECT 
                     (SELECT * FROM UserInfo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) as userData,
                     (SELECT * FROM Education ORDER BY endDate DESC FOR JSON PATH) as educationData,
-                    (SELECT * FROM WorkExperience ORDER BY endDate DESC FOR JSON PATH) as experienceData
-            `);
+                    (SELECT * FROM WorkExperience ORDER BY endDate DESC FOR JSON PATH) as experienceData`;
+        const result = await pool.executeQuery(query, { userId });
 
         // Parse JSON strings from the result
         const userData = JSON.parse(result.recordset[0].userData || '{}');

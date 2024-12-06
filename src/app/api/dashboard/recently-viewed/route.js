@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
+import { getCompanies } from '@/lib/companyCache';
 import sql from 'mssql';
 
 export async function GET(request) {
@@ -23,15 +24,11 @@ export async function GET(request) {
     }
 
     // Connect to the database
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query(`
-        SELECT 
+    const [pool, companies] = await Promise.all([createDatabaseConnection(), getCompanies()]);
+    const query = `SELECT 
           jp.id AS jobId,
           jp.title AS title,
-          c.name AS company,
-          c.logo AS logo,
+          jp.company_id AS companyId,
           jp.location AS location,
           jp.experienceLevel AS experienceLevel,
           jp.postedDate AS postedDate,
@@ -39,24 +36,25 @@ export async function GET(request) {
           urv.viewed_at AS viewedAt
         FROM dbo.user_recent_viewed_jobs urv
         INNER JOIN dbo.jobPostings jp ON urv.jobPostings_id = jp.id
-        INNER JOIN dbo.companies c ON jp.company_id = c.id
         WHERE urv.user_id = @userId
         ORDER BY urv.viewed_at DESC
-        OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
-      `);
+        OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;`;
+    const result = await pool.executeQuery(query, { userId });
 
-    // Optionally, transform the data if needed
-    const formattedResults = result.recordset.map(job => ({
+    const formattedResults = result.recordset.map(job => {
+      const company = companies[job.companyId];
+      return {
       id: job.jobId,
       title: job.title,
-      company: job.company,
-      logo: job.logo,
+      companyName: company ? company.name : null,
+      companyLogo: company ? company.logo : null,
       location: job.location,
       experienceLevel: job.experienceLevel,
       postedDate: job.postedDate,
       salary: job.salary,
       viewedAt: job.viewedAt,
-    }));
+      };
+    });
 
     return NextResponse.json(formattedResults, { status: 200 });
   } catch (error) {

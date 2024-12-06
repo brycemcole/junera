@@ -46,6 +46,25 @@ export default function DashboardPage() {
   const [errorBookmarkedJobs, setErrorBookmarkedJobs] = useState(null);
   const [errorSavedSearches, setErrorSavedSearches] = useState(null);
 
+  // Add a simple cache
+  const cache = {};
+
+  // Helper functions for caching
+  const getCachedData = (key) => {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    const { timestamp, data } = JSON.parse(cached);
+    if (Date.now() - timestamp > 5 * 60 * 1000) { // 5 minutes
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  };
+
+  const setCachedData = (key, data) => {
+    localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data }));
+  };
+
   useEffect(() => {
     if (!loading) { // Check if loading is complete
       if (!user) {
@@ -56,83 +75,45 @@ export default function DashboardPage() {
             'Authorization': `Bearer ${user.token}`,
           };
 
-          // Fetch Recently Viewed Jobs
-          try {
-            const responseViewed = await fetch('/api/dashboard/recently-viewed', { headers });
-            console.log(responseViewed);
-            if (!responseViewed.ok) throw new Error("Error fetching recently viewed jobs.");
-            const dataViewed = await responseViewed.json();
-            setRecentlyViewed(dataViewed);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentlyViewed(error.message);
-          } finally {
-            setLoadingRecentlyViewed(false);
-          }
+          // Helper function to fetch and cache data
+          const fetchAndCache = async (url, setData, setError, setLoading, cacheKey) => {
+            const cachedData = getCachedData(cacheKey);
+            if (cachedData) {
+              setData(cacheKey === 'applied-jobs' ? cachedData.userJobs : cachedData);
+              setLoading(false);
+              return;
+            }
+            try {
+              const response = await fetch(url, { headers });
+              if (!response.ok) throw new Error(`Error fetching ${cacheKey}.`);
+              const data = await response.json();
+              setCachedData(cacheKey, data);
+              setData(cacheKey === 'applied-jobs' ? data.userJobs : data);
+            } catch (error) {
+              console.error(error);
+              setError(error.message);
+            } finally {
+              setLoading(false);
+            }
+          };
 
-          try {
-            const responseSaved = await fetch('/api/saved-searches', { headers });
-            if (!responseSaved.ok) throw new Error("Error fetching saved searches.");
-            const dataSaved = await responseSaved.json();
-            setSavedSearches(dataSaved);
-          } catch (error) {
-            console.error(error);
-            setErrorSavedSearches(error.message);
-          } finally {
-            setLoadingSavedSearches(false);
-          }
+          // Fetch Recently Viewed Jobs
+          await fetchAndCache('/api/dashboard/recently-viewed', setRecentlyViewed, setErrorRecentlyViewed, setLoadingRecentlyViewed, 'recentlyViewed');
+
+          // Fetch Saved Searches
+          await fetchAndCache('/api/saved-searches', setSavedSearches, setErrorSavedSearches, setLoadingSavedSearches, 'savedSearches');
 
           // Fetch Recently Applied Jobs
-          try {
-            const responseApplied = await fetch('/api/dashboard/applied-jobs', { headers });
-            if (!responseApplied.ok) throw new Error("Error fetching recently applied jobs.");
-            const dataApplied = await responseApplied.json();
-            setRecentlyApplied(dataApplied.userJobs);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentlyApplied(error.message);
-          } finally {
-            setLoadingRecentlyApplied(false);
-          }
+          await fetchAndCache('/api/dashboard/applied-jobs', setRecentlyApplied, setErrorRecentlyApplied, setLoadingRecentlyApplied, 'applied-jobs');
 
           // Fetch Matching Jobs
-          try {
-            const responseMatching = await fetch('/api/dashboard/matching-jobs', { headers });
-            if (!responseMatching.ok) throw new Error("Error fetching matching jobs.");
-            const dataMatching = await responseMatching.json();
-            setMatchingJobs(dataMatching);
-          } catch (error) {
-            console.error(error);
-            setErrorMatchingJobs(error.message);
-          } finally {
-            setLoadingMatchingJobs(false);
-          }
+          await fetchAndCache('/api/dashboard/matching-jobs', setMatchingJobs, setErrorMatchingJobs, setLoadingMatchingJobs, 'matchingJobs');
 
           // Fetch Recent Companies
-          try {
-            const responseCompanies = await fetch('/api/dashboard/recent-companies', { headers });
-            if (!responseCompanies.ok) throw new Error("Error fetching recent companies.");
-            const dataCompanies = await responseCompanies.json();
-            setRecentCompanies(dataCompanies);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentCompanies(error.message);
-          } finally {
-            setLoadingRecentCompanies(false);
-          }
+          await fetchAndCache('/api/dashboard/recent-companies', setRecentCompanies, setErrorRecentCompanies, setLoadingRecentCompanies, 'recentCompanies');
 
           // Fetch Bookmarked Jobs
-          try {
-            const responseBookmarks = await fetch('/api/dashboard/bookmarked-jobs', { headers });
-            if (!responseBookmarks.ok) throw new Error("Error fetching bookmarked jobs.");
-            const dataBookmarks = await responseBookmarks.json();
-            setBookmarkedJobs(dataBookmarks);
-          } catch (error) {
-            console.error(error);
-            setErrorBookmarkedJobs(error.message);
-          } finally {
-            setLoadingBookmarkedJobs(false);
-          }
+          await fetchAndCache('/api/dashboard/bookmarked-jobs', setBookmarkedJobs, setErrorBookmarkedJobs, setLoadingBookmarkedJobs, 'bookmarkedJobs');
         }
 
         fetchData();

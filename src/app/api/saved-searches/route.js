@@ -1,8 +1,9 @@
 "use strict";
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
+import { getCached, setCached } from '@/lib/cache'; // ...existing code...
 
 const SECRET_KEY = process.env.SESSION_SECRET || 'your-secret-key';
 
@@ -14,15 +15,25 @@ export async function GET(request) {
   }
   const token = authHeader.split(' ')[1];
 
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const cachedSavedSearches = getCached('saved-searches', token);
+  if (cachedSavedSearches) {
+    return NextResponse.json({ savedSearches: cachedSavedSearches }, { status: 200 });
+  }
+
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
     const userId = decoded.id;
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query('SELECT * FROM saved_searches WHERE user_id = @userId;');
+    const pool = await createDatabaseConnection();
+    const query = `SELECT * FROM saved_searches WHERE user_id = @userId;`;
+    const result = await pool.executeQuery(query, { userId });
 
+    setCached('saved-searches', token, result.recordset);
+    
     return NextResponse.json({ savedSearches: result.recordset }, { status: 200 });
   } catch (error) {
     console.error('Error fetching saved searches:', error);
