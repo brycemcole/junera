@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { createDatabaseConnection } from '@/lib/db';
 import { getCompanies } from '@/lib/companyCache';
-
-import sql from 'mssql';
+import NodeCache from 'node-cache';
+const cache = new NodeCache({ stdTTL: 300 });
 
 export async function GET(request) {
   // Extract token from Authorization header
@@ -12,6 +12,15 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const token = authHeader.split(' ')[1];
+
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const cachedUserJobs = cache.get(`userJobs:${token}`);
+  if (cachedUserJobs) {
+    return NextResponse.json({ userJobs: cachedUserJobs }, { status: 200 });
+  }
   
   try {
     console.log('JWT_SECRET:', process.env.SESSION_SECRET); // Debugging line
@@ -57,6 +66,8 @@ export async function GET(request) {
       company: job.companyName,
       isCoreJob: job.isCoreJob,
     }));
+
+    cache.set(`userJobs:${token}`, formattedUserJobs);
 
     return NextResponse.json({ userJobs: formattedUserJobs }, { status: 200 });
   } catch (error) {

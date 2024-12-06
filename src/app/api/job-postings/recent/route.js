@@ -1,5 +1,6 @@
 import { createDatabaseConnection } from "@/lib/db";
 import sql from 'mssql';
+import { getCached, setCached } from '@/lib/cache'; // ...existing code...
 
 function formatForFullTextSearch(text) {
   // Escape double quotes for SQL
@@ -15,6 +16,12 @@ export async function GET(req) {
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
   const sinceDate = searchParams.get("sinceDate")?.trim() || "";
+
+
+  const cachedRecentJobsCount = getCached('recent-jobs-count', { title, experienceLevel, location, company, sinceDate });
+  if (cachedRecentJobsCount) {
+    return new Response(JSON.stringify({ totalJobs: cachedRecentJobsCount }), { status: 200 });
+  }
 
   if (!sinceDate) {
     return new Response(JSON.stringify({ error: "sinceDate parameter is required" }), { status: 400 });
@@ -62,6 +69,8 @@ export async function GET(req) {
 
     const result = await pool.executeQuery(query, params);
     const totalJobs = result.recordset[0]?.totalJobs || 0;
+
+    setCached('recent-jobs-count', { title, experienceLevel, location, company, sinceDate }, totalJobs);
 
     return new Response(JSON.stringify({ totalJobs }), { status: 200 });
   } catch (error) {

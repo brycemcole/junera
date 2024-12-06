@@ -64,7 +64,7 @@ const components: { title: string; href: string; description: string }[] = [
 
 
 interface ProfileButtonProps {
-  image: string87;
+  image: string;
   username: string;
 }
 
@@ -94,7 +94,7 @@ export function NavbarMenu() {
     username = user?.username || "unknown";
   }
   return (
-    <NavigationMenu>
+    <NavigationMenu className="z-100">
       <NavigationMenuList>
         <NavigationMenuItem>
           <NavigationMenuTrigger>Home</NavigationMenuTrigger>

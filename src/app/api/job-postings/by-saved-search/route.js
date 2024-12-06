@@ -1,5 +1,6 @@
 import { createDatabaseConnection } from "@/lib/db";
 import { getCompanies } from "@/lib/companyCache";
+import { getCached, setCached } from '@/lib/cache';
 
 import sql from 'mssql';
 
@@ -17,6 +18,11 @@ export async function GET(req) {
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
   const limit = parseInt(searchParams.get("limit")) || 10;
+
+  const cachedJobs = getCached('jobs-by-saved-search', { title, experienceLevel, location, company, limit });
+  if (cachedJobs) {
+    return new Response(JSON.stringify({ jobs: cachedJobs }), { status: 200 });
+  }
 
   try {
     const [pool, companies] = await Promise.all([createDatabaseConnection(), getCompanies()]);
@@ -73,6 +79,8 @@ export async function GET(req) {
       };
     });
 
+    setCached('jobs-by-saved-search', { title, experienceLevel, location, company, limit }, jobs);
+    
     return new Response(JSON.stringify({ jobs }), { status: 200 });
   } catch (error) {
     console.error("Error fetching jobs by saved search:", error);

@@ -5,7 +5,9 @@ import { createDatabaseConnection } from "@/lib/db";
 
 export async function GET(req, { params }) {
     try {
-        const companyId = await params.id;
+        const awaitedParams = await params;
+        const companyId = awaitedParams.id;
+        
         const db = await createDatabaseConnection();
         const result = await db.executeQuery(`
             SELECT 

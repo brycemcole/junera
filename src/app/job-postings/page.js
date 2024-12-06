@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, Fragment, useEffect, use } from 'react';
 import { JobList } from "@/components/JobPostings";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
@@ -18,7 +18,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Search, Info, Sparkle, SparkleIcon, FilterX, Clock, Zap, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Search, Info, Sparkle, SparkleIcon, FilterX, Clock, Zap, X, Factory, Scroll } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -51,6 +52,139 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from 'lucide-react';
 import { Bookmark } from 'lucide-react';
+import { Label } from "@/components/ui/label";
+import { Check, ChevronDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FixedSizeList as List } from 'react-window';
+
+
+export const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
+    const [open, setOpen] = useState(false);
+    const [value, setValue] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+  
+    const filteredCompanies = searchTerm
+    ? companies.filter((company) =>
+        company.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : companies; // If searchTerm is empty, show all companies
+
+    /* company
+    100: {
+    "id": 1866,
+    "name": "Anyscale",
+    "logo": "/src/Anyscalelogo.png"
+}
+    */
+useEffect(() => {
+
+    if (currentCompany && companies) {
+      const foundCompany = companies.find(
+        (company) => company.id === Number(currentCompany)
+      );
+      if (foundCompany) {
+        setValue(foundCompany.name);
+      }
+    } else {
+      setValue("");
+    }
+  }, [currentCompany, companies]);
+  
+    return (
+      <div className="space-y-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="select-44"
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full h-9 md:h-9 hover:bg-accent justify-between bg-background px-3 font-normal outline-offset-0 hover:bg-background focus-visible:border-ring focus-visible:outline-[3px] focus-visible:outline-ring/20"
+            >
+              {value ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <Avatar className="w-5 h-5">
+                    <AvatarImage src={companies.find((c) => c.name === value)?.logo} />
+                    <AvatarFallback>{value.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate font-semibold">{value}</span>
+                </span>
+              ) : (
+                <span className="flex min-w-0 text-muted-foreground items-center gap-2">
+                  <Factory strokeWidth={2} className="mr-2 h-4 w-4" />
+                  <span className="truncate">Companies</span>
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                strokeWidth={2}
+                className="shrink-0 text-muted-foreground/80"
+                aria-hidden="true"
+              />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0"
+            align="start"
+          >
+            <Command>
+              <CommandInput
+                placeholder="Search companies..."
+                value={searchTerm}
+                onValueChange={(value) => setSearchTerm(value)}
+              />
+              <CommandList>
+                <CommandEmpty>No company found.</CommandEmpty>
+                <CommandGroup heading="Companies">
+                  <List
+                    height={300} // adjust height as needed
+                    itemCount={filteredCompanies.length}
+                    itemSize={40} // adjust item size as needed
+                    width="100%"
+                  >
+                    {({ index, style }) => {
+                      const company = filteredCompanies[index];
+                      return (
+                        <div style={style}>
+                          <CommandItem
+                            value={company.name}
+                            onSelect={(currentValue) => {
+                            searchCompanyId(company.id);
+                              setValue(currentValue);
+                              setOpen(false);
+                            }}
+                          >
+                            <Avatar className="w-5 h-5">
+                              <AvatarImage src={company.logo} loading="lazy" />
+                              <AvatarFallback>
+                                {company.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            {company.name}
+                            {value === company.name && (
+                              <Check size={16} strokeWidth={2} className="ml-auto" />
+                            )}
+                          </CommandItem>
+                        </div>
+                      );
+                    }}
+                  </List>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+});
 
 export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose, title, experienceLevel, location, company }) {
     return (
@@ -62,7 +196,7 @@ export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, o
                 <SheetHeader>
                     <SheetTitle>Search Insights for {title}</SheetTitle>
                     <SheetDescription>
-                        Make changes to your profile here. Click save when you're done.
+                        Make changes to your profile here. Click save when done.
                         </SheetDescription>
                     </SheetHeader>
                 <JobPostingsChart 
@@ -84,17 +218,22 @@ export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, o
 export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="relative text-muted-foreground  ps-9 h-[30px] w-[100px] text-xs rounded-lg border-transparent bg-muted dark:bg-neutral-900 shadow-none">
-
+            <SelectTrigger className="relative text-muted-foreground ps-9 h-9 md:h-9 w-[120px] text-sm md:text-sm rounded-lg border bg-background shadow-sm">
           <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
             <Zap size={14} strokeWidth={2} aria-hidden="true" />
           </div>
+          {value ? (
+            <span className="text-foreground truncate font-semibold">
+                <SelectValue placeholder={value} />
+                </span>
+            ) : (
                 <SelectValue placeholder="Level" />
+            )}
             </SelectTrigger>
             <SelectContent>
                 <SelectGroup>
                     <SelectLabel>Experience Level</SelectLabel>
-                    <SelectItem value="reset">Any</SelectItem>
+                    <SelectItem value="null">Any</SelectItem>
                     <SelectItem value="internship">Internship</SelectItem>
                     <SelectItem value="entry level">Entry Level / Associate</SelectItem>
                     <SelectItem value="junior">Junior</SelectItem>
@@ -112,6 +251,7 @@ export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onCha
 
 export const LocationSelect = memo(function LocationSelect({ onChange, value }) {
     const states = {
+        "null": "Any",
         "remote": "Remote",
         "new york": "New York",
         "california": "California",
@@ -165,11 +305,18 @@ export const LocationSelect = memo(function LocationSelect({ onChange, value }) 
 
     return (
         <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="relative ps-9 w-[120px] text-muted-foreground text-xs rounded-lg h-[30px] border-transparent bg-muted dark:bg-neutral-900 shadow-none">
+            <SelectTrigger className="relative text-muted-foreground ps-9 h-9 md:h-9 w-[120px] text-sm   md:text-sm rounded-lg border bg-background shadow-sm">
             <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
             <MapPin  size={14} strokeWidth={2} aria-hidden="true" />
           </div>
+          {value ? (
+            <span className="text-foreground truncate font-semibold">
+                <SelectValue placeholder={value} />
+                </span>
+            ) : (
                 <SelectValue placeholder="Location" />
+            )}
+
             </SelectTrigger>
             <SelectContent>
                 <SelectGroup>
@@ -211,7 +358,7 @@ export function Input26({ onSearch, value }) {
                     value={searchValue} 
                     onChange={handleInputChange} 
                 />
-                <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5 text-muted-foreground/80 peer-disabled:opacity-50">
+                <div className="pointer-events-none absolute z-1 inset-y-0 start-0 flex items-center justify-center ps-5 text-muted-foreground/80 peer-disabled:opacity-50">
                     <Search size={16} strokeWidth={2} />
                 </div>
                 <button
@@ -264,14 +411,17 @@ export const SaveSearchButton = memo(function SaveSearchButton({
 
 export const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData }) { 
     return (
-        <div className="border rounded-lg shadow-sm px-2 py-2 mt-3 relative">
+        <div className="border rounded-lg shadow-sm px-2 py-2 mt-3 mb-0 md:mb-4 md:mt-0 relative">
             <div className="flex items-center gap-2">
             <Avatar className="w-8 h-8">
                 <AvatarFallback>{company.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <p className="text-sm text-muted-foreground font-medium">
-                Showing jobs at <strong className="font-semibold text-foreground">{company.name}</strong></p>
-            <X size={14} className="ml-auto cursor-pointer" onClick={resetCompanyData} />
+                Showing jobs at <Link href={`/companies/${company.id}`}>
+                <strong className="font-semibold text-foreground">{company.name}</strong>
+                </Link>
+                </p>
+            <X size={14} className="ml-auto mr-2 cursor-pointer" onClick={resetCompanyData} />
             </div>
         </div>
     );
@@ -308,8 +458,6 @@ const stripHTML = (str) => {
     const [location, setLocation] = useState("");
     const [company, setCompany] = useState("");
     const limit = 20;
-    const [companySearch, setCompanySearch] = useState("");
-    const [debouncedSearch] = useDebounce(companySearch, 300);
     const [savedSearches, setSavedSearches] = useState([]);
     const [currentController, setCurrentController] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
@@ -318,6 +466,7 @@ const stripHTML = (str) => {
     const [insightsShown, setInsightsShown] = useState(false);
     const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
     const [llmResponse, setLlmResponse] = useState("");
+    const [companies, setCompanies] = useState([]);
   
     const predefinedQuestions = [
       "How can I improve my resume?",
@@ -345,7 +494,14 @@ const stripHTML = (str) => {
     const resetCompanyData = () => {
         setCompanyData([]);
         const params = Object.fromEntries([...searchParams]);
-        params.company = "";
+        delete params.company;
+        params.page = '1';
+        router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+    };
+
+    const searchCompanyId = (id) => {
+        const params = Object.fromEntries([...searchParams]);
+        params.company = id;
         params.page = '1';
         router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
     };
@@ -386,6 +542,21 @@ const stripHTML = (str) => {
         const cachedData = sessionStorage.getItem(cacheKey);
         const cacheExpiry = 3600 * 1000; // 1 hour
         const now = Date.now();
+
+        async function fetchCompanies() {
+            try {
+                const result = await fetchWithCancel(
+                    `/api/companies`
+                );
+                if (result) {
+                    setCompanies(result || []);
+                }
+            } catch (error) {
+                console.error("Error fetching companies:", error);
+            }
+        }
+
+        fetchCompanies();
 
         async function fetchCompanyData() {
             try {
@@ -479,6 +650,7 @@ const stripHTML = (str) => {
         jobTitle: title,
         experienceLevel: experienceLevel,
         location: location,
+        
       };
   
       try {
@@ -612,7 +784,7 @@ const stripHTML = (str) => {
     }, [user]);
   
     return (
-      <div className="container mx-auto py-10 px-4 max-w-4xl">
+      <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
         <MemoizedInput26 onSearch={(val) => {
           const params = Object.fromEntries([...searchParams]);
           params.title = val;
@@ -621,62 +793,79 @@ const stripHTML = (str) => {
         }} value={title} />
         
         <ScrollArea>
-          <div className="flex w-full gap-4 pb-2 md:pb-8">
-            {user && (
-              <SaveSearchButton
-                title={title}
-                experienceLevel={experienceLevel}
-                location={location}
-                savedSearches={savedSearches}
-                onSave={handleSaveSearch}
-                className="whitespace-nowrap text-muted-foreground bg-muted h-[30px] rounded-lg dark:bg-neutral-900 border-none w-[30px]"
-              />
-            )}
+  <div className="flex w-full gap-3 pb-2 md:pb-4 ">
+    {user && (
+      <SaveSearchButton
+        title={title}
+        experienceLevel={experienceLevel}
+        location={location}
+        savedSearches={savedSearches}
+        onSave={handleSaveSearch}
+        className="whitespace-nowrap text-muted-foreground bg-muted h-9 rounded-lg border-none w-[30px]"
+      />
+    )}
+
+    {(title || experienceLevel || location || company) && (
             <Button 
-              className={`h-[30px] size-sm rounded-lg ${
-                location === "remote" 
-                    ? "bg-neutral-600 text-white hover:bg-neutral-800" 
-                    : "bg-muted dark:bg-neutral-900 shadow-none hover:text-background hover:bg-neutral-500 dark:hover:text-foreground dark:hover:bg-neutral-700 text-muted-foreground"
-              }`}
-              onClick={() => {
-                const params = Object.fromEntries([...searchParams]);
-                params.location = location === "remote" ? "" : "remote";
-                params.page = '1';
-                router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
-              }}
-            >
-              Remote
-            </Button>
-            <ExperienceLevelSelect 
-              onChange={(value) => {
-                const params = Object.fromEntries([...searchParams]);
-                params.explevel = value;
-                params.page = '1';
-                router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
-              }} 
-              value={experienceLevel} 
-            />
-            <LocationSelect 
-              onChange={(value) => {
-                const params = Object.fromEntries([...searchParams]);
-                params.location = value;
-                params.page = '1';
-                router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
-              }} 
-              value={location} 
-            />
-            <Button 
-              variant="outline"  
-              size="sm"
-              onClick={() => {
-                router.push(`/job-postings`);
-              }}
-              className="whitespace-nowrap w-[30px] h-[30px] rounded-lg ml-auto"
-            >
-              <FilterX size={14} strokeWidth={1.5} />
-            </Button>
-          </div>
-        </ScrollArea>
+            variant="outline"  
+            size="sm"
+            onClick={() => {
+              setCompanyData([]);
+              setCompany("");
+              router.push(`/job-postings`);
+            }}
+            className="whitespace-nowrap w-[30px] h-9 rounded-lg ml-auto"
+          >
+            <FilterX size={14} strokeWidth={1.5} />
+          </Button>
+    )}
+
+    <Button 
+      className={`h-9 md:h-9 size-sm shadow-sm border rounded-lg ${
+        location === "remote" 
+          ? "bg-blue-500/20 border-blue-600/20 text-blue-600 hover:bg-blue-500/30 hover:border-blue-600"
+          : "bg-background text-muted-foreground hover:bg-blue-300/10 hover:border-blue-300"
+      }`}
+      onClick={() => {
+        const params = Object.fromEntries([...searchParams]);
+        params.location = location === "remote" ? "" : "remote";
+        params.page = '1';
+        router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+      }}
+    >
+      Remote
+    </Button>
+    <ExperienceLevelSelect 
+      onChange={(value) => {
+        const params = Object.fromEntries([...searchParams]);
+        if (value === "null") {
+          delete params.explevel;
+        } else {
+        params.explevel = value;
+        }
+        params.page = '1';
+        router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+      }} 
+      value={experienceLevel} 
+    />
+    <LocationSelect 
+      onChange={(value) => {
+        const params = Object.fromEntries([...searchParams]);
+        if (value === "null") {
+            delete params.location;
+        } else {
+        params.location = value;
+        }
+        params.page = '1';
+        router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+      }} 
+      value={location} 
+    />
+        <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
+
+  </div>
+  <ScrollBar orientation="horizontal"/>
+</ScrollArea>
   
         {/* user buttons */}
         {user && enabled && (

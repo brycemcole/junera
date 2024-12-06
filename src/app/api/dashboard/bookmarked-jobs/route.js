@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { createDatabaseConnection } from '@/lib/db';
 import sql from 'mssql';
+import { getCached, setCached } from '@/lib/cache'; // ...existing code...
 
 export async function GET(request) {
   const authHeader = request.headers.get('Authorization');
@@ -11,6 +12,10 @@ export async function GET(request) {
   const token = authHeader.split(' ')[1];
   
   try {
+    const cachedBookmarkedJobs = getCached('bookmarked-jobs', token);
+    if (cachedBookmarkedJobs) {
+      return NextResponse.json({ bookmarkedJobs: cachedBookmarkedJobs }, { status: 200 });
+    }
     const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'your-secret-key');
     const userId = decoded.id;
 
@@ -31,6 +36,7 @@ export async function GET(request) {
         ORDER BY fj.created_at DESC;`;
     const result = await pool.executeQuery(query, { userId }); 
 
+    setCached('bookmarked-jobs', token, result.recordset);
     return NextResponse.json(result.recordset);
   } catch (error) {
     console.error('Error:', error);

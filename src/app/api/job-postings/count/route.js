@@ -1,6 +1,7 @@
 // /pages/api/jobPostingsCount.js (or your appropriate file)
 import { createDatabaseConnection } from "@/lib/db";
 import sql from 'mssql';
+import { getCached, setCached } from '@/lib/cache'; // ...existing code...
 
 function formatForFullTextSearch(text) {
   // Escape double quotes for SQL
@@ -16,6 +17,10 @@ export async function GET(req) {
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
 
+  const cachedJobPostingsCount = getCached('job-postings-count', { title, experienceLevel, location, company });
+  if (cachedJobPostingsCount) {
+    return new Response(JSON.stringify({ totalJobs: cachedJobPostingsCount }), { status: 200 });
+  }
   try {
     const pool = await createDatabaseConnection();
 
@@ -56,6 +61,8 @@ export async function GET(req) {
 
     const result = await pool.executeQuery(query, params);
     const totalJobs = result.recordset[0]?.totalJobs || 0;
+
+    setCached('job-postings-count', { title, experienceLevel, location, company }, totalJobs);
 
     return new Response(JSON.stringify({ totalJobs }), { status: 200 });
   } catch (error) {

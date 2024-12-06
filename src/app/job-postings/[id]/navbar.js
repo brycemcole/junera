@@ -23,7 +23,7 @@ export function StickyNavbar({ title, companyName, companyLogo, companyId }) {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-background/40 rounded-lg backdrop-blur-md m-4 mt-2 border shadow-sm z-50 py-1 px-4">
+    <div className="fixed top-0 left-0 right-0 bg-background/40 rounded-lg max-w-4xl mx-auto backdrop-blur-md m-4 mt-2 border shadow-sm z-100 py-1 px-4">
       <div className="container mx-auto max-w-4xl flex flex-col">
         <div className="flex flex-row w-full items-center">
         <Link href={`/companies/${companyId}`}>

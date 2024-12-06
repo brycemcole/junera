@@ -49,7 +49,7 @@ export default async function CompanyPage({ params }) {
     }
 
 return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
         <Breadcrumb className="mb-4">
             <BreadcrumbList>
                 <BreadcrumbItem>

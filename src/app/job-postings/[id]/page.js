@@ -450,7 +450,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>...</BreadcrumbPage>
+            <BreadcrumbPage>{jobPosting.id}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

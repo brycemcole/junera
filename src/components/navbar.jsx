@@ -196,16 +196,16 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-background/40 backdrop-blur-md shadow-sm z-10 m-4 border rounded-lg mb-0 border-muted-accent">
-      <div className="container mx-auto px-4 py-2 flex justify-between items-center max-w-4xl">
+    <nav className="bg-background/40 backdrop-blur-md max-w-4xl mx-4 md:mx-auto shadow-sm z-100 m-4 border rounded-lg mb-0 border-muted-accent">
+      <div className="flex flex-row justify-between px-4 py-2 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
           <span className="text-sm font-mono">junera</span>
         </div>
-        <div className="hidden md:flex space-x-4">
-          <NavbarMenu />
+        <div className="hidden md:flex space-x-4 z-100 ml-auto">
+          <NavbarMenu className="z-100"/>
         </div>
         <div className="md:hidden">
           <DropdownMenuDemo />
