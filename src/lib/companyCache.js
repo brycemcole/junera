@@ -1,5 +1,5 @@
 // /lib/companyCache.js
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 
 let companyCache = [];
 let lastFetched = 0;
@@ -11,9 +11,9 @@ export async function getCompanies() {
   // Refresh cache if expired
   if (now - lastFetched > CACHE_DURATION) {
     try {
-      const pool = await getConnection();
+      const db = await createDatabaseConnection();
       const query = `SELECT id, name, logo, description FROM companies WITH (NOLOCK);`;
-      const result = await pool.request().query(query);
+      const result = await db.executeQuery(query, []);
       companyCache = result.recordset.reduce((acc, company) => {
         acc[company.id] = {
           name: company.name,

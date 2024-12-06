@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
+import { getCompanies } from '@/lib/companyCache';
+
 import sql from 'mssql';
 
 export async function GET(request) {
@@ -22,13 +24,11 @@ export async function GET(request) {
     }
 
     // Connect to the database
-    const pool = await getConnection();
+    const [pool, companies ] = await Promise.all([createDatabaseConnection(), getCompanies()]);
 
     // Query for user jobs from dbo.user_jobs
-    const userJobsResult = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query(`
-        SELECT 
+    const query = `        
+          SELECT 
           aj.id AS appliedJobId,
           aj.applied_at AS appliedAt,
           jp.id AS jobId,
@@ -36,15 +36,12 @@ export async function GET(request) {
           jp.location, 
           jp.postedDate, 
           jp.experienceLevel,
-          jp.salary,
-          c.name AS companyName,
-          c.logo AS companyLogo
+          jp.salary
         FROM user_jobs aj
         INNER JOIN jobPostings jp ON aj.job_id = jp.id
-        INNER JOIN companies c ON jp.company_id = c.id
         WHERE aj.user_id = @userId
-        ORDER BY aj.applied_at DESC;
-      `);
+        ORDER BY aj.applied_at DESC;`;
+    const userJobsResult = await pool.executeQuery(query, { userId });
 
     const formattedUserJobs = userJobsResult.recordset.map(job => ({
       id: job.jobId,

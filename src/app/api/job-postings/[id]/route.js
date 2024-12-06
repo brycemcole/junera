@@ -1,7 +1,7 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
 import { getCompanies } from "@/lib/companyCache";
@@ -10,16 +10,15 @@ import * as React from 'react';
 export async function GET(req, { params }) {
   try {
     const id = await params.id;
-    const pool = await getConnection();
-    const companies = await getCompanies();
+    const [pool, companies] = await Promise.all([createDatabaseConnection(), getCompanies()]);
 
     // Get job posting details
-    const result = await pool.request()
-      .input('id', id)
-      .query(`
-        SELECT 
-          j.* FROM JobPostings j WHERE j.id = @id
-      `);
+    const result = await pool.executeQuery(`
+      SELECT
+        jp.* 
+      FROM jobPostings jp WITH (NOLOCK)
+      WHERE jp.id = @id
+      `, { id });
 
     if (!result.recordset.length) {
       return NextResponse.json(

@@ -3,13 +3,13 @@ import { getConnection } from "@/lib/db";
 export async function GET(req) {
     try {
         const pool = await getConnection();
-        const result = await pool.request().query(`
+        const result = await pool.executeQuery(`
             SELECT 
                 id, 
                 name
             FROM companies
             ORDER BY name ASC;
-        `);
+        `, {});
 
         const companies = result.recordset.map((company) => ({
             id: company.id,

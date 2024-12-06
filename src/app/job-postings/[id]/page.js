@@ -348,6 +348,26 @@ Please assess the qualifications and provide a brief explanation of whether the 
       }
     }
 
+    async function fetchCompanyJobCount(id) {
+      try {
+        const response = await fetch(`/api/companies/job-postings-count/${id}`, {
+          signal: controller.signal
+        });
+        console.log('Company job count response:', response);
+        const { jobPostingsCount } = await response.json();
+        if (isMounted) {
+          setData(prevData => ({
+            ...prevData,
+            jobPostingsCount
+          }));
+        }
+
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        if (isMounted) console.error('Error fetching company job count:', error);
+      }
+    }
+
     async function fetchJobData() {
       try {
         const token = localStorage.getItem('token');
@@ -362,6 +382,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         const result = await response.json();
         if (isMounted) {
           setData(result);
+          fetchCompanyJobCount(result.data.company_id);
           setLoading(false);
           
           // Only track view if we successfully fetched the job data and have a token
@@ -395,7 +416,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
     }
     fetchJobData();
     fetchUserProfile();
-
     return () => {
       isMounted = false;
       controller.abort();
@@ -405,9 +425,9 @@ Please assess the qualifications and provide a brief explanation of whether the 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!data.success) return <div>Job posting not found.</div>;
-  console.log('Data:', data);
 
   const jobPosting = data.data;
+  const companyJobCount = data.jobPostingsCount;
 
   const { keywords, relatedPostings } = data;
 
@@ -422,7 +442,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/">Jobs</BreadcrumbLink>
+            <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
@@ -430,7 +450,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{jobPosting.title}</BreadcrumbPage>
+            <BreadcrumbPage>...</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -530,6 +550,9 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </div>
 
       <div className="flex flex-wrap flex-row gap-4 gap-y-3 mt-4 mb-4">
+        <Link href={`/job-postings?company=${jobPosting.company_id}`}>
+      <NumberButton text={`More Jobs at ${jobPosting.companyName}`} count={companyJobCount} variant="outline" />
+      </Link>
       <Link className="w-full md:w-auto" href={`${jobPosting.link}`}>
       
       <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500" >

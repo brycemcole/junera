@@ -1,6 +1,6 @@
 "use strict";
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
 
@@ -18,10 +18,9 @@ export async function GET(request) {
     const decoded = jwt.verify(token, SECRET_KEY);
     const userId = decoded.id;
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query('SELECT * FROM saved_searches WHERE user_id = @userId;');
+    const pool = await createDatabaseConnection();
+    const query = `SELECT * FROM saved_searches WHERE user_id = @userId;`;
+    const result = await pool.executeQuery(query, { userId });
 
     return NextResponse.json({ savedSearches: result.recordset }, { status: 200 });
   } catch (error) {

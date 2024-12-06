@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { getConnection } from '@/lib/db';
+import { createDatabaseConnection } from '@/lib/db';
 import sql from 'mssql';
 
 export async function GET(request) {
@@ -18,11 +18,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Invalid token payload' }, { status: 400 });
     }
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query(`
-        SELECT TOP 10
+    const pool = await createDatabaseConnection();
+    const query = `SELECT TOP 10
         fj.created_at AS bookmarkedAt,
           jp.id,
           jp.title,
@@ -31,8 +28,8 @@ export async function GET(request) {
         JOIN jobPostings jp ON fj.job_posting_id = jp.id
         JOIN companies c ON jp.company_id = c.id
         WHERE fj.user_id = @userId
-        ORDER BY fj.created_at DESC;
-      `);
+        ORDER BY fj.created_at DESC;`;
+    const result = await pool.executeQuery(query, { userId }); 
 
     return NextResponse.json(result.recordset);
   } catch (error) {

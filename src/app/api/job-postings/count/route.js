@@ -1,5 +1,5 @@
 // /pages/api/jobPostingsCount.js (or your appropriate file)
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import sql from 'mssql';
 
 function formatForFullTextSearch(text) {
@@ -17,7 +17,7 @@ export async function GET(req) {
   const company = searchParams.get("company")?.trim() || "";
 
   try {
-    const pool = await getConnection();
+    const pool = await createDatabaseConnection();
 
     // Build the count query without JOIN
     let query = `
@@ -32,21 +32,18 @@ export async function GET(req) {
     if (location) query += ` AND CONTAINS(jp.location, @location)`;
     if (company) query += ` AND jp.company_id = @company_id`;
 
-    const request = pool.request();
+    // Consolidate parameters
+    let params = {};
 
-    // Add parameters with proper formatting for full-text search
-    if (title) request.input('title', sql.NVarChar, formatForFullTextSearch(title));
-    if (location) request.input('location', sql.NVarChar, formatForFullTextSearch(location));
-    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
+    if (title) params.title = formatForFullTextSearch(title);
+    if (experienceLevel) params.experienceLevel = experienceLevel;
+    if (location) params.location = formatForFullTextSearch(location);
     if (company) {
       // If filtering by company, map company name to company_id
-      const companyQuery = `
+      const companyResult = await pool.executeQuery(`
         SELECT id FROM companies WITH (NOLOCK)
         WHERE LOWER(name) = LOWER(@companyName) AND deleted = 0
-      `;
-      const companyRequest = pool.request();
-      companyRequest.input('companyName', sql.NVarChar, company);
-      const companyResult = await companyRequest.query(companyQuery);
+      `, { companyName: company });
 
       if (companyResult.recordset.length === 0) {
         // No matching company found, return totalJobs as 0
@@ -54,10 +51,10 @@ export async function GET(req) {
       }
 
       const companyId = companyResult.recordset[0].id;
-      request.input('company_id', sql.Int, companyId);
+      params.company_id = companyId;
     }
 
-    const result = await request.query(query);
+    const result = await pool.executeQuery(query, params);
     const totalJobs = result.recordset[0]?.totalJobs || 0;
 
     return new Response(JSON.stringify({ totalJobs }), { status: 200 });

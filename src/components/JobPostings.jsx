@@ -45,12 +45,14 @@ export const JobList = ({ data }) => {
             </div>
           </div>
           <span className="font-semibold text-xl">
+            
             {job?.title || "No job titles available"}
           </span>
           <div className="text-md text-foreground line-clamp-3 leading-relaxed">
             {stripHTML(job?.description) || "No description available"}
           </div>
           <div className="flex items-center gap-2">
+            <ul className="flex flex-wrap gap-2">
             {job.remoteKeyword && (
               <Badge
                 variant="outline"
@@ -59,7 +61,6 @@ export const JobList = ({ data }) => {
                 {job.remoteKeyword}
               </Badge>
             )}
-            <ul className="flex flex-wrap gap-2">
               {job.keywords.map((keyword, index) => {
                 const colors = [
                   {

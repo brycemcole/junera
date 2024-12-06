@@ -1,5 +1,4 @@
-
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import { getCompanies } from "@/lib/companyCache";
 
 import sql from 'mssql';
@@ -20,7 +19,7 @@ export async function GET(req) {
   const limit = parseInt(searchParams.get("limit")) || 10;
 
   try {
-    const [pool, companies] = await Promise.all([getConnection(), getCompanies()]);
+    const [pool, companies] = await Promise.all([createDatabaseConnection(), getCompanies()]);
 
     // Build the query to fetch job postings
     let query = `
@@ -37,21 +36,20 @@ export async function GET(req) {
 
     query += ` ORDER BY jp.postedDate DESC OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`;
 
-    const request = pool.request();
+    // Consolidate parameters
+    let params = {
+      limit
+    };
 
-    // Add parameters with proper formatting for full-text search
-    if (title) request.input('title', sql.NVarChar, formatForFullTextSearch(title));
-    if (location) request.input('location', sql.NVarChar, formatForFullTextSearch(location));
-    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
+    if (title) params.title = formatForFullTextSearch(title);
+    if (experienceLevel) params.experienceLevel = experienceLevel;
+    if (location) params.location = formatForFullTextSearch(location);
     if (company) {
       // If filtering by company, map company name to company_id
-      const companyQuery = `
+      const companyResult = await pool.executeQuery(`
         SELECT id FROM companies WITH (NOLOCK)
         WHERE LOWER(name) = LOWER(@companyName) AND deleted = 0
-      `;
-      const companyRequest = pool.request();
-      companyRequest.input('companyName', sql.NVarChar, company);
-      const companyResult = await companyRequest.query(companyQuery);
+      `, { companyName: company });
 
       if (companyResult.recordset.length === 0) {
         // No matching company found, return empty result
@@ -59,12 +57,10 @@ export async function GET(req) {
       }
 
       const companyId = companyResult.recordset[0].id;
-      request.input('company_id', sql.Int, companyId);
+      params.company_id = companyId;
     }
 
-    request.input('limit', sql.Int, limit);
-
-    const result = await request.query(query);
+    const result = await pool.executeQuery(query, params);
     let jobs = result.recordset;
 
     // Add company name to each job posting

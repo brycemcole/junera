@@ -1,132 +1,66 @@
-// /pages/api/jobPostings.js (or your appropriate file)
-import { getConnection } from "@/lib/db";
-import sql from 'mssql';
+// /pages/api/jobPostings.js
+import { createDatabaseConnection } from "@/lib/db";
 import { getCompanies } from "@/lib/companyCache";
-import { performance } from 'perf_hooks'; // Import the performance API
-
-function formatSearchTerms(text) {
-  if (!text) return '';
-  const terms = text.trim().split(' ').filter(t => t);
-  return terms.map(term => `"*${term}*"`).join(' AND ');
-}
-
+import { performance } from 'perf_hooks';
 
 function scanKeywords(text) {
-  const keywordsList = ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++', 'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust', 'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps', 'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB', 'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD', 'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub', 'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ', 'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode', 'Android Studio'];
-  const foundKeywords = keywordsList.filter(keyword => text.includes(keyword));
-  return foundKeywords;
+  const keywordsList = [
+    'JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++',
+    'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust',
+    'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps',
+    'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB',
+    'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD',
+    'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub',
+    'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ',
+    'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode',
+    'Android Studio', 'C#', 'Unity', 'Unreal Engine', 'Blender', 'Maya', 'Photoshop',
+    'Google Office', 'Microsoft office', 'Adobe Creative Suite', 'Figma', 'Sketch', 'Project Management', 'Excel', 'SaaS', 
+    'PaaS', 'IaaS', 'NFT', 'Blockchain', 'Cryptocurrency', 'Web3', 'Solidity', 'Rust', 'Golang', 'Ruby', 'Scala', 'Kotlin',
+    'Swift', 'Objective-C', 'Flutter', 'React Native', 'Ionic', 'Xamarin', 'PhoneGap', 'Cordova', 'NativeScript', 'Electron', 'Government Consulting',
+    'Semiconductors", "Aerospace', 'Defense', 'Healthcare', 'Finance', 'Banking', 'Insurance', 'Retail', 'E-commerce', 'Education', 'Transportation',
+  ];
+
+  const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const lowerText = text.toLowerCase();
+  return keywordsList.filter(keyword => {
+    const escapedKeyword = escapeRegex(keyword.toLowerCase());
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'g');
+    return regex.test(lowerText);
+  });
 }
 
-
 export async function GET(req) {
-  const [pool, companies] = await Promise.all([getConnection(), getCompanies()]);
-  const { searchParams } = new URL(req.url);
-  const jobId = searchParams.get("id");
-
-  // Initialize an object to store timing information
-  const timings = {};
-
-  // Record the start time of the entire GET handler
-  const overallStart = performance.now();
-
-  // If jobId is provided, fetch single job posting
-  if (jobId) {
-    try {
-      // Start timing for getting the DB connection
-      const dbConnStart = performance.now();
-      const pool = await getConnection();
-      const dbConnEnd = performance.now();
-      timings.getConnection = dbConnEnd - dbConnStart;
-
-      // Start timing for fetching companies
-      const companiesStart = performance.now();
-      const companies = await getCompanies();
-      const companiesEnd = performance.now();
-      timings.getCompanies = companiesEnd - companiesStart;
-
-      // Start timing for building and executing the query
-      const queryStart = performance.now();
-      const request = pool.request();
-      request.input('id', sql.Int, parseInt(jobId));
-
-      // Modified query to include keywords
-      const query = `
-        SELECT 
-          jp.id, 
-          jp.title, 
-          jp.location, 
-          jp.postedDate, 
-          jp.salary,
-          jp.salary_range_str,
-          jp.experienceLevel,
-          jp.company_id,
-          jp.description,
-          jp.keywords
-        FROM jobPostings jp WITH (NOLOCK)
-        WHERE jp.id = @id AND jp.deleted = 0
-      `;
-
-      const result = await request.query(query);
-      const queryEnd = performance.now();
-      timings.queryExecution = queryEnd - queryStart;
-
-      if (result.recordset.length === 0) {
-        const overallEnd = performance.now();
-        timings.total = overallEnd - overallStart;
-        return new Response(JSON.stringify({ error: "Job not found", timings }), { status: 404 });
-      }
-
-      const job = result.recordset[0];
-      const companyInfo = companies[job.company_id] || { name: "Unknown", logo: null };
-
-      const formattedJob = {
-        id: job.id,
-        title: job.title,
-        company: companyInfo.name,
-        experienceLevel: job.experienceLevel,
-        location: job.location,
-        salary: job.salary,
-        salary_range_str: job.salary_range_str,
-        logo: companyInfo.logo,
-        postedDate: job.postedDate,
-        description: job.description,
-        keywords: job.keywords ? job.keywords.split(',').map(k => k.trim()) : [] // Convert comma-separated string to array
-      };
-
-      const overallEnd = performance.now();
-      timings.total = overallEnd - overallStart;
-
-      return new Response(JSON.stringify({ job: formattedJob, timings }), { status: 200 });
-    } catch (error) {
-      console.error("Error fetching job posting:", error);
-      const overallEnd = performance.now();
-      timings.total = overallEnd - overallStart;
-      return new Response(JSON.stringify({ error: "Error fetching job posting", timings }), { status: 500 });
-    }
-  }
-
+  const url = await req.url;
+  const { searchParams } = new URL(url);
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 20;
   const offset = (page - 1) * limit;
 
-  // Extract and sanitize search filters
   const title = searchParams.get("title")?.trim() || "";
   const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
 
+  const timings = {};
+  const overallStart = performance.now();
+
   try {
-    // Start timing for fetching companies
-    const companiesStart = performance.now();
-    const companiesEnd = performance.now();
-    timings.getCompanies = companiesEnd - companiesStart;
+    const [companies, db] = await Promise.all([
+      getCompanies(),
+      createDatabaseConnection()
+    ]);
 
-    // Start timing for getting the DB connection
-    const dbConnStart = performance.now();
-    const dbConnEnd = performance.now();
-    timings.getConnection = dbConnEnd - dbConnStart;
+    const companiesFetched = performance.now();
+    timings.fetchCompaniesAndConnection = companiesFetched - overallStart;
 
-    // Build the optimized search query without JOIN
+    // Create a lookup for company names
+    const companyNameMap = {};
+    for (const [id, details] of Object.entries(companies)) {
+      companyNameMap[details.name.toLowerCase()] = parseInt(id);
+    }
+
+    // Build query
     let query = `
       SELECT 
         jp.id, 
@@ -142,59 +76,67 @@ export async function GET(req) {
       WHERE jp.deleted = 0
     `;
 
-    // Add filters
-    if (title) query += ` AND FREETEXT(jp.title, @title)`;
-    if (experienceLevel) query += ` AND jp.experienceLevel = @experienceLevel`;
-    if (location) query += ` AND CONTAINS(jp.location, @location)`;
-    if (company) query += ` AND jp.company_id = @company_id`;
+    const params = {};
 
-    query += `
-      ORDER BY 
-        jp.postedDate DESC, jp.id, jp.title, jp.location
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
-    `;
+    // If we have full-text search on title:
+    if (title) {
+      // Escape potential quotes and use a wildcard match for partial matches
+      const sanitizedTitle = title.replace(/"/g, '""');
+      query += ` AND CONTAINS(jp.title, @title)`;
+      params.title = `"${sanitizedTitle}*"`;
+    }
 
-    // Start timing for query preparation
-    const queryPrepStart = performance.now();
-    const request = pool.request();
+    if (experienceLevel) {
+      query += ` AND jp.experienceLevel = @experienceLevel`;
+      params.experienceLevel = experienceLevel;
+    }
 
-    // Format search terms with OR conditions
-    if (title) request.input('title', sql.NVarChar, formatSearchTerms(title));
-    if (location) request.input('location', sql.NVarChar, formatSearchTerms(location));
-    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
+    // If we have full-text search on location:
+    if (location) {
+      const sanitizedLocation = location.replace(/"/g, '""');
+      query += ` AND CONTAINS(jp.location, @location)`;
+      params.location = `"${sanitizedLocation}*"`;
+    }
+
     if (company) {
-      // Assuming 'company' is the company name, find the corresponding ID
-      const companyEntry = Object.entries(companies).find(
-        ([id, details]) => details.name.toLowerCase() === company.toLowerCase()
-      );
-      if (companyEntry) {
-        request.input('company_id', sql.Int, parseInt(companyEntry[0]));
-      } else {
-        // If company not found, return empty results
+    // company is already an id here.
+      const companyId = company;
+      if (!companyId) {
+        // If company not found, return empty results early
         const queryPrepEnd = performance.now();
-        timings.queryPreparation = queryPrepEnd - queryPrepStart;
+        timings.queryPreparation = queryPrepEnd - companiesFetched;
         const overallEnd = performance.now();
         timings.total = overallEnd - overallStart;
         return new Response(JSON.stringify({ jobPostings: [], timings }), { status: 200 });
       }
+      query += ` AND jp.company_id = @company_id`;
+      params.company_id = companyId;
     }
-    request.input('offset', sql.Int, offset);
-    request.input('limit', sql.Int, limit);
+
+    query += `
+      ORDER BY 
+        jp.postedDate DESC, jp.id DESC
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+    `;
+
+    params.offset = offset;
+    params.limit = limit;
+
+    const queryPrepStart = performance.now();
+    const queryExecStart = performance.now();
+    const result = await db.executeQuery(query, params);
+    const queryExecEnd = performance.now();
+    timings.queryExecution = queryExecEnd - queryExecStart;
     const queryPrepEnd = performance.now();
     timings.queryPreparation = queryPrepEnd - queryPrepStart;
 
-    // Start timing for executing the query
-    const queryExecStart = performance.now();
-    const result = await request.query(query);
-    const queryExecEnd = performance.now();
-    timings.queryExecution = queryExecEnd - queryExecStart;
-
+    // Process results
     const jobPostings = result.recordset.map((job) => {
       const companyInfo = companies[job.company_id] || { name: "Unknown", logo: null };
       const keywords = scanKeywords(job.description);
       const remoteKeyword = job.location.toLowerCase().includes('remote') ? 'Remote' : null;
+      
 
-      console.log(keywords);
       return {
         id: job.id,
         title: job.title,
@@ -220,4 +162,4 @@ export async function GET(req) {
     timings.total = overallEnd - overallStart;
     return new Response(JSON.stringify({ error: "Error fetching job postings", timings }), { status: 500 });
   }
-} 
+}
