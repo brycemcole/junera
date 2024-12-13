@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
+import CollapsibleDemo from './collapsible';
 
 // Lazy load dashboard sections
 const BookmarkedJobs = memo(lazy(() => import('@/components/BookmarkedJobs')));
@@ -78,17 +79,12 @@ export default function DashboardPage() {
           // Helper function to fetch and cache data
           const fetchAndCache = async (url, setData, setError, setLoading, cacheKey) => {
             const cachedData = getCachedData(cacheKey);
-            if (cachedData) {
-              setData(cacheKey === 'applied-jobs' ? cachedData.userJobs : cachedData);
-              setLoading(false);
-              return;
-            }
             try {
               const response = await fetch(url, { headers });
               if (!response.ok) throw new Error(`Error fetching ${cacheKey}.`);
               const data = await response.json();
               setCachedData(cacheKey, data);
-              setData(cacheKey === 'applied-jobs' ? data.userJobs : data);
+              setData(data);
             } catch (error) {
               console.error(error);
               setError(error.message);
@@ -156,26 +152,26 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 relative col-span-2 md:col-span-1">
-            <CardTitle className="mb-2 w-full flex">
+        <Suspense fallback={<Skeleton />}>
+          <Card className="py-2 border-none shadow-none bg-transparent relative col-span-2 md:col-span-1">
+            <CardTitle className="mb-4 w-full flex">
               Saved Searches
               {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
-        <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
-        <Button variant="ghost" size="sm" className="absolute right-3 bottom-3 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
+            </CardTitle>
+            <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
+            <Button variant="ghost" size="sm" className="absolute right-0 font-mono decoration-dotted underline underline-offset-4 top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
 
           </Card>
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
           <Card className="p-4 col-span-2 relative">
-            <CardTitle className="mb-2">
+            <CardTitle className="mb-4">
               New Jobs Matching Your Searches
               {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <MatchingJobs
                 loading={loadingSavedSearches}
@@ -187,15 +183,15 @@ export default function DashboardPage() {
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 col-span-2 relative">
-            <CardTitle className="mb-2">
+          <Card className="border-transparent shadow-none col-span-2 relative">
+            <CardTitle className="mb-4">
               Bookmarked Jobs
               {loadingBookmarkedJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorBookmarkedJobs && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <BookmarkedJobs
-                jobs={bookmarkedJobs}
+                jobs={bookmarkedJobs.bookmarkedJobs}
                 loading={loadingBookmarkedJobs}
                 error={errorBookmarkedJobs}
               />
@@ -226,10 +222,10 @@ export default function DashboardPage() {
               Recently Applied Jobs
               {loadingRecentlyApplied && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorRecentlyApplied && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <RecentlyAppliedJobs
-                jobs={recentlyApplied}
+                jobs={recentlyApplied} // This now contains the {appliedJobs: [...]} structure
                 loading={loadingRecentlyApplied}
                 error={errorRecentlyApplied}
                 router={router}

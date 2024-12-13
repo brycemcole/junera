@@ -109,15 +109,15 @@ const dbConfig = {
   pool: {
     max: 10,
     min: 0,
-    idleTimeoutMillis: 20000,
+    idleTimeoutMillis: 60000,
   },
   options: {
     encrypt: true, // Use encryption
     trustServerCertificate: false, // Change to true for local dev / self-signed certs
-    connectionTimeout: 20000,
-    requestTimeout: 20000,
+    connectionTimeout: 60000,
+    requestTimeout: 60000,
     abortTransactionOnError: true,
-    cancelTimeout: 20000,
+    cancelTimeout: 60000,
     packetSize: 16384,
   },
   debug: {

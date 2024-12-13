@@ -1,49 +1,50 @@
-import { createDatabaseConnection } from "@/lib/db";
-import bcrypt from "bcrypt";
+// /pages/api/register.js 
+import { query } from "@/lib/pgdb";
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { NextResponse } from 'next/server';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
-export async function POST(req) {
-  if (!SECRET_KEY) {
-    console.error("JWT secret key is not configured");
-    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+async function loginUser(email, password) {
+  const result = await query(`
+    SELECT id, password, username, full_name, avatar
+    FROM users
+    WHERE email = $1;
+  `, [email]);
+
+  if (result.rows.length === 0) {
+    return { error: "User not found" };
   }
 
-  console.log("POST /api/login");
+  const user = result.rows[0];
+  const passwordMatch = await bcrypt.compare(password, user.password);
+
+  if (!passwordMatch) {
+    return { error: "Invalid password" };
+  }
+
+  return { userId: user.id, username: user.username, fullName: user.full_name, avatar: user.avatar || '/default.png' };
+}
+
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get("email")?.trim() || "";
+  const password = searchParams.get("password")?.trim() || "";
+
   try {
-    const { username, password } = await req.json();
-    const pool = await createDatabaseConnection();
-    const query = `SELECT * FROM users WHERE username = @username;`;
-
-    const result = await pool.executeQuery(query, { username });
-
-    if (result.recordset.length === 0) {
-      return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
+    const result = await loginUser(email, password);
+    if (result.error) {
+      return new Response(JSON.stringify({ error: result.error }), { status: 400 });
     }
+    console.log('result: ', result);
+    console.log('User ID:', result.userId);
 
-    const user = result.recordset[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
-    }
+    const token = jwt.sign({ id: result.userId, username: result.username, avatar: result.avatar, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 }, SECRET_KEY);
 
-    // Generate JWT token with explicit expiration
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username,
-        avatar: user.avatar,
-        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
-      }, 
-      SECRET_KEY
-    );
-
-    return NextResponse.json({ token });
-
-  } catch (error) {
-    console.error("Error logging in:", error);
-    return NextResponse.json({ error: "Error logging in" }, { status: 500 });
+    return new Response(JSON.stringify({ token }), { status: 200 });
+  }
+  catch (error) {
+    console.error("Error logging in user:", error);
+    return new Response(JSON.stringify({ error: "Error logging in user" }), { status: 500 });
   }
 }

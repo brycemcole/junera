@@ -86,7 +86,7 @@ export default function Button24({ jobId }) {
                         onMouseLeave={() => setIsHovered(false)}
                     >
                         <Toggle
-                            className="group size-9 border shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
+                            className="group size-9 border rounded-lg border-input shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
                             aria-label="Bookmark this"
                             pressed={bookmarked || isHovered}
                             onPressedChange={handleToggle}

@@ -1,6 +1,11 @@
-import { createDatabaseConnection } from "@/lib/db";
+import { createDatabaseConnection, getConnection } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { NextResponse } from 'next/server';
+import { query } from "@/lib/pgdb";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function GET(req) {
     try {
@@ -16,7 +21,7 @@ export async function GET(req) {
         const pool = await createDatabaseConnection();
 
         // Combined query using CTEs
-        const query =`WITH UserInfo AS (
+        const query = `WITH UserInfo AS (
                     SELECT 
                         firstname, lastname, desired_job_title, employment_type,
                         jobPreferredSalary, jobPreferredIndustry, desired_location,
@@ -80,7 +85,7 @@ export async function PUT(req) {
 
         // Handle numeric fields
         const desired_salary_min = updates.desired_salary_min === '' ? null : Number(updates.desired_salary_min);
-        
+
         // Convert date string to SQL date format or null
         const availability_date = updates.availability_date ? new Date(updates?.availability_date)?.toISOString() : null;
 

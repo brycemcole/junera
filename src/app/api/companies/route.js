@@ -1,32 +1,52 @@
-import { createDatabaseConnection } from "@/lib/db";
-import NodeCache from 'node-cache';
+import { query } from "@/lib/pgdb"; // Import the query method from pgdb
+import { getCached, setCached } from '@/lib/cache'; // Import caching methods
 
-const cache = new NodeCache({ stdTTL: 300 });
+// Simple hash function to generate a consistent integer from a string
+function hashStringToInt(str) {
+    if (!str) return 0; // Handle null or undefined strings gracefully
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+}
 
 export async function GET(req) {
     try {
-        const cachedCompanies = cache.get('companies');
+        // Attempt to retrieve companies from cache first
+        const cachedCompanies = await getCached('companies');
         if (cachedCompanies) {
+            console.log('Serving companies from cache.');
             return new Response(JSON.stringify(cachedCompanies), { status: 200 });
         }
 
-        const db = await createDatabaseConnection();
-        const result = await db.executeQuery(`
-            SELECT 
-                id, 
-                name,
-                logo
-            FROM companies
-            ORDER BY name ASC;
-        `, {});
+        // Fetch distinct, non-null companies from the jobPostings table
+        const result = await query(`
+            SELECT DISTINCT company 
+            FROM jobPostings 
+            WHERE company IS NOT NULL
+            ORDER BY company ASC
+        `);
 
-        const companies = result.recordset.map((company) => ({
-            id: company.id,
-            name: company.name,
-            logo: company.logo, 
-        }));
+        // Log the raw result for debugging
 
-        cache.set('companies', companies);
+        // Adjust based on your database client
+        const rows = result.rows || result.recordset || [];
+
+        // Map each company to an object with a unique ID and logo URL
+        const companies = rows
+            .map((row) => row.company) // Extract the company name
+            .filter((company) => company) // Ensure company is not null or undefined
+            .map((company) => ({
+                id: hashStringToInt(company), // Generate unique integer ID
+                name: company,
+                logo: `https://logo.clearbit.com/${encodeURIComponent(company.replace('.com', ''))}.com`, // Generate logo URL
+            }));
+
+
+        // Cache the companies data for future requests
+        await setCached('companies', companies);
 
         return new Response(JSON.stringify(companies), { status: 200 });
     } catch (error) {

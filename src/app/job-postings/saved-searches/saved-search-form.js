@@ -45,7 +45,7 @@ export function SavedSearchForm({ onSubmit, initialData = {} }) {
                 <SelectLabel>Levels</SelectLabel>
                 <SelectItem value="internship">Internship</SelectItem>
                 <SelectItem value="junior">Junior</SelectItem>
-                <SelectItem value="mid level">Mid</SelectItem>
+                <SelectItem value="mid">Mid</SelectItem>
                 <SelectItem value="senior">Senior</SelectItem>
               </SelectGroup>
             </SelectContent>

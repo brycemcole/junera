@@ -39,7 +39,7 @@ function StatusDot({ className }) {
   );
 }
 
-export function StatusSelect() {
+ function StatusSelect() {
   return (
     <div className="space-y-2">
       <Select defaultValue="s1">

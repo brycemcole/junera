@@ -16,8 +16,7 @@ import {
 import { Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-
-const { useAuth } = require('@/context/AuthContext');
+import { useAuth } from '@/context/AuthContext';
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -37,7 +36,7 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "Entry Level",
-    href: "/job-postings?explevel=entry%20level",
+    href: "/job-postings?explevel=entry",
     description: "Jobs for candidates with minimal professional experience.",
   },
   {
@@ -63,29 +62,6 @@ const components: { title: string; href: string; description: string }[] = [
 ];
 
 
-interface ProfileButtonProps {
-  image: string;
-  username: string;
-}
-
-export function ProfileButton({ image, username }: ProfileButtonProps) {
-  return (
-    <Button className="rounded-full py-0 ps-0">
-      <div className="me-0.5 flex aspect-square h-full p-1.5">
-        <Image
-          className="h-auto w-full rounded-full"
-          src={image}
-          alt="Profile image"
-          width={24}
-          height={24}
-          aria-hidden="true"
-        />
-      </div>
-      @{username}
-    </Button>
-  );
-}
-
 
 export function NavbarMenu() {
   const { user, logout, loading } = useAuth();
@@ -97,7 +73,7 @@ export function NavbarMenu() {
     <NavigationMenu className="z-100">
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Home</NavigationMenuTrigger>
+          <NavigationMenuTrigger className="bg-transparent">Home</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
@@ -123,7 +99,7 @@ export function NavbarMenu() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Job Postings</NavigationMenuTrigger>
+          <NavigationMenuTrigger className="bg-transparent">Job Postings</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               {components.map((component) => (
@@ -153,7 +129,6 @@ export function NavbarMenu() {
               </NavigationMenuLink>
           </NavigationMenuItem>
           <Link href="/p/[username]" as={`/p/${username}`} passHref>
-          <ProfileButton image={user.avatar} username={username} />
           </Link>
         </>
         ) : (
