@@ -390,4 +390,49 @@ export async function GET(req) {
     timings.total = overallEnd - overallStart;
     return new Response(JSON.stringify({ error: "Error fetching job postings", timings }), { status: 500 });
   }
-} 
+}
+
+export async function PUT(req) {
+  try {
+    const { jobId, summary } = await req.json();
+
+    // Validate inputs
+    if (!jobId || !summary) {
+      return new Response(
+        JSON.stringify({ error: "Job ID and summary are required" }),
+        { status: 400 }
+      );
+    }
+
+    // Update the job posting with the new summary
+    const updateQuery = `
+      UPDATE jobPostings 
+      SET summary = $1 
+      WHERE job_id = $2 
+      RETURNING *`;
+
+    const result = await query(updateQuery, [summary, jobId]);
+
+    if (result.rows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Job posting not found" }),
+        { status: 404 }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: result.rows[0]
+      }),
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error("Error updating job posting:", error);
+    return new Response(
+      JSON.stringify({ error: "Error updating job posting" }),
+      { status: 500 }
+    );
+  }
+}

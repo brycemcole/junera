@@ -54,7 +54,7 @@ const SavedSearchCard = ({ search, onEdit, onDelete }) => {
 
   const redirectToSearch = () => {
     const { title = "", location, experienceLevel } = search.search_criteria;
-    router.push(`/job-postings?title=${title}&location=${location}&experienceLevel=${experienceLevel}`);
+    router.push(`/job-postings?title=${title}&location=${location}&explevel=${experienceLevel}`);
   };
 
   return (

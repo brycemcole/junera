@@ -2,9 +2,10 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { React, use } from 'react';
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, set } from "date-fns";
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
   AccordionContent,
@@ -30,6 +31,13 @@ import {
 import NumberButton from "@/components/ui/number-button";
 import { Button } from "@/components/ui/button"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Bolt, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, Layers2, Loader2, Loader2Icon } from "lucide-react";
+import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -39,10 +47,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles } from "lucide-react";
+import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "../../../components/job-posting";
-import { CollapsibleDemo } from "./collapsible";
+import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
 const stripHTML = (str) => {
   const allowedTags = ['b', 'i', 'strong', 'br', 'em', 'u'];
@@ -78,63 +86,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
 
-function CopyButton() {
-  const [copied, setCopied] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState("");
 
-  useEffect(() => {
-    setCurrentUrl(window.location.href);
-  }, []);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(currentUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("Failed to copy text: ", err);
-    }
-  };
-
-  return (
-    <TooltipProvider delayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="disabled:opacity-100"
-            onClick={handleCopy}
-            aria-label={copied ? "Copied" : "Copy to clipboard"}
-            disabled={copied}
-          >
-            <div
-              className={cn(
-                "transition-all",
-                copied ? "scale-100 opacity-100" : "scale-0 opacity-0",
-              )}
-            >
-              <Check className="stroke-emerald-500" size={16} strokeWidth={2} aria-hidden="true" />
-            </div>
-            <div
-              className={cn(
-                "absolute transition-all",
-                copied ? "scale-0 opacity-0" : "scale-100 opacity-100",
-              )}
-            >
-              <Copy size={16} strokeWidth={2} aria-hidden="true" />
-            </div>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent className="border border-input bg-popover px-2 py-1 text-xs text-muted-foreground">
-          Click to copy
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function MagicButton() {
+function MagicButton({ handleSummarizationQuery }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -143,7 +96,7 @@ function MagicButton() {
           size="icon"
           className="disabled:opacity-100 group"
         >
-          <Sparkles className="group-hover:stroke-emerald-500" size={16} strokeWidth={2} aria-hidden="true" />
+          <Sparkles className="group-hover:stroke-emerald-500 text-muted-foreground" size={16} strokeWidth={2} aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="max-w-[280px] py-3 ml-4 shadow-none" side="top">
@@ -154,7 +107,7 @@ function MagicButton() {
               Instantly generate a summary of the job posting using AI models.
             </p>
           </div>
-          <Button size="sm" className="h-7 px-2">
+          <Button size="sm" className="h-7 px-2" onClick={handleSummarizationQuery}>
             Generate Summary
           </Button>
         </div>
@@ -189,9 +142,9 @@ const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   if (loading) return <div>Loading similar jobs...</div>;
 
   return (
-    <CollapsibleDemo
+    <CollapsibleJobs
       title="Similar Job Postings"
-      open={true}
+      open={false}
       jobPostings={similarJobs}
     />
   );
@@ -220,9 +173,9 @@ const CompanySimilarJobs = ({ company }) => {
   if (loading) return <div>Loading similar jobs...</div>;
 
   return (
-    <CollapsibleDemo
-      title="Similar Job Postings"
-      open={true}
+    <CollapsibleJobs
+      title={`More Jobs at ${company}`}
+      open={false}
       jobPostings={similarJobs}
     />
   );
@@ -363,8 +316,83 @@ export function BellButton({ count }) {
 }
 
 
+function Summarization({ title, message, loading, error }) {
+  return (
+    <div className="rounded-lg shadow-sm border border-border px-4 py-3">
+      <div className="flex gap-3">
+        {loading ? (
+          <Loader2Icon
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true" className="text-green-500 animate-spin" />
+        ) : error ? (
+          <CircleAlert className="text-red-500" />
+        ) : (
+          <Info
+            className="mt-0.5 shrink-0 text-green-500"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        )}
+        <div className="grow space-y-1">
+          <p className="text-sm font-medium">{title}</p>
+          <p className="list-inside list-disc text-sm text-muted-foreground">
+            {loading && !message ? "Loading AI response..." : message || error}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const JobDropdown = ({ handleSummarizationQuery }) => {
+  const [copied, setCopied] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon">
+          <Ellipsis
+            className="text-muted-foreground"
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={handleCopy}>
+          <CopyPlus size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+          Copy Link
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSummarizationQuery}>
+          <Sparkles size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+          Summarize Job
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 export default function JobPostingPage({ params }) {
   const { id } = use(params);
+  const { toast } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -372,19 +400,22 @@ export default function JobPostingPage({ params }) {
   const { user } = useAuth();
   const [showAlert, setShowAlert] = useState(false);
   const [llmResponse, setLlmResponse] = useState("");
+  const [loadingLLMReponse, setLoadingLLMResponse] = useState(false);
+  const [errorLLMResponse, setErrorLLMResponse] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
   const handleInghtsClick = () => {
     setInsightsShown(!insightsShown);
   };
 
+
   const handleBadgeClick = () => {
     setShowAlert(true);
   };
 
-  const handlePredefinedQuestion = async (e) => {
+  const handlePredefinedQuestion = async (query) => {
     if (!user) return;
-    let question = e.currentTarget.textContent;
+    let question = q;
     if (!question) return;
     console.log('Predefined question:', question);
 
@@ -462,7 +493,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
     setLlmResponse("Loading...");
 
     try {
-      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+      setLoadingLLMResponse(true);
+      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -477,11 +509,162 @@ Please assess the qualifications and provide a brief explanation of whether the 
       const data = await response.json();
       const content = data.choices[0]?.message?.content || "No response.";
       setLlmResponse(content);
+      setLoadingLLMResponse(false);
     } catch (error) {
       console.error("Error fetching LLM response:", error);
       setLlmResponse("Failed to get a response. Please try again.");
+      setErrorLLMResponse(error.message);
     }
   };
+
+  const handleSummarizationQuery = async () => {
+    if (!user) return;
+    const jobPosting = data.data;
+    console.log("Job posting:", jobPosting);
+
+    const modifiedQuestion = `Please provide a brief summary of the job posting titled "${jobPosting.title}" at ${jobPosting.company}.`;
+
+    console.log("Modified question:", modifiedQuestion);
+    const systemMessage = {
+      role: "system",
+      content: `
+        You are a helpful agent that works for ${jobPosting.company} to provide
+        a short sentence about who the ideal candidate for this job is based on the requirements listed.
+        You should prioritize requirements that a person can know if they have instantly. 
+        EXAMPLE RESPONSE: 'We are seeking a ${jobPosting.title} with 4 years of experience in rust, 2 years in python, and a great attitude.'
+      
+        Here is the full content of the job posting:
+        ${JSON.stringify(jobPosting)}
+      `,
+    };
+
+    const userMessage = { role: "user", content: modifiedQuestion };
+    const newMessages = [systemMessage, userMessage];
+    setLlmResponse(""); // Initialize as empty string for streaming
+    setLoadingLLMResponse(true);
+    let fullResponse = ""; // Track complete response
+
+    try {
+      const response = await fetch("https://j488jf4d-1234.use.devtunnels.ms/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "qwen2-7b-instruct",
+          messages: newMessages,
+          temperature: 0.2,
+          max_tokens: 200,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        setLoadingLLMResponse(false);
+        setErrorLLMResponse("Failed to get a response. Please try again.");
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          console.log("Received chunk:", chunk); // Log the raw chunk
+
+          // Depending on your API's streaming format, adjust the parsing below
+          // Example assumes OpenAI-like "data: ..." streaming format
+
+          // Split the chunk into lines
+          const lines = chunk.split("\n").filter(line => line.trim() !== '');
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const jsonString = line.replace("data: ", "").trim();
+              if (jsonString === "[DONE]") {
+                done = true;
+                break;
+              }
+              try {
+                const parsed = JSON.parse(jsonString);
+                console.log("Parsed data:", parsed); // Log parsed JSON
+
+                // Adjust based on actual response structure
+                // For example, if your API uses a different structure:
+                const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
+                if (content) {
+                  fullResponse += content;
+                  setLlmResponse((prev) => prev + content);
+                }
+              } catch (err) {
+                console.error("Error parsing JSON:", err);
+              }
+            } else {
+              // Handle cases where API does not prefix with "data: "
+              try {
+                const parsed = JSON.parse(line);
+                console.log("Parsed data without 'data: ' prefix:", parsed);
+
+                const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
+                if (content) {
+                  fullResponse += content;
+                  setLlmResponse((prev) => prev + content);
+                }
+              } catch (err) {
+                console.error("Error parsing JSON without 'data: ' prefix:", err);
+              }
+            }
+          }
+        }
+      }
+
+      // After streaming is complete, update the database
+      if (fullResponse) {
+        try {
+          const updateResponse = await fetch('/api/job-postings', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({
+              jobId: id,
+              summary: fullResponse
+            })
+          });
+
+          if (updateResponse.ok) {
+            toast({
+              title: "Summary saved",
+              description: "The job summary has been updated in the database.",
+              variant: "default"
+            });
+          } else {
+            throw new Error('Failed to update summary in database');
+          }
+        } catch (error) {
+          console.error("Error updating summary in database:", error);
+          toast({
+            title: "Error",
+            description: "Failed to save the summary to the database.",
+            variant: "destructive"
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error("Error fetching LLM response:", error);
+      setLoadingLLMResponse(false);
+      setErrorLLMResponse(error.message);
+      setLlmResponse("Failed to get a response. Please try again.");
+    } finally {
+      setLoadingLLMResponse(false);
+    }
+  };
+
+
 
   // Combined useEffect for fetching both job data and user profile
   useEffect(() => {
@@ -670,7 +853,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </ul>
         </div>
       )}
-      <div className="mb-8 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-muted-foreground items-start">
+      <div className="mb-4 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-muted-foreground items-start">
         {jobPosting?.salary ? (
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-muted-foreground" />
@@ -720,31 +903,43 @@ Please assess the qualifications and provide a brief explanation of whether the 
         )}
       </div>
 
-      <div className="flex flex-wrap flex-row gap-4 gap-y-3 mt-4 mb-4">
-        <Link href={`/job-postings?company=${jobPosting.company}`}>
-          <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
-        </Link>
-        <Link
-          className="w-full md:w-auto"
-          href={`${jobPosting.source_url}`}
-          target="_blank"
-          onClick={handleApplyClick} // Add onClick handler
-        >
-          <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
-            Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
-            <ArrowRight
-              className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
-              size={16}
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-          </Button>
-        </Link>
-        <Button24 jobId={id} />
-        <CopyButton />
-        <MagicButton />
+      <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
+        <div>
+          <Link href={`/job-postings?company=${jobPosting.company}`}>
+            <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
+          </Link>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href={`${jobPosting.source_url}`}
+            target="_blank"
+            onClick={handleApplyClick} // Add onClick handler
+          >
+            <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
+              Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
+              <ArrowRight
+                className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </Button>
+          </Link>
+          <Button24 jobId={id} />
+          <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
+        </div>
+
 
       </div>
+
+      {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
+        <Summarization
+          title="Job Posting Summary"
+          message={llmResponse || jobPosting.summary}
+          loading={loadingLLMReponse}
+          error={errorLLMResponse}
+        />
+      )}
 
       {user && insightsShown && (
         <>
@@ -769,17 +964,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </Badge>
 
           </div>
-          {llmResponse && (
-            <div className="mb-6 p-4 border rounded-md ">
-              <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
-            </div>
-          )}
 
           {showAlert && <AlertDemo />}
         </>
       )}
       <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
-        <Accordion type="single" collapsible className="w-full" defaultValue="item-description">
+        <Accordion type="single" className="w-full" defaultValue="item-description">
           {[
             { key: 'companyDescription', label: 'Company Description' },
             { key: 'description', label: 'Job Description' },
@@ -840,17 +1030,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
       <Suspense fallback={<div>Loading similar jobs...</div>}>
         <CompanySimilarJobs company={jobPosting.company} />
       </Suspense>
-
-      {relatedPostings?.sameCompanyPostings && relatedPostings.sameCompanyPostings.length > 0 ? (
-        <CollapsibleDemo
-          title={`More Jobs at ${jobPosting?.company}`}
-          jobPostings={relatedPostings?.sameCompanyPostings}
-        />
-      ) : (
-        <div className="text-center text-gray-500 mt-4">
-          No additional job postings from this company.
-        </div>
-      )}
     </div>
   );
 }

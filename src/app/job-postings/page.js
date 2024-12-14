@@ -65,6 +65,33 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 
+function SavedSearchButton({ name, title, experienceLevel, location }) {
+  const router = useRouter();
+  const redirectToSearch = () => {
+    router.push(`/job-postings?title=${title}&location=${location}&explevel=${experienceLevel}`);
+  };
+
+  return (
+    <Button
+      className="group h-auto gap-4 py-3 text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+      variant="outline"
+      onClick={redirectToSearch}
+    >      <div className="space-y-1 w-[200px]">
+        <h3>{name}</h3>
+        <p className="text-muted-foreground text-wrap">
+          <strong className="text-foreground">{title || 'Any'}</strong> jobs in <strong className="text-foreground">{location || 'Any location'}</strong> requiring <strong className="text-foreground">{experienceLevel || 'Any'}</strong> experience level.
+        </p>
+      </div>
+      <ChevronRight
+        className="opacity-60 transition-transform group-hover:translate-x-0.5"
+        size={16}
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+    </Button>
+  );
+}
+
 
 const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
   const [open, setOpen] = useState(false);
@@ -514,11 +541,11 @@ export default function JobPostingsPage() {
   ];
 
 
-  function FilterPopover() {
+  function FilterPopover({ experienceLevel, location, company }) {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline">
+          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100' : ' '}`}>
             <Filter size={14} className="mr-2" />
             Filter</Button>
         </PopoverTrigger>
@@ -529,13 +556,13 @@ export default function JobPostingsPage() {
               <p className="text-xs text-muted-foreground">
                 Filter through over {count} job postings!
               </p>
-              <div class="grid grid-cols-2 items-center gap-2">
-                <span class="text-foreground text-xs">Company</span>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Company</span>
                 <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
               </div>
 
-              <div class="grid grid-cols-2 items-center gap-2">
-                <span class="text-foreground text-xs">Experience Level</span>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Experience Level</span>
                 <ExperienceLevelSelect
                   onChange={(value) => {
                     const params = Object.fromEntries([...searchParams]);
@@ -550,8 +577,8 @@ export default function JobPostingsPage() {
                   value={experienceLevel}
                 />
               </div>
-              <div class="grid grid-cols-2 items-center gap-2">
-                <span class="text-foreground text-xs">Location</span>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Location</span>
                 <LocationSelect
                   onChange={(value) => {
                     const params = Object.fromEntries([...searchParams]);
@@ -877,7 +904,7 @@ export default function JobPostingsPage() {
     setLlmResponse("Loading...");
 
     try {
-      const response = await fetch("http://localhost:1234/v1/chat/completions", {
+      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -926,14 +953,32 @@ export default function JobPostingsPage() {
     <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
       <div className="z-0">
         <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
-        <div className="flex w-full gap-3 justify-between items-center pb-8 md:pb-4 ">
-
-          <Button variant="outline" type="button" onClick={userSavedSearches}>
-            <Bookmark size={16} strokeWidth={1.5} className="mr-2" />
-            <span>Saved Searches</span>
-          </Button>
-          <FilterPopover />
-        </div>
+        {user && (
+          <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-4 ">
+            <h3 className="text-sm text-muted-foreground font-medium">
+              Saved Searches
+            </h3>
+            <Button variant="ghost" type="button" size="icon" onClick={userSavedSearches}>
+              <Plus size={16} strokeWidth={1.5} />
+            </Button>
+          </div>
+        )}
+        <ScrollArea>
+          <div className="flex flex-row items-center gap-4 mb-6">
+            {!loading && user && savedSearches && savedSearches.length > 0 && (
+              savedSearches.map((search) => (
+                <SavedSearchButton
+                  key={search.id}
+                  name={search.search_name}
+                  title={search.search_criteria.title}
+                  experienceLevel={search.search_criteria.experienceLevel}
+                  location={search.search_criteria.location}
+                />
+              ))
+            )}
+          </div>
+          <ScrollBar className="w-full" />
+        </ScrollArea>
       </div>
 
       {/* user buttons */}
@@ -953,38 +998,7 @@ export default function JobPostingsPage() {
         <CompanyInfo company={companyData} resetCompanyData={resetCompanyData} />
       }
 
-      {savedSearchesVisible && savedSearches.length > 0 && (
-        <div className="mt-4 mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold">Saved Searches</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/job-postings/saved-searches')}
-              className="h-8 w-8 p-0"
-            >
-              <Plus size={16} strokeWidth={1.5} />
-            </Button>
-          </div>
-          <div className="flex space-x-4 pb-2">
-            {savedSearches.map((search) => {
-              const params = JSON.parse(search.search_params);
-              return (
-                <Badge
-                  key={search.id}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-accent"
-                  onClick={() => applySavedSearch(search.search_params)}
-                >
-                  {params.jobTitle} • {params.experienceLevel} • {params.location}
-                </Badge>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {insightsShown && (
+      {false && (
         <div>
           {predefinedQuestions.map((question, index) => (
             <Button
@@ -1010,6 +1024,17 @@ export default function JobPostingsPage() {
       <div>
         {data && data.length > 0 ? (
           <div key="job-postings">
+            <div className="mb-4 items-center flex gap-4">
+              <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
+              <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
+                <div className="flex flex-col space-y-1">
+                  {title && <span className="">Job Title: {title}</span>}
+                  {experienceLevel && <span className="">Experience Level: {experienceLevel}</span
+                  >}
+                  {location && <span className="">Location: {location}</span>}
+                </div>
+              </span>
+            </div>
             <JobList data={data} />
           </div>
         ) : (

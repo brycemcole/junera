@@ -1,72 +1,85 @@
-import { createDatabaseConnection, getConnection } from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { query } from '@/lib/pgdb';
+import { verifyToken } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import { query } from "@/lib/pgdb";
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-
-const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function GET(req) {
     try {
         const authHeader = req.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const token = authHeader.split(' ')[1];
         const decoded = verifyToken(token);
         const userId = decoded.id;
 
-        const pool = await createDatabaseConnection();
-
-        // Combined query using CTEs
-        const query = `WITH UserInfo AS (
-                    SELECT 
-                        firstname, lastname, desired_job_title, employment_type,
-                        jobPreferredSalary, jobPreferredIndustry, desired_location,
-                        jobPreferredSkills, willing_to_relocate, certifications,
-                        preferred_industries, preferred_companies, professionalSummary,
-                        soft_skills, technical_skills, other_skills, zipcode, username, avatar
-                    FROM users 
-                    WHERE id = @userId
-                ),
-                Education AS (
-                    SELECT 
-                        id, institutionName, degree, fieldOfStudy, startDate,
-                        endDate, isCurrent, grade, activities, description
-                    FROM education_experiences
-                    WHERE userId = @userId
-                ),
-                WorkExperience AS (
-                    SELECT 
-                        id, title, companyName, employmentType, location,
-                        startDate, endDate, description, tags, isCurrent
-                    FROM job_experiences 
-                    WHERE userId = @userId
-                )
+        // Combined query using CTEs for fetching user profile data
+        const queryText = `
+            WITH UserInfo AS (
                 SELECT 
-                    (SELECT * FROM UserInfo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) as userData,
-                    (SELECT * FROM Education ORDER BY endDate DESC FOR JSON PATH) as educationData,
-                    (SELECT * FROM WorkExperience ORDER BY endDate DESC FOR JSON PATH) as experienceData`;
-        const result = await pool.executeQuery(query, { userId });
+                    username, full_name, headline, email, phone_number, profile_links,
+                    is_premium, job_prefs_title, job_prefs_location, job_prefs_skills,
+                    job_prefs_industry, job_prefs_language, job_prefs_salary, job_prefs_relocatable,
+                    job_prefs_experience_level, avatar
+                FROM users
+                WHERE id = $1
+            ),
+            Education AS (
+                SELECT 
+                    id, institution_name, degree, field_of_study, start_date,
+                    end_date, is_current, description
+                FROM user_education
+                WHERE user_id = $1
+            ),
+            Certifications AS (
+                SELECT 
+                    id, certification_name, issuing_organization, issue_date, 
+                    expiration_date, credential_id, credential_url
+                FROM user_certifications
+                WHERE user_id = $1
+            ),
+            WorkExperience AS (
+                SELECT 
+                    id, company_name, job_title, start_date, end_date, 
+                    location, is_current, description
+                FROM user_job_experience
+                WHERE user_id = $1
+            ),
+            Projects AS (
+                SELECT 
+                    id, project_name, start_date, end_date, is_current, 
+                    description, technologies_used, project_url
+                FROM user_projects
+                WHERE user_id = $1
+            )
+            SELECT 
+                (SELECT row_to_json(UserInfo) FROM UserInfo) as userData,
+                (SELECT json_agg(Education) FROM Education) as educationData,
+                (SELECT json_agg(Certifications) FROM Certifications) as certificationData,
+                (SELECT json_agg(WorkExperience) FROM WorkExperience) as experienceData,
+                (SELECT json_agg(Projects) FROM Projects) as projectData;
+        `;
 
-        // Parse JSON strings from the result
-        const userData = JSON.parse(result.recordset[0].userData || '{}');
-        const educationData = JSON.parse(result.recordset[0].educationData || '[]');
-        const experienceData = JSON.parse(result.recordset[0].experienceData || '[]');
+        const result = await query(queryText, [userId]);
+
+        if (result.rows.length === 0) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const { userData, educationData, certificationData, experienceData, projectData } = result.rows[0];
 
         const profile = {
-            user: userData,
-            education: educationData,
-            experience: experienceData
+            user: userData || {},
+            education: educationData || [],
+            certifications: certificationData || [],
+            experience: experienceData || [],
+            projects: projectData || []
         };
 
         return NextResponse.json(profile);
-
     } catch (error) {
-        console.error("Error fetching user profile:", error);
-        return NextResponse.json({ error: "Error fetching profile data" }, { status: 500 });
+        console.error('Error fetching user profile:', error);
+        return NextResponse.json({ error: 'Error fetching profile data' }, { status: 500 });
     }
 }
 
@@ -74,7 +87,7 @@ export async function PUT(req) {
     try {
         const authHeader = req.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const token = authHeader.split(' ')[1];
@@ -83,70 +96,51 @@ export async function PUT(req) {
 
         const updates = await req.json();
 
-        // Handle numeric fields
-        const desired_salary_min = updates.desired_salary_min === '' ? null : Number(updates.desired_salary_min);
+        const jobPrefsSalary = updates.job_prefs_salary || null;
+        const jobPrefsRelocatable = updates.job_prefs_relocatable ? Boolean(updates.job_prefs_relocatable) : null;
 
-        // Convert date string to SQL date format or null
-        const availability_date = updates.availability_date ? new Date(updates?.availability_date)?.toISOString() : null;
+        // Update query
+        const updateQuery = `
+            UPDATE users
+            SET 
+                full_name = $1,
+                headline = $2,
+                email = $3,
+                phone_number = $4,
+                profile_links = $5,
+                job_prefs_title = $6,
+                job_prefs_location = $7,
+                job_prefs_skills = $8,
+                job_prefs_industry = $9,
+                job_prefs_language = $10,
+                job_prefs_salary = $11,
+                job_prefs_relocatable = $12,
+                job_prefs_experience_level = $13
+            WHERE id = $14
+        `;
 
-        const pool = await getConnection();
-        await pool.request()
-            .input("userId", userId)
-            .input("firstname", updates.firstname)
-            .input("lastname", updates.lastname)
-            .input("desired_job_title", updates.desired_job_title)
-            .input("professionalSummary", updates.professionalSummary)
-            .input("employment_type", updates.employment_type)
-            .input("desired_location", updates.desired_location)
-            .input("willing_to_relocate", updates.willing_to_relocate)
-            .input("desired_salary_min", desired_salary_min)
-            .input("availability_date", availability_date)
-            .input("skills", updates.skills)
-            .input("languages", updates.languages)
-            .input("certifications", updates.certifications)
-            .input("preferred_industries", updates.preferred_industries)
-            .input("phone_number", updates.phone_number)
-            .input("soft_skills", updates.soft_skills)
-            .input("technical_skills", updates.technical_skills)
-            .input("other_skills", updates.other_skills)
-            .input("twitter", updates.twitter)
-            .input("github_url", updates.github_url)
-            .input("leetcode_url", updates.leetcode_url)
-            .input("linkedin_url", updates.linkedin_url)
-            .input("link", updates.link)
-            .input("link2", updates.link2)
-            .query(`
-                UPDATE users
-                SET 
-                    firstname = @firstname,
-                    lastname = @lastname,
-                    desired_job_title = @desired_job_title,
-                    professionalSummary = @professionalSummary,
-                    employment_type = @employment_type,
-                    desired_location = @desired_location,
-                    willing_to_relocate = @willing_to_relocate,
-                    desired_salary_min = @desired_salary_min,
-                    availability_date = @availability_date,
-                    skills = @skills,
-                    languages = @languages,
-                    certifications = @certifications,
-                    preferred_industries = @preferred_industries,
-                    phone_number = @phone_number,
-                    soft_skills = @soft_skills,
-                    technical_skills = @technical_skills,
-                    other_skills = @other_skills,
-                    twitter = @twitter,
-                    github_url = @github_url,
-                    leetcode_url = @leetcode_url,
-                    linkedin_url = @linkedin_url,
-                    link = @link,
-                    link2 = @link2
-                WHERE id = @userId
-            `);
+        const params = [
+            updates.full_name,
+            updates.headline,
+            updates.email,
+            updates.phone_number,
+            updates.profile_links,
+            updates.job_prefs_title,
+            updates.job_prefs_location,
+            updates.job_prefs_skills,
+            updates.job_prefs_industry,
+            updates.job_prefs_language,
+            jobPrefsSalary,
+            jobPrefsRelocatable,
+            updates.job_prefs_experience_level,
+            userId
+        ];
 
-        return NextResponse.json({ message: "Profile updated successfully." });
+        await query(updateQuery, params);
+
+        return NextResponse.json({ message: 'Profile updated successfully.' });
     } catch (error) {
-        console.error("Error updating user profile:", error);
-        return NextResponse.json({ error: "Error updating profile data" }, { status: 500 });
+        console.error('Error updating user profile:', error);
+        return NextResponse.json({ error: 'Error updating profile data' }, { status: 500 });
     }
 }
