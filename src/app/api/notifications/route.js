@@ -165,3 +165,5 @@ export async function PUT(request) {
         return new Response(JSON.stringify({ message: 'Error updating notification' }), { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
