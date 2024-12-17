@@ -501,7 +501,6 @@ export default function JobPostingsPage() {
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
-  const [currentController, setCurrentController] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [companyData, setCompanyData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -605,11 +604,31 @@ export default function JobPostingsPage() {
     );
   }
 
-  const cancelPendingRequests = () => {
-    if (currentController) {
-      currentController.abort();
+  const currentControllerRef = useRef(null);
+
+  const fetchWithCancel = useCallback(async (url, options = {}) => {
+    if (currentControllerRef.current) {
+      currentControllerRef.current.abort();
     }
-  };
+    const controller = new AbortController();
+    currentControllerRef.current = controller;
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request cancelled');
+        return null;
+      }
+      throw error;
+    } finally {
+      currentControllerRef.current = null;
+    }
+  }, []);
 
   const resetCompanyData = () => {
     setCompanyData([]);
@@ -630,28 +649,6 @@ export default function JobPostingsPage() {
     };
     const newParams = new URLSearchParams(params);
     router.push(`/job-postings?${newParams.toString()}`);
-  };
-
-  const fetchWithCancel = async (url, options = {}) => {
-    cancelPendingRequests();
-    const controller = new AbortController();
-    setCurrentController(controller);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      return await response.json();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Request cancelled');
-        return null;
-      }
-      throw error;
-    } finally {
-      setCurrentController(null);
-    }
   };
 
   function buildHref(pageNumber) {
@@ -763,7 +760,7 @@ export default function JobPostingsPage() {
       }
     }
 
-  }, [user, loading, currentPage, title, experienceLevel, location, company]);
+  }, [user, loading, currentPage, title, experienceLevel, location, company, fetchWithCancel]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -901,7 +898,7 @@ ${userProfile.education && userProfile.education.length > 0
 - **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
 
 Please provide relevant career advice and job search assistance based on their profile.
-              `,
+      `,
     };
 
     const userMessage = { role: "user", content: question };
