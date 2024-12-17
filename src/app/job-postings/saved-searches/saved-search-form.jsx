@@ -1,34 +1,35 @@
-"use client"
+"use client";
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { useState } from "react"
-import { useAuth } from "@/context/AuthContext"
-import { useToast } from "@/hooks/use-toast"
-import { ToastAction } from "@/components/ui/toast"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
-  FormLabel,
+  FormLabel as FormLabelRoot,
   FormMessage,
-} from "@/components/ui/form"
+  FormDescription,
+} from "@/components/ui/form";
+import { Label as FormLabel } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { useRouter } from "next/navigation"
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
 
 const SavedSearchSchema = z.object({
   searchName: z.string().min(1, "Please enter a name for this search"),
@@ -36,11 +37,11 @@ const SavedSearchSchema = z.object({
   experienceLevel: z.string({ required_error: "Please select an experience level." }),
   location: z.string({ required_error: "Please enter a location." }),
   notify: z.boolean().default(false),
-})
+});
 
 export function SavedSearchForm({ onSubmit, initialData }) {
-  const { user } = useAuth()
-  const { toast } = useToast()
+  const { user } = useAuth();
+  const { toast } = useToast();
   const form = useForm({
     resolver: zodResolver(SavedSearchSchema),
     defaultValues: initialData || {
@@ -50,12 +51,12 @@ export function SavedSearchForm({ onSubmit, initialData }) {
       location: "",
       notify: false,
     },
-  })
+  });
 
   async function handleSubmit(data) {
     if (!user) {
-      toast({ title: 'User not authenticated.' })
-      return
+      toast({ title: "User not authenticated." });
+      return;
     }
     onSubmit(data);
   }
@@ -99,11 +100,9 @@ export function SavedSearchForm({ onSubmit, initialData }) {
               <FormLabel>Experience Level</FormLabel>
               <FormControl>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a value" />
-                    </SelectTrigger>
-                  </FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a value" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="internship">Internship</SelectItem>
                     <SelectItem value="entry level">Entry Level</SelectItem>
@@ -120,6 +119,7 @@ export function SavedSearchForm({ onSubmit, initialData }) {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="location"
@@ -146,9 +146,7 @@ export function SavedSearchForm({ onSubmit, initialData }) {
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>
-                  Notify me about new matches
-                </FormLabel>
+                <FormLabel>Notify me about new matches</FormLabel>
                 <FormDescription>
                   Get email notifications when new jobs match this search
                 </FormDescription>
@@ -158,9 +156,9 @@ export function SavedSearchForm({ onSubmit, initialData }) {
         />
 
         <Button type="submit">
-          {initialData ? 'Update Search' : 'Save Search'}
+          {initialData ? "Update Search" : "Save Search"}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

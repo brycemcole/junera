@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
@@ -59,12 +59,12 @@ export default function Notifications() { // Renamed component
   const [error, setError] = useState(null);
   const { ref, inView } = useInView();
 
-  const fetchNotifications = async (pageNum) => {
+  const fetchNotifications = useCallback(async (pageNum) => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await axios.get(`/api/notifications?page=${pageNum}&limit=20`, {
-        headers: { Authorization: `Bearer ${user.token}` },
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
 
       const newNotifications = response.data?.notifications || [];
@@ -82,7 +82,7 @@ export default function Notifications() { // Renamed component
       setHasMore(false);
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -92,7 +92,7 @@ export default function Notifications() { // Renamed component
         fetchNotifications(1);
       }
     }
-  }, [user, router, authLoading]);
+  }, [user, router, authLoading, fetchNotifications]);
 
   useEffect(() => {
     if (!isLoading && inView && hasMore) {
@@ -100,7 +100,7 @@ export default function Notifications() { // Renamed component
       setPage(nextPage);
       fetchNotifications(nextPage);
     }
-  }, [inView, isLoading, hasMore, page]);
+  }, [inView, isLoading, hasMore, page, fetchNotifications]);
 
   const handleNotificationClick = (notification) => {
     console.log('Notification clicked:', notification);

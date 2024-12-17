@@ -22,7 +22,7 @@ const Textarea19 = memo(function Textarea19(props) {
   const defaultRows = 1;
   const maxRows = undefined; // You can set a max number of rows
 
-  const handleInput = (e) => {
+  const handleInput = useCallback((e) => {
     const textarea = e.target;
     textarea.style.height = "auto";
 
@@ -36,13 +36,13 @@ const Textarea19 = memo(function Textarea19(props) {
     const newHeight = Math.min(textarea.scrollHeight + borderHeight, maxHeight);
 
     textarea.style.height = `${newHeight}px`;
-  };
+  }, [maxRows]);
 
   useEffect(() => {
     if (textareaRef.current) {
       handleInput({ target: textareaRef.current });
     }
-  }, [props.value], handleInput);
+  }, [props.value, handleInput]);
 
   return (
     <div className="space-y-2">

@@ -291,7 +291,7 @@ function extractSalary(text) {
   return "";
 }
 
-export function BellButton({ count }) {
+function BellButton({ count }) {
 
   const handleClick = () => {
     setCount(0);

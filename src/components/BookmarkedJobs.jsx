@@ -32,7 +32,7 @@ export default function BookmarkedJobs({ jobs, loading, error }) {
     if (jobs.length === 0) {
         return (
             <div className="text-center py-8 text-muted-foreground">
-                <p>You haven't bookmarked any jobs yet.</p>
+                <p>You haven&apos;t bookmarked any jobs yet.</p>
             </div>
         );
     }
