@@ -31,3 +31,5 @@ export async function GET(req, { params }) {
         return new Response(JSON.stringify({ error: "Error fetching companies" }), { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';

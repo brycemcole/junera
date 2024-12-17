@@ -124,3 +124,5 @@ export async function POST(req) {
 
   return response;
 }
+
+export const dynamic = 'force-dynamic';

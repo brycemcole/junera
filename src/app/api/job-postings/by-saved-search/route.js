@@ -97,3 +97,5 @@ export async function GET(req) {
     return new Response(JSON.stringify({ error: "Error fetching jobs by saved search" }), { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic';

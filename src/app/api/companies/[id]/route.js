@@ -7,7 +7,7 @@ export async function GET(req, { params }) {
     try {
         const awaitedParams = await params;
         const companyId = awaitedParams.id;
-        
+
         const db = await createDatabaseConnection();
         const result = await db.executeQuery(`
             SELECT 
@@ -17,7 +17,7 @@ export async function GET(req, { params }) {
             FROM companies
             WHERE id = @company_id;
         `, { company_id: companyId });
-            
+
         const companyResult = result.recordset[0];
 
         if (!companyResult) {
@@ -29,10 +29,12 @@ export async function GET(req, { params }) {
             name: companyResult.name,
         };
 
-        
+
         return new Response(JSON.stringify(company), { status: 200 });
     } catch (error) {
         console.error("Error fetching companies:", error);
         return new Response(JSON.stringify({ error: "Error fetching companies" }), { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
