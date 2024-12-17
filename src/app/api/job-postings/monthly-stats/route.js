@@ -7,7 +7,7 @@ function formatForFullTextSearch(text) {
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  
+
   const title = searchParams.get("title") || "";
   const experienceLevel = searchParams.get("experienceLevel") || "";
   const location = searchParams.get("location") || "";
@@ -37,23 +37,22 @@ export async function GET(req) {
         `);
 
       const synonyms = synonymsQuery.recordset;
-      
+
       if (synonyms.length > 0) {
-        titleCondition = `(${
-          synonyms.map((syn, i) => `CONTAINS(jp.title, @title${i})`).join(' OR ')
-        })`;
-        
+        titleCondition = `(${synonyms.map((syn, i) => `CONTAINS(jp.title, @title${i})`).join(' OR ')
+          })`;
+
         synonyms.forEach((syn, i) => {
-          parameters.push({ 
-            name: `title${i}`, 
+          parameters.push({
+            name: `title${i}`,
             value: formatForFullTextSearch(syn.related_title)
           });
         });
       } else {
         titleCondition = "CONTAINS(jp.title, @title)";
-        parameters.push({ 
-          name: 'title', 
-          value: formatForFullTextSearch(title) 
+        parameters.push({
+          name: 'title',
+          value: formatForFullTextSearch(title)
         });
       }
     }
@@ -84,7 +83,7 @@ export async function GET(req) {
     `;
 
     const request = pool.request();
-    
+
     // Add title parameters
     if (parameters.length > 0) {
       parameters.forEach(param => request.input(param.name, sql.NVarChar, param.value));
@@ -108,3 +107,5 @@ export async function GET(req) {
     return new Response(JSON.stringify({ error: "Error fetching monthly stats" }), { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic';
