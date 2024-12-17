@@ -140,11 +140,7 @@ export const JobList = ({ data, loading, error }) => {
             <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3 text-muted-foreground" />
               <span>
-                {job?.postedDate
-                  ? `${formatDistanceToNow(new Date(job.postedDate), {
-                      addSuffix: true,
-                    })}`
-                  : "N/A"}
+                {job?.created_at}
               </span>
             </div>
             {job?.salary ? (

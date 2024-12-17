@@ -889,7 +889,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </div>
         <div className="flex items-center gap-2">
           <Timer size={16} />
-          <span>{formatDistanceToNow(jobPosting.created_at, { addSuffix: true })}</span>
+          <span>{jobPosting.created_at}</span>
         </div>
 
         {jobPosting?.experienceLevel && (
