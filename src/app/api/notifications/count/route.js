@@ -32,3 +32,5 @@ export async function GET(request) {
         return new Response(JSON.stringify({ message: 'Invalid or expired token' }), { status: 401 });
     }
 }
+
+export const dynamic = 'force-dynamic';

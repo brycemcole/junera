@@ -147,3 +147,5 @@ export async function PUT(req) {
         return NextResponse.json({ error: 'Error updating profile data' }, { status: 500 });
     }
 }
+
+export const dynamic = 'force-dynamic';
