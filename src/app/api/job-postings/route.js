@@ -134,15 +134,29 @@ function extractSalary(text) {
   return "";
 }
 
+// Add shared utility functions at the top of the file
+export const processJobPostings = (jobs) => {
+    return jobs.map((job) => {
+        const keywords = scanKeywords(job.description);
+        const remoteKeyword = job.location?.toLowerCase().includes('remote') ? 'Remote' : "";
+        const salary = extractSalary(job.description);
 
+        return {
+            id: job.job_id,
+            title: job.title || "",
+            company: job.company || "",
+            companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`,
+            experienceLevel: job.experiencelevel || "",
+            description: job.description || "",
+            location: job.location || "",
+            salary: salary,
+            postedDate: job.created_at ? job.created_at.toISOString() : "",
+            remoteKeyword: remoteKeyword,
+            keywords: keywords,
+        };
+    });
+};
 
-
-
-
-
-
-
-``
 export async function GET(req) {
   const url = req.url;
   const { searchParams } = new URL(url);
@@ -254,53 +268,18 @@ export async function GET(req) {
 
     // Full-text search on title (using ILIKE for simplicity)
     if (title) {
-      queryText += ` AND title ILIKE $${paramIndex}`;
-      params.push(`%${title}%`);
+      // Replace spaces with & for AND logic in to_tsquery
+      const formattedTitle = title.trim().replace(/\s+/g, ' & ');
+      queryText += ` AND to_tsvector('english', title) @@ to_tsquery('english', $${paramIndex})`;
+      params.push(formattedTitle);
       paramIndex++;
     }
 
     if (experienceLevel) {
-      if (experienceLevel === 'entry') {
-        // Build inclusion conditions for entry-level indicators in description
-        const descriptionConditions = entryLevelIndicators
-          .map((_, i) => `description ILIKE $${paramIndex + i}`)
-          .join(' OR ');
-
-        // Build inclusion conditions for entry-level indicators in title
-        const titleConditions = entryLevelTitleIndicators
-          .map((_, i) => `title ILIKE $${paramIndex + entryLevelIndicators.length + i}`)
-          .join(' OR ');
-
-        // Combine description and title inclusion conditions
-        const inclusionConditions = `(${descriptionConditions} OR ${titleConditions})`;
-
-        queryText += ` AND (${inclusionConditions})`;
-
-        // Add parameters for description indicators
-        const descriptionParams = entryLevelIndicators.map(indicator => `%${indicator}%`);
-        // Add parameters for title indicators
-        const titleParams = entryLevelTitleIndicators.map(indicator => `%${indicator}%`);
-
-        params.push(...descriptionParams, ...titleParams);
-        paramIndex += entryLevelIndicators.length + entryLevelTitleIndicators.length;
-
-        // Build exclusion conditions to exclude senior and similar roles
-        const exclusionConditions = exclusionIndicators
-          .map((_, i) => `(experiencelevel ILIKE $${paramIndex + i} OR description ILIKE $${paramIndex + i} OR title ILIKE $${paramIndex + i})`)
-          .join(' OR ');
-
-        queryText += ` AND NOT (${exclusionConditions})`;
-
-        // Add parameters for exclusion indicators
-        const exclusionParams = exclusionIndicators.map(indicator => `%${indicator}%`);
-        params.push(...exclusionParams);
-        paramIndex += exclusionIndicators.length;
-      } else {
-        // Existing logic for other experience levels
-        queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
-        params.push(`%${experienceLevel}%`);
-        paramIndex++;
-      }
+      // Existing logic for other experience levels
+      queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
+      params.push(`%${experienceLevel}%`);
+      paramIndex++;
     }
 
     // 4. Modify the location filter to include both full state names and abbreviations with precise matching
@@ -334,9 +313,8 @@ export async function GET(req) {
     }
 
     if (company) {
-      // Assuming company is the company name (TEXT field)
-      queryText += ` AND company ILIKE $${paramIndex}`;
-      params.push(`%${company}%`);
+      queryText += ` AND company = $${paramIndex}`;
+      params.push(company);
       paramIndex++;
     }
 
@@ -357,28 +335,7 @@ export async function GET(req) {
     timings.queryPreparation = queryPrepEnd - queryPrepStart;
 
     // Process results
-    const jobPostings = result.rows.map((job) => {
-      const keywords = scanKeywords(job.description);
-      const remoteKeyword = job.location?.toLowerCase().includes('remote') ? 'Remote' : "";
-      // grab the 100 characters surrounding the first $ in the description
-      console.log(job.description);
-      const salary = extractSalary(job.description); // ### Set the extracted salary ###
-
-      return {
-        id: job.job_id,
-        title: job.title || "",
-        company: job.company || "",
-        companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`, // Generate logo URL
-        experienceLevel: job.experiencelevel || "",
-        description: job.description || "",
-        location: job.location || "",
-        salary: salary, // ### Set the extracted salary ###
-        logo: "", // Not in table
-        postedDate: job.created_at ? job.created_at.toISOString() : "",
-        remoteKeyword: remoteKeyword,
-        keywords: keywords,
-      };
-    });
+    const jobPostings = processJobPostings(result.rows);
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;

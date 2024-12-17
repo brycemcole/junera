@@ -1,17 +1,18 @@
 "use client";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { NavbarMenu } from '@/components/navbar-menu';
 import { Info, BriefcaseBusiness, LayoutDashboard, LogOut, Home, User, UserPlus, Bell, Bookmark } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuShortcut, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import axios from "axios";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function ButtonDemo() {
   const { user, logout } = useAuth();
@@ -51,7 +52,26 @@ function Dot({ className }) {
   );
 }
 
-export function NotificationsPopover() {
+function AvatarButton({ image, fullname, unreadCount }) {
+  return (
+    <div className="relative">
+      <Avatar className="rounded-lg">
+        <AvatarImage src={image} alt={fullname} />
+        <AvatarFallback>
+          {fullname?.split(' ').map(name => name[0]).join('')}
+        </AvatarFallback>
+      </Avatar>
+      {unreadCount > 0 && (
+      <Badge className="absolute -top-2 left-full min-w-5 -translate-x-3 border-background px-1">
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </Badge>
+      )}
+    </div>
+  );
+}
+
+
+function NotificationsPopover() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,9 +216,103 @@ export function NotificationsPopover() {
   );
 }
 
+function DropdownMenuDemo2() {
+  const { user, loading, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const router = useRouter();
 
+  useEffect(() => {
+    (async () => {
+      if (user) {
+        const result = await fetch('/api/notifications/count', {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const data = await result.json();
+        const count = Array.isArray(data) ? data[0].count : data.count;
+        setUnreadCount(parseInt(count, 10) || 0);
+      }
+    })();
+  }, [user]);
 
-export function DropdownMenuDemo() {
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className="group"
+          variant="ghost"
+          size="icon"
+          onClick={() => setOpen((prevState) => !prevState)}
+          aria-expanded={open}
+          aria-label={open ? "Close menu" : "Open menu"}
+        >
+          <AvatarButton image={user?.avatar} fullname={user?.username} unreadCount={unreadCount} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56 mr-4 mt-4">
+        <DropdownMenuGroup>
+          {user && (
+            <>
+                <DropdownMenuItem onClick={() => router.push('/profile')}>
+                  <User />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/notifications')}>
+                  <Bell />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                  <DropdownMenuShortcut>
+                      <>
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                      </>
+                  </DropdownMenuShortcut>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/saved')}>
+                  <Bookmark/>
+                  <span>Saved</span>
+                </DropdownMenuItem>
+            </>
+          )}
+          {user ? (
+            <>
+                                  <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <Link href="/login">
+                <DropdownMenuItem>
+                  <User />
+                  <span>Login</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link href="/register">
+                <DropdownMenuItem>
+                  <UserPlus />
+                  <span>Register</span>
+                </DropdownMenuItem>
+              </Link>
+            </>
+          )}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+function DropdownMenuDemo() {
   const { user, loading, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -254,27 +368,6 @@ export function DropdownMenuDemo() {
               <span>Home</span>
             </DropdownMenuItem>
           </Link>
-          {user && (
-            <>
-              <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/profile')}>
-                  <User />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/notifications')}>
-                  <Bell />
-                  <span>Notifications</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/saved')}>
-                  <Bookmark/>
-                  <span>Saved</span>
-                </DropdownMenuItem>
-            </>
-          )}
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
@@ -324,11 +417,10 @@ export function DropdownMenuDemo() {
         
           {user ? (
             <>
-                                  <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut />
-                <span>Logout</span>
-              </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </DropdownMenuItem>
             </>
           ) : (
             <>
@@ -374,7 +466,11 @@ export default function Navbar() {
           <NavbarMenu/>
         </div>
         <div className="md:hidden items-center flex gap-3">
-          <NotificationsPopover />
+          {user ? (
+        <DropdownMenuDemo2 />
+      ) : (
+        <></>
+      )}
           <DropdownMenuDemo />
         </div>
       </div>

@@ -4,86 +4,146 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import axios from 'axios';
+import { formatDistanceToNow } from "date-fns";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Loader2, ChevronsUpDown } from "lucide-react";
 import NumberButton from "@/components/ui/number-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useInView } from 'react-intersection-observer';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 
-// Define notification types and icons
 const notificationTypes = {
-  NEW_USER: { icon: "🌱", label: "User Account Created" },
-  NEW_FOLLOWER: { icon: "🙋", label: "New Follower" },
-  job_match: { icon: "💼", label: "Job Match" },
-  info: { icon: "ℹ️", label: "Information" },
-  warning: { icon: "⚠️", label: "Warning" },
+  job_match: {
+    icon: '💼',
+    label: 'Job Match'
+  },
+  system: {
+    icon: '🔔',
+    label: 'System'
+  },
+  message: {
+    icon: '✉️',
+    label: 'Message'
+  }
 };
 
-export default function Login() {
-  const { user, loading } = useAuth();
+export default function Notifications() { // Renamed component
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
+  const [sortFilter, setSortFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [groups, setGroups] = useState([]);
+  const [error, setError] = useState(null);
+  const { ref, inView } = useInView();
+
+  const fetchNotifications = async (pageNum) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await axios.get(`/api/notifications?page=${pageNum}&limit=20`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+
+      const newNotifications = response.data?.notifications || [];
+      const pagination = response.data?.pagination;
+      setGroups(response.data?.groups || []);
+
+      setNotifications(prev => (pageNum === 1 ? newNotifications : [...prev, ...newNotifications]));
+
+      setHasMore(pagination ? pageNum < pagination.totalPages : false);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setError('Failed to load notifications. Please try again.');
+      setNotifications([]);
+      setHasMore(false);
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
+    if (!authLoading) {
+      if (!user || !user.token) {
         router.push('/login');
       } else {
-        // Fetch notifications with Authorization header
-        axios.get('/api/notifications', {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        })
-          .then(response => {
-            console.log('Notifications:', response.data);
-            setNotifications(response.data);
-          })
-          .catch(error => {
-            console.error('Error fetching notifications:', error);
-          });
+        fetchNotifications(1);
       }
     }
-  }, [user, router, loading]);
+  }, [user, router, authLoading]);
+
+  useEffect(() => {
+    if (!isLoading && inView && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchNotifications(nextPage);
+    }
+  }, [inView, isLoading, hasMore, page]);
 
   const handleNotificationClick = (notification) => {
     console.log('Notification clicked:', notification);
-    if (notification.type === 'job_match' && notification.related_id) {
-      router.push(`/job-postings/${notification.related_id}`);
+    if (notification.type === 'job_match' && (notification.job_id || notification.jobid)) {
+      router.push(`/job-postings/${notification.job_id || notification.jobid}`);
     }
   };
 
   const handleDelete = async (notificationId, e) => {
-    e.stopPropagation(); // Prevent triggering the notification click
+    e.stopPropagation();
     try {
       await axios.delete(`/api/notifications?id=${notificationId}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      setNotifications(notifications.filter(n => n.id !== notificationId));
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
   };
 
-  // Add this function to calculate counts
+  const getFilteredNotifications = () => {
+    if (!Array.isArray(notifications)) return [];
+
+    return notifications.filter(n => {
+      const typeMatch = selectedType === 'all' || n.type === selectedType;
+
+      if (sortFilter === 'unread') {
+        return typeMatch && !n.is_read;
+      } else if (sortFilter === 'read') {
+        return typeMatch && n.is_read;
+      }
+      return typeMatch;
+    });
+  };
+
   const getNotificationCounts = () => {
-    const unreadNotifications = notifications.filter(n => !n.is_read);
     const counts = {
-      all: unreadNotifications.length // Changed from notifications.length
+      all: notifications.length,
+      read: notifications.filter(n => n.is_read).length,
+      unread: notifications.filter(n => !n.is_read).length
     };
 
-    // Count notifications by type (only unread ones)
-    unreadNotifications.forEach(notification => {
+    notifications.forEach(notification => {
       counts[notification.type] = (counts[notification.type] || 0) + 1;
     });
 
@@ -95,7 +155,7 @@ export default function Login() {
       await axios.put('/api/notifications', null, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -106,18 +166,17 @@ export default function Login() {
       await axios.put(`/api/notifications?id=${notificationId}`, null, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, is_read: true } : n
-      ));
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
     } catch (error) {
       console.error('Error marking as read:', error);
     }
   };
 
-  const filteredNotifications = selectedType === 'all'
-    ? notifications
-    : notifications.filter(n => n.type === selectedType);
-
+  const filteredNotifications = getFilteredNotifications();
   const notificationCounts = getNotificationCounts();
 
   return (
@@ -137,95 +196,81 @@ export default function Login() {
           Mark all as read
         </Button>
       </div>
-      <div className="flex gap-2 flex-wrap mb-6">
+
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+
+      {/* Sort Filter Buttons */}
+      <div className="flex gap-2 mb-4">
         <NumberButton
-          variant={selectedType === 'all' ? "disabled" : "outline"}
-          onClick={() => setSelectedType('all')}
-          className="flex gap-2 items-center"
-          count={notificationCounts.unread}
+          variant={sortFilter === 'all' ? "default" : "outline"}
+          onClick={() => setSortFilter('all')}
           text="All"
-        >
-          <Badge variant="secondary">{notificationCounts.unread || 0}</Badge>
-        </NumberButton>
-        {Object.entries(notificationTypes).map(([type, { icon, label }]) => (
-          <NumberButton
-            text={icon + ' ' + label}
-            count={notificationCounts[type] || 0}
-            key={type}
-            variant={selectedType === type ? "disabled" : "outline"}
-            onClick={() => setSelectedType(type)}
-            className="flex gap-2 items-center cursor-pointer px-3 py-1"
-          >
-          </NumberButton>
-        ))}
+          count={notificationCounts.all}
+        />
+        <NumberButton
+          variant={sortFilter === 'unread' ? "default" : "outline"}
+          onClick={() => setSortFilter('unread')}
+          text="Unread"
+          count={notificationCounts.unread}
+        />
+        <NumberButton
+          variant={sortFilter === 'read' ? "default" : "outline"}
+          onClick={() => setSortFilter('read')}
+          text="Read"
+          count={notificationCounts.read}
+        />
       </div>
+
       <div className="flex flex-col gap-4 w-full">
-        {filteredNotifications.map((notification) => {
-          const notificationType = notificationTypes[notification.type] || {};
+        {groups.map((group) => {
+          const groupDate = new Date(group.date).toLocaleDateString();
+          const groupNotifications = filteredNotifications.filter(
+            (n) => new Date(n.createdAt).toLocaleDateString() === groupDate
+          );
+
           return (
-            <div
-              key={notification.id}
-              className={`
-                flex items-start p-4 rounded-lg border
-                ${notification.type === 'job_match' ? 'cursor-pointer hover:bg-accent' : ''} 
-                ${!notification.is_read ? 'bg-secondary/20' : 'bg-card'}
-              `}
-              onClick={() => handleNotificationClick(notification)}
-            >
-              {notification.senderLogo ? (
-                <Avatar className="h-10 w-10 mr-4">
-                  <AvatarImage src={notification.senderLogo} alt={notification.senderName} />
-                  <AvatarFallback>{notificationType.icon}</AvatarFallback>
-                </Avatar>
-              ) : (
-                <span className="text-2xl mr-4">{notificationType.icon}</span>
-              )}
-
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{notification.senderName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {notification.type === 'job_match' && (
-                    <Badge variant="secondary">Job Match</Badge>
-                  )}
-                </div>
-
-                <p className="text-sm">{notification.important_message}</p>
-
-                {notification.metadata && notification.type === 'job_match' && (
-                  <div className="mt-2 text-sm bg-secondary/10 p-3 rounded-md">
-                    <p className="font-medium">{notification.metadata.title}</p>
-                    <p className="text-muted-foreground">{notification.metadata.location}</p>
-                    {notification.metadata.experienceLevel && (
-                      <Badge variant="outline" className="mt-2">
-                        {notification.metadata.experienceLevel}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2 mt-2">
-                  <Button size="sm" variant="outline">
-                    {notification.type === 'job_match' ? 'View Job' : 'View'}
+            <Collapsible key={group.date}>
+              <div className="flex items-center justify-between space-x-4 px-4">
+                <h3 className="font-medium mb-2">
+                  {group.count} new jobs on {groupDate}
+                </h3>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <ChevronsUpDown className="h-4 w-4" />
+                    <span className="sr-only">Toggle</span>
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => handleDelete(notification.id, e)}
-                  >
-                    Delete
-                  </Button>
-                </div>
+                </CollapsibleTrigger>
               </div>
-            </div>
+              <CollapsibleContent>
+                {groupNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="p-4 flex flex-row gap-4 items-center rounded-lg border-transparent hover:bg-secondary/10 cursor-pointer"
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <Avatar className="mr-4">
+                      <AvatarImage src={`https://logo.clearbit.com/${notification.senderName}.com`} />
+                      <AvatarFallback>{notification.senderName[0]}</AvatarFallback>
+
+                    </Avatar>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-semibold">{notification.metadata.title}</p>
+                      <p className="text-sm text-muted-foreground">{notification.senderName}</p>
+                      <p className="text-sm text-muted-foreground">{formatDistanceToNow(notification.createdAt, { addSuffix: true })}</p>
+                    </div>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
+
+        {hasMore && (
+          <div ref={ref} className="flex justify-center p-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

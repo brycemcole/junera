@@ -103,8 +103,10 @@ export async function GET(req) {
     let paramIndex = 1; // PostgreSQL uses 1-based indexing for parameters
 
     if (title) {
-      queryText += ` AND title ILIKE $${paramIndex}`;
-      params.push(`%${title}%`);
+      // Replace spaces with & for AND logic in to_tsquery
+      const formattedTitle = title.trim().replace(/\s+/g, ' & ');
+      queryText += ` AND to_tsvector('english', title) @@ to_tsquery('english', $${paramIndex})`;
+      params.push(formattedTitle);
       paramIndex++;
     }
     if (experienceLevel) {

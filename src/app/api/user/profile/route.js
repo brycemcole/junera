@@ -13,6 +13,7 @@ export async function GET(req) {
         const decoded = verifyToken(token);
         const userId = decoded.id;
 
+
         // Combined query using CTEs for fetching user profile data
         const queryText = `
             WITH UserInfo AS (
@@ -53,11 +54,11 @@ export async function GET(req) {
                 WHERE user_id = $1
             )
             SELECT 
-                (SELECT row_to_json(UserInfo) FROM UserInfo) as userData,
-                (SELECT json_agg(Education) FROM Education) as educationData,
-                (SELECT json_agg(Certifications) FROM Certifications) as certificationData,
-                (SELECT json_agg(WorkExperience) FROM WorkExperience) as experienceData,
-                (SELECT json_agg(Projects) FROM Projects) as projectData;
+                (SELECT row_to_json(UserInfo) FROM UserInfo) as userdata,
+                (SELECT json_agg(Education) FROM Education) as educationdata,
+                (SELECT json_agg(Certifications) FROM Certifications) as certificationdata,
+                (SELECT json_agg(WorkExperience) FROM WorkExperience) as experiencedata,
+                (SELECT json_agg(Projects) FROM Projects) as projectdata;
         `;
 
         const result = await query(queryText, [userId]);
@@ -66,14 +67,16 @@ export async function GET(req) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const { userData, educationData, certificationData, experienceData, projectData } = result.rows[0];
+        console.log(result.rows[0]);
 
+        const { userdata, educationdata, certificationdata, experiencedata, projectdata } = result.rows[0];
+        console.log(userdata, educationdata, certificationdata, experiencedata, projectdata);
         const profile = {
-            user: userData || {},
-            education: educationData || [],
-            certifications: certificationData || [],
-            experience: experienceData || [],
-            projects: projectData || []
+            user: userdata || {},
+            education: educationdata || [],
+            certifications: certificationdata || [],
+            experience: experiencedata || [],
+            projects: projectdata || []
         };
 
         return NextResponse.json(profile);

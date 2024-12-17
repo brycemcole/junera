@@ -64,6 +64,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { ListFilter, Sparkles } from "lucide-react"
 
 function SavedSearchButton({ name, title, experienceLevel, location }) {
   const router = useRouter();
@@ -533,6 +535,7 @@ export default function JobPostingsPage() {
   const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
   const [llmResponse, setLlmResponse] = useState("");
   const [companies, setCompanies] = useState([]);
+  const [viewMode, setViewMode] = useState('recent'); // Add this state
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -540,12 +543,51 @@ export default function JobPostingsPage() {
     "How to prepare for a job interview?",
   ];
 
+  useEffect(() => {
+    const currentParams = {
+      title,
+      experienceLevel,
+      location,
+      company,
+      currentPage
+    };
+    sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
+  }, [title, experienceLevel, location, company, currentPage]);
 
-  function FilterPopover({ experienceLevel, location, company }) {
+  // Sync states from URL params
+  useEffect(() => {
+    const params = Object.fromEntries([...searchParams]);
+
+    if (Object.keys(params).length === 0) {
+      // Only restore from session if we're not explicitly clearing filters
+      const storedParams = sessionStorage.getItem('jobSearchParams');
+      if (storedParams && window.location.pathname !== '/job-postings') {
+        const parsedParams = JSON.parse(storedParams);
+        const newParams = new URLSearchParams({
+          ...(parsedParams.title && { title: parsedParams.title }),
+          ...(parsedParams.experienceLevel && { explevel: parsedParams.experienceLevel }),
+          ...(parsedParams.location && { location: parsedParams.location }),
+          ...(parsedParams.company && { company: parsedParams.company }),
+          page: parsedParams.currentPage || '1'
+        });
+        router.replace(`/job-postings?${newParams.toString()}`);
+        return;
+      }
+    }
+
+    // Normal sync from URL params
+    setTitle(params.title || "");
+    setExperienceLevel(params.explevel || "");
+    setLocation(params.location || "");
+    setCompany(params.company || "");
+    setCurrentPage(parseInt(params.page) || 1);
+  }, [searchParams, router]);
+
+  const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100' : ' '}`}>
+          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
             <Filter size={14} className="mr-2" />
             Filter</Button>
         </PopoverTrigger>
@@ -565,14 +607,15 @@ export default function JobPostingsPage() {
                 <span className="text-foreground text-xs">Experience Level</span>
                 <ExperienceLevelSelect
                   onChange={(value) => {
-                    const params = Object.fromEntries([...searchParams]);
+                    const params = new URLSearchParams(searchParams);
                     if (value === "null") {
-                      delete params.explevel;
+                      params.delete("explevel");
                     } else {
-                      params.explevel = value;
+                      params.set("explevel", value);
                     }
-                    params.page = '1';
-                    router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+                    // Only reset page to 1 when changing filters
+                    params.set("page", "1");
+                    router.push(`/job-postings?${params.toString()}`);
                   }}
                   value={experienceLevel}
                 />
@@ -581,14 +624,15 @@ export default function JobPostingsPage() {
                 <span className="text-foreground text-xs">Location</span>
                 <LocationSelect
                   onChange={(value) => {
-                    const params = Object.fromEntries([...searchParams]);
+                    const params = new URLSearchParams(searchParams);
                     if (value === "null") {
-                      delete params.location;
+                      params.delete("location");
                     } else {
-                      params.location = value;
+                      params.set("location", value);
                     }
-                    params.page = '1';
-                    router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+                    // Only reset page to 1 when changing filters
+                    params.set("page", "1");
+                    router.push(`/job-postings?${params.toString()}`);
                   }}
                   value={location}
                 />
@@ -598,7 +642,8 @@ export default function JobPostingsPage() {
               <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
                 setCompanyData([]);
                 setCompany("");
-                router.push(`/job-postings`);
+                sessionStorage.removeItem('jobSearchParams'); // Add this line
+                router.push('/job-postings');
               }}>
                 Clear
               </Button>
@@ -609,16 +654,6 @@ export default function JobPostingsPage() {
     );
   }
 
-  // Sync states from URL params
-  useEffect(() => {
-    const params = Object.fromEntries([...searchParams]);
-    setTitle(params.title || "");
-    setExperienceLevel(params.explevel || "");
-    setLocation(params.location || "");
-    setCompany(params.company || "");
-    setCurrentPage(parseInt(params.page) || 1);
-  }, [searchParams]);
-
   // Helper: Cancel current requests
   const cancelPendingRequests = () => {
     if (currentController) {
@@ -628,6 +663,7 @@ export default function JobPostingsPage() {
 
   const resetCompanyData = () => {
     setCompanyData([]);
+    sessionStorage.removeItem('jobSearchParams'); // Add this line
     const params = Object.fromEntries([...searchParams]);
     delete params.company;
     params.page = '1';
@@ -666,13 +702,21 @@ export default function JobPostingsPage() {
 
   // Builds a URL with updated page (or other params) while preserving existing query parameters
   function buildHref(pageNumber) {
-    const params = Object.fromEntries([...searchParams]);
-    params.page = pageNumber;
-    return `/job-postings?${new URLSearchParams(params).toString()}`;
+    const params = new URLSearchParams(searchParams);
+    params.set('page', pageNumber.toString());
+    return `/job-postings?${params.toString()}`;
   }
 
   useEffect(() => {
     if (!loading) {
+      // After the previous session storage items
+      const storedViewMode = sessionStorage.getItem('jobViewMode');
+      if (storedViewMode) {
+        setViewMode(storedViewMode);
+        if (storedViewMode === 'suggested') {
+          fetchSuggestedJobs();
+        }
+      }
       const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
       const cachedData = sessionStorage.getItem(cacheKey);
       const cacheExpiry = 3 * 60 * 1000; // 3 minutes
@@ -797,10 +841,13 @@ export default function JobPostingsPage() {
 
   const handleSearch = useCallback(
     (val) => {
-      const params = Object.fromEntries([...searchParams]);
-      params.title = val;
-      params.page = '1';
-      router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+      const params = new URLSearchParams(searchParams);
+      // Only reset page if the search term has changed
+      if (params.get('title') !== val) {
+        params.set('page', '1');
+      }
+      params.set('title', val);
+      router.push(`/job-postings?${params.toString()}`);
     },
     [searchParams, router]
   );
@@ -949,6 +996,46 @@ export default function JobPostingsPage() {
     fetchUserProfile();
   }, [user]);
 
+  // Add this function to handle toggle
+  const fetchRecentJobs = async () => {
+    try {
+      const result = await fetchWithCancel(
+        `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+      );
+      if (result) {
+        setData(result.jobPostings || []);
+      }
+    } catch (error) {
+      console.error("Error fetching job postings:", error);
+    }
+  };
+
+  const handleViewModeChange = async (value) => {
+    if (!value) return; // Skip if value is empty (prevents deselection)
+    setViewMode(value);
+    sessionStorage.setItem('jobViewMode', value);
+
+    if (value === 'suggested') {
+      await fetchSuggestedJobs();
+    } else if (value === 'recent') {
+      await fetchRecentJobs();
+    }
+  };
+
+  const fetchSuggestedJobs = async () => {
+    try {
+      const response = await fetch(`/api/job-postings/suggested?page=${currentPage}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      const result = await response.json();
+      setData(result.jobPostings);
+    } catch (error) {
+      console.error('Error fetching suggested jobs:', error);
+    }
+  };
+
   return (
     <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
       <div className="z-0">
@@ -1025,7 +1112,21 @@ export default function JobPostingsPage() {
         {data && data.length > 0 ? (
           <div key="job-postings">
             <div className="mb-4 items-center flex gap-4">
-              <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
+              {user && ( // Only show toggle if user is logged in
+                <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
+                  <ToggleGroupItem value="recent" aria-label="Recent jobs" className="px-3">
+                    <Clock className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="suggested" aria-label="Suggested jobs" className="px-3">
+                    <Sparkles className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              )}
+              <FilterPopover
+                experienceLevel={experienceLevel}
+                location={location}
+                company={company}
+              />
               <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
                 <div className="flex flex-col space-y-1">
                   {title && <span className="">Job Title: {title}</span>}
@@ -1047,6 +1148,12 @@ export default function JobPostingsPage() {
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) {
+                    router.push(buildHref(currentPage - 1));
+                  }
+                }}
                 href={currentPage > 1 ? buildHref(currentPage - 1) : undefined}
                 disabled={currentPage === 1}
               />
@@ -1099,7 +1206,16 @@ export default function JobPostingsPage() {
 
             {/* Next page link */}
             <PaginationItem>
-              <PaginationNext href={data && data.length == limit ? buildHref(currentPage + 1) : undefined} disabled={data && data.length < limit} />
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (data && data.length === limit) {
+                    router.push(buildHref(currentPage + 1));
+                  }
+                }}
+                href={data && data.length === limit ? buildHref(currentPage + 1) : undefined}
+                disabled={data && data.length < limit}
+              />
             </PaginationItem>
           </PaginationContent>
         </Pagination>

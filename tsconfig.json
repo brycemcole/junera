@@ -33,7 +33,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "src/**/*.tsx"
-, "src/components/job-postings-chart.js", "src/app/register/page.js", "src/app/job-postings/saved-searches/page.js"  ],
+, "src/components/job-postings-chart.js", "src/app/register/page.js", "src/app/job-postings/saved-searches/page.js", "src/components/edit-profile.js", "src/components/ui/dropdown-menu.tsx"  ],
   "exclude": [
     "node_modules"
   ]
