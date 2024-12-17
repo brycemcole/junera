@@ -158,6 +158,7 @@ const processJobPostings = (jobs) => {
 };
 
 export async function GET(req) {
+  const { signal } = req;
   const url = req.url;
   const { searchParams } = new URL(url);
   const page = parseInt(searchParams.get("page")) || 1;
@@ -244,6 +245,10 @@ export async function GET(req) {
   const overallStart = performance.now();
 
   try {
+    if (signal.aborted) {
+      throw new Error('Request aborted');
+    }
+
     // Build query
     let queryText = `
       SELECT 
@@ -328,7 +333,7 @@ export async function GET(req) {
 
     const queryPrepStart = performance.now();
     const queryExecStart = performance.now();
-    const result = await query(queryText, params);
+    const result = await query(queryText, params /*, { signal }*/);
     const queryExecEnd = performance.now();
     timings.queryExecution = queryExecEnd - queryExecStart;
     const queryPrepEnd = performance.now();
@@ -342,6 +347,9 @@ export async function GET(req) {
 
     return new Response(JSON.stringify({ jobPostings, timings }), { status: 200 });
   } catch (error) {
+    if (error.message === 'Request aborted') {
+      return new Response(JSON.stringify({ error: 'Request was aborted' }), { status: 499 });
+    }
     console.error("Error fetching job postings:", error);
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
@@ -350,7 +358,12 @@ export async function GET(req) {
 }
 
 export async function PUT(req) {
+  const { signal } = req;
   try {
+    if (signal.aborted) {
+      throw new Error('Request aborted');
+    }
+
     const { jobId, summary } = await req.json();
 
     // Validate inputs
@@ -368,7 +381,7 @@ export async function PUT(req) {
       WHERE job_id = $2 
       RETURNING *`;
 
-    const result = await query(updateQuery, [summary, jobId]);
+    const result = await query(updateQuery, [summary, jobId] /*, { signal }*/);
 
     if (result.rows.length === 0) {
       return new Response(
@@ -386,6 +399,9 @@ export async function PUT(req) {
     );
 
   } catch (error) {
+    if (error.message === 'Request aborted') {
+      return new Response(JSON.stringify({ error: 'Request was aborted' }), { status: 499 });
+    }
     console.error("Error updating job posting:", error);
     return new Response(
       JSON.stringify({ error: "Error updating job posting" }),

@@ -13,7 +13,13 @@ function hashStringToInt(str) {
 }
 
 export async function GET(req) {
+    const { signal } = req;
+
     try {
+        if (signal.aborted) {
+            throw new Error('Request aborted');
+        }
+
         // Attempt to retrieve companies from cache first
         const cachedCompanies = await getCached('companies');
         if (cachedCompanies) {
@@ -50,6 +56,9 @@ export async function GET(req) {
 
         return new Response(JSON.stringify(companies), { status: 200 });
     } catch (error) {
+        if (error.message === 'Request aborted') {
+            return new Response(JSON.stringify({ error: 'Request was aborted' }), { status: 499 });
+        }
         console.error("Error fetching companies:", error);
         return new Response(JSON.stringify({ error: "Error fetching companies" }), { status: 500 });
     }
