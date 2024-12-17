@@ -1,50 +1,45 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import { getConnection } from '@/lib/db';
-import sql from 'mssql';
+import { query } from '@/lib/pgdb';
 
 export async function GET(request) {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-        return NextResponse.json({ isBookmarked: false });
-    }
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader) {
+    return NextResponse.json({ isBookmarked: false });
+  }
 
-    const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get('jobId');
-    
-    if (!jobId) {
-        return NextResponse.json({ error: 'Job ID required' }, { status: 400 });
-    }
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get('jobId');
 
-    try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.SESSION_SECRET);
-        const userId = decoded.id;
+  if (!jobId) {
+    return NextResponse.json({ error: 'Job ID required' }, { status: 400 });
+  }
 
-        const pool = await getConnection();
-        const result = await pool.request()
-            .input('userId', sql.NVarChar, userId)
-            .input('jobId', sql.NVarChar, jobId)
-            .query(`
-                SELECT COUNT(1) as count
-                FROM favorites_jobs 
-                WHERE user_id = @userId 
-                AND job_posting_id = @jobId
-            `);
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
+    const userId = decoded.id;
 
-        return NextResponse.json({ 
-            isBookmarked: result.recordset[0].count > 0 
-        });
-    } catch (error) {
-        console.error('GET error:', error);
-        return NextResponse.json({ isBookmarked: false });
-    }
+    const result = await query(`
+      SELECT COUNT(1) as count
+      FROM user_interactions 
+      WHERE user_id = $1 
+      AND job_posting_id = $2
+      AND interaction_type = 'bookmark'
+    `, [userId, jobId]);
+
+    return NextResponse.json({
+      isBookmarked: result.rows[0].count > 0
+    });
+  } catch (error) {
+    console.error('GET error:', error);
+    return NextResponse.json({ isBookmarked: false }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) {
-    console.log('No auth header');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -55,27 +50,15 @@ export async function POST(request) {
     const body = await request.json();
     const jobPostingId = body.jobPostingId;
 
-    console.log('Adding bookmark:', { userId, jobPostingId });
-
     if (!userId || !jobPostingId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const pool = await getConnection();
-    await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .input('jobId', sql.NVarChar, jobPostingId) // Changed to UniqueIdentifier
-      .query(`
-        IF NOT EXISTS (
-          SELECT 1 FROM favorites_jobs 
-          WHERE user_id = @userId AND job_posting_id = @jobId
-        )
-        BEGIN
-          INSERT INTO favorites_jobs (user_id, job_posting_id, created_at)
-          VALUES (@userId, @jobId, GETDATE());
-        END;
-        SELECT 1 as success;
-      `);
+    await query(`
+      INSERT INTO user_interactions (user_id, job_posting_id, interaction_type)
+      VALUES ($1, $2, 'bookmark')
+      ON CONFLICT (user_id, job_posting_id, interaction_type) DO NOTHING
+    `, [userId, jobPostingId]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -90,33 +73,27 @@ export async function DELETE(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const token = authHeader.split(' ')[1];
-  
+
   try {
-    const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
     const userId = decoded.id;
     const { searchParams } = new URL(request.url);
     const jobPostingId = searchParams.get('jobPostingId');
 
-    console.log('Removing bookmark:', { userId, jobPostingId }); // Add debug log
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid token payload' }, { status: 400 });
+    if (!userId || !jobPostingId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .input('jobId', sql.NVarChar, jobPostingId) // Changed to UniqueIdentifier
-      .query(`
-        DELETE FROM favorites_jobs 
-        WHERE user_id = @userId AND job_posting_id = @jobId;
-        SELECT @@ROWCOUNT as deleted;
-      `);
+    const result = await query(`
+      DELETE FROM user_interactions 
+      WHERE user_id = $1 AND job_posting_id = $2 AND interaction_type = 'bookmark'
+      RETURNING *
+    `, [userId, jobPostingId]);
 
-    const deleted = result.recordset[0].deleted > 0;
+    const deleted = result.rowCount > 0;
     return NextResponse.json({ success: deleted });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('DELETE error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

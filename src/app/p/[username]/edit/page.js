@@ -18,42 +18,42 @@ const debounce = (fn, delay) => {
 
 // Memoized Textarea component
 const Textarea19 = memo(function Textarea19(props) {
-    const textareaRef = useRef(null);
-    const defaultRows = 1;
-    const maxRows = undefined; // You can set a max number of rows
+  const textareaRef = useRef(null);
+  const defaultRows = 1;
+  const maxRows = undefined; // You can set a max number of rows
 
-    const handleInput = (e) => {
-        const textarea = e.target;
-        textarea.style.height = "auto";
+  const handleInput = (e) => {
+    const textarea = e.target;
+    textarea.style.height = "auto";
 
-        const style = window.getComputedStyle(textarea);
-        const borderHeight = parseInt(style.borderTopWidth) + parseInt(style.borderBottomWidth);
-        const paddingHeight = parseInt(style.paddingTop) + parseInt(style.paddingBottom);
+    const style = window.getComputedStyle(textarea);
+    const borderHeight = parseInt(style.borderTopWidth) + parseInt(style.borderBottomWidth);
+    const paddingHeight = parseInt(style.paddingTop) + parseInt(style.paddingBottom);
 
-        const lineHeight = parseInt(style.lineHeight);
-        const maxHeight = maxRows ? lineHeight * maxRows + borderHeight + paddingHeight : Infinity;
+    const lineHeight = parseInt(style.lineHeight);
+    const maxHeight = maxRows ? lineHeight * maxRows + borderHeight + paddingHeight : Infinity;
 
-        const newHeight = Math.min(textarea.scrollHeight + borderHeight, maxHeight);
+    const newHeight = Math.min(textarea.scrollHeight + borderHeight, maxHeight);
 
-        textarea.style.height = `${newHeight}px`;
-    };
+    textarea.style.height = `${newHeight}px`;
+  };
 
-    useEffect(() => {
-        if (textareaRef.current) {
-            handleInput({ target: textareaRef.current });
-        }
-    }, [props.value]);
+  useEffect(() => {
+    if (textareaRef.current) {
+      handleInput({ target: textareaRef.current });
+    }
+  }, [props.value], handleInput);
 
-    return (
-        <div className="space-y-2">
-            <Label htmlFor="textarea-19">{props.label}</Label>
-            <Textarea
-                {...props}
-                ref={textareaRef}
-                onInput={handleInput}
-            />
-        </div>
-    );
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="textarea-19">{props.label}</Label>
+      <Textarea
+        {...props}
+        ref={textareaRef}
+        onInput={handleInput}
+      />
+    </div>
+  );
 });
 
 // Form input component
@@ -139,25 +139,25 @@ export default function EditProfilePage({ params }) {
           lastname: data.lastname || '',
           desired_job_title: data.desired_job_title || '',
           professionalSummary: data.professionalSummary || '',
-            employment_type: data.employment_type || '',
-            desired_location: data.desired_location || '',
-            willing_to_relocate: data.willing_to_relocate || false,
-            desired_salary_min: data.desired_salary_min || '',
-            availability_date: data.availability_date || '',
-            skills: data.skills || '',
-            languages: data.languages || '',
-            certifications: data.certifications || '',
-            preferred_industries: data.preferred_industries || '',
-            phone_number: data.phone_number || '',
-            soft_skills: data.soft_skills || '',
-            technical_skills: data.technical_skills || '',
-            other_skills: data.other_skills || '',
-            twitter: data.twitter || '',
-            github_url: data.github_url || '',
-            leetcode_url: data.leetcode_url || '',
-            link: data.link || '',
-            link2: data.link2 || '',
-            linkedin_url: data.linkedin_url || ''
+          employment_type: data.employment_type || '',
+          desired_location: data.desired_location || '',
+          willing_to_relocate: data.willing_to_relocate || false,
+          desired_salary_min: data.desired_salary_min || '',
+          availability_date: data.availability_date || '',
+          skills: data.skills || '',
+          languages: data.languages || '',
+          certifications: data.certifications || '',
+          preferred_industries: data.preferred_industries || '',
+          phone_number: data.phone_number || '',
+          soft_skills: data.soft_skills || '',
+          technical_skills: data.technical_skills || '',
+          other_skills: data.other_skills || '',
+          twitter: data.twitter || '',
+          github_url: data.github_url || '',
+          leetcode_url: data.leetcode_url || '',
+          link: data.link || '',
+          link2: data.link2 || '',
+          linkedin_url: data.linkedin_url || ''
         });
       }
     };
@@ -192,7 +192,7 @@ export default function EditProfilePage({ params }) {
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     const finalValue = type === 'checkbox' ? checked : value;
-    
+
     // Update local state immediately
     setFormData(prev => {
       const newData = { ...prev, [name]: finalValue };
@@ -208,7 +208,7 @@ export default function EditProfilePage({ params }) {
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
     }
-    
+
     // Immediate save
     const response = await fetch('/api/user/profile', {
       method: 'PUT',
@@ -218,7 +218,7 @@ export default function EditProfilePage({ params }) {
       },
       body: JSON.stringify(formData),
     });
-    
+
     if (response.ok) {
       setMessage('Profile updated successfully.');
       router.push(`/p/${username}`);

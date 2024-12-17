@@ -1,17 +1,12 @@
 "use client";
-import React, { memo, useState, useEffect } from 'react';
-import { formatDistanceToNow } from "date-fns";
-import { debounce } from "lodash";
+import React, { memo, useState, Fragment, useEffect, use, useCallback, useRef } from 'react';
 import { JobList } from "@/components/JobPostings";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { JobPostingsChart } from "@/components/job-postings-chart";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import {
   Sheet,
   SheetClose,
@@ -23,31 +18,27 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Search, Info, Sparkle, SparkleIcon, FilterX, Clock, Zap } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Search, Info, Sparkle, SparkleIcon, FilterX, Clock, Zap, X, Factory, Scroll, Filter, Loader2 } from "lucide-react";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -55,232 +46,460 @@ import { ChevronRight } from "lucide-react";
 import { BriefcaseBusiness } from "lucide-react";
 import { useSearchParams } from 'next/navigation';
 import { useDebounce } from 'use-debounce';
-import { User } from 'lucide-react';
-import { Bot } from 'lucide-react';
-import { Send } from 'lucide-react';
-import { Briefcase } from 'lucide-react';
-import { Calendar } from 'lucide-react';
 import { MapPin } from 'lucide-react';
-import { DollarSign } from 'lucide-react';
-import { Settings } from 'lucide-react';
+
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from 'lucide-react';
-import { X } from 'lucide-react';
 import { Bookmark } from 'lucide-react';
-import { TriangleAlert } from "lucide-react";
-import AlertDemo from "./[id]/AlertDemo";
+import { Label } from "@/components/ui/label";
+import { Check, ChevronDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { FixedSizeList as List } from 'react-window';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { ListFilter, Sparkles } from "lucide-react"
 
-export const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose, title, experienceLevel, location, company }) {
-    return (
-        <Sheet>
-            <SheetTrigger asChild>
-                <Button size="sm" variant="outline">View Search Insights</Button>
-            </SheetTrigger>
-            <SheetContent className="w-full max-w-md mx-auto sm:max-w-lg"> {/* Added responsive classes */}
-                <SheetHeader>
-                    <SheetTitle>Search Insights for {title}</SheetTitle>
-                    <SheetDescription>
-                        Make changes to your profile here. Click save when you're done.
-                        </SheetDescription>
-                    </SheetHeader>
-                <JobPostingsChart 
-                    title={title}
-                    experienceLevel={experienceLevel}
-                    location={location}
-                    company={company}
-                />
-                <SheetFooter>
-                    <SheetClose asChild>
-                        <Button type="button" onClick={onClose}>Close</Button>
-                    </SheetClose>
-                </SheetFooter>
-            </SheetContent>
-        </Sheet>
-    );
-});
+function SavedSearchButton({ name, title, experienceLevel, location }) {
+  const router = useRouter();
+  const redirectToSearch = () => {
+    router.push(`/job-postings?title=${title}&location=${location}&explevel=${experienceLevel}`);
+  };
 
-export const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
-    return (
-        <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="relative text-muted-foreground  ps-9 h-[30px] w-[100px] text-xs rounded-lg border-transparent bg-muted dark:bg-neutral-900 shadow-none">
-
-          <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
-            <Zap size={14} strokeWidth={2} aria-hidden="true" />
-          </div>
-                <SelectValue placeholder="Level" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectGroup>
-                    <SelectLabel>Experience Level</SelectLabel>
-                    <SelectItem value="internship">Internships</SelectItem>
-                    <SelectItem value="entry level">Entry Level / Associate</SelectItem>
-                    <SelectItem value="mid level">Mid Level</SelectItem>
-                    <SelectItem value="senior">Senior Level</SelectItem>
-                    <SelectItem value="lead">Lead</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="director">Director</SelectItem>
-                    <SelectItem value="vp">Vice President</SelectItem>
-                    <SelectItem value="executive">Executive</SelectItem>
-                </SelectGroup>
-            </SelectContent>
-        </Select>
-    );
-});
-
-export const LocationSelect = memo(function LocationSelect({ onChange, value }) {
-    const states = {
-        "remote": "Remote",
-        "new york": "New York",
-        "california": "California",
-        "texas": "Texas",
-        "florida": "Florida",
-        "illinois": "Illinois",
-        "pennsylvania": "Pennsylvania",
-        "ohio": "Ohio",
-        "georgia": "Georgia",
-        "north carolina": "North Carolina",
-        "michigan": "Michigan",
-        "washington": "Washington",
-        "arizona": "Arizona",
-        "massachusetts": "Massachusetts",
-        "tennessee": "Tennessee",
-        "indiana": "Indiana",
-        "missouri": "Missouri",
-        "maryland": "Maryland",
-        "wisconsin": "Wisconsin",
-        "colorado": "Colorado",
-        "minnesota": "Minnesota",
-        "south carolina": "South Carolina",
-        "alabama": "Alabama",
-        "louisiana": "Louisiana",
-        "kentucky": "Kentucky",
-        "oregon": "Oregon",
-        "oklahoma": "Oklahoma",
-        "connecticut": "Connecticut",
-        "iowa": "Iowa",
-        "utah": "Utah",
-        "nevada": "Nevada",
-        "arkansas": "Arkansas",
-        "mississippi": "Mississippi",
-        "kansas": "Kansas",
-        "new mexico": "New Mexico",
-        "nebraska": "Nebraska",
-        "west virginia": "West Virginia",
-        "idaho": "Idaho",
-        "hawaii": "Hawaii",
-        "new hampshire": "New Hampshire",
-        "maine": "Maine",
-        "montana": "Montana",
-        "rhode island": "Rhode Island",
-        "delaware": "Delaware",
-        "south dakota": "South Dakota",
-        "north dakota": "North Dakota",
-        "alaska": "Alaska",
-        "vermont": "Vermont",
-        "wyoming": "Wyoming",
-    };
-
-    return (
-        <Select onValueChange={onChange} value={value}>
-            <SelectTrigger className="relative ps-9 w-[120px] text-muted-foreground text-xs rounded-lg h-[30px] border-transparent bg-muted dark:bg-neutral-900 shadow-none">
-            <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
-            <MapPin  size={14} strokeWidth={2} aria-hidden="true" />
-          </div>
-                <SelectValue placeholder="Location" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectGroup>
-                    <SelectLabel>State</SelectLabel>
-                    {Object.entries(states).map(([stateValue, stateName]) => (
-                        <SelectItem key={stateValue} value={stateValue}>
-                            {stateName}
-                        </SelectItem>
-                    ))}
-                </SelectGroup>
-            </SelectContent>
-        </Select>
-    );
-});
-
-export function Input26({ onSearch, value }) {
-    const [searchValue, setSearchValue] = useState(value || "");
-
-    const handleInputChange = (e) => {
-        setSearchValue(e.target.value);
-    };
-
-    const handleSearch = () => {
-        onSearch(searchValue);
-    };
-
-    useEffect(() => {
-        setSearchValue(value || "");
-    }, [value]);
-
-    return (
-        <div className="space-y-2 mb-4">
-            <div className="relative">
-                <Input 
-                    id="input-26" 
-                    className="peer pe-9 ps-12 h-12 rounded-xl" 
-                    placeholder="Search..." 
-                    type="search" 
-                    value={searchValue} 
-                    onChange={handleInputChange} 
-                />
-                <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-5 text-muted-foreground/80 peer-disabled:opacity-50">
-                    <Search size={16} strokeWidth={2} />
-                </div>
-                <button
-                    className="absolute inset-y-0 end-0 flex h-full w-9 items-center pr-4 justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Submit search"
-                    type="button"
-                    onClick={handleSearch}
-                >
-                    <ArrowRight id="loading-arrow" size={16} strokeWidth={2} aria-hidden="true" />
-                </button>
-            </div>
-        </div>
-    );
+  return (
+    <Button
+      className="group h-auto gap-4 py-3 text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+      variant="outline"
+      onClick={redirectToSearch}
+    >      <div className="space-y-1 w-[200px]">
+        <h3>{name}</h3>
+        <p className="text-muted-foreground text-wrap">
+          <strong className="text-foreground">{title || 'Any'}</strong> jobs in <strong className="text-foreground">{location || 'Any location'}</strong> requiring <strong className="text-foreground">{experienceLevel || 'Any'}</strong> experience level.
+        </p>
+      </div>
+      <ChevronRight
+        className="opacity-60 transition-transform group-hover:translate-x-0.5"
+        size={16}
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+    </Button>
+  );
 }
 
-export const MemoizedInput26 = memo(Input26);
 
-export const SaveSearchButton = memo(function SaveSearchButton({ 
-    title, 
-    experienceLevel, 
-    location, 
-    savedSearches, 
-    onSave, 
-    className 
-}) {
-    // Check if current search parameters match any saved search
-    const isAlreadySaved = savedSearches?.some(search => {
-        const params = JSON.parse(search.search_params);
-        return params.jobTitle === title && 
-               params.experienceLevel === experienceLevel && 
-               params.location === location;
-    });
+const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-    if (isAlreadySaved) return null;
+  const filteredCompanies = searchTerm
+    ? companies.filter((company) =>
+      company.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    : companies; // If searchTerm is empty, show all companies
 
-    // Only show save button if there are actual search parameters
-    if (!title && !experienceLevel && !location) return null;
+  /* company
+  100: {
+  "id": 1866,
+  "name": "Anyscale",
+  "logo": "/src/Anyscalelogo.png"
+}
+  */
+  useEffect(() => {
 
-    return (
-        <Button
+    if (currentCompany && companies) {
+      console.log("currentCompany", currentCompany);
+      console.log("companies", companies);
+      const foundCompany = companies.find(
+        (company) => company.name === currentCompany
+      );
+      if (foundCompany) {
+        setValue(foundCompany.name);
+      }
+    } else {
+      setValue("");
+    }
+  }, [currentCompany, companies]);
+
+  return (
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id="select-44"
             variant="outline"
-            size="sm"
-            onClick={onSave}
-            className={className}
+            role="combobox"
+            aria-expanded={open}
+            className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm"
+          >
+            {value ? (
+              <span className="flex min-w-0 items-center gap-2">
+                <Avatar className="w-5 h-5">
+                  <AvatarImage src={companies.find((c) => c.name === value)?.logo} />
+                  <AvatarFallback>{value.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="truncate font-semibold">{value}</span>
+              </span>
+            ) : (
+              <span className="flex min-w-0 text-muted-foreground items-center gap-2">
+                <span className="truncate">Company</span>
+              </span>
+            )}
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className="shrink-0 text-muted-foreground/80"
+              aria-hidden="true"
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0"
+          align="start"
         >
-            <Bookmark className="h-3 w-3" />
-        </Button>
-    );
+          <Command>
+            <CommandInput
+              placeholder="Search companies..."
+              value={searchTerm}
+              onValueChange={(value) => setSearchTerm(value)}
+            />
+            <CommandList>
+              <CommandEmpty>No company found.</CommandEmpty>
+              <CommandGroup heading="Companies">
+                <List
+                  height={300} // adjust height as needed
+                  itemCount={filteredCompanies.length}
+                  itemSize={40} // adjust item size as needed
+                  width="100%"
+                >
+                  {({ index, style }) => {
+                    const company = filteredCompanies[index];
+                    return (
+                      <div style={style}>
+                        <CommandItem
+                          value={company.name}
+                          onSelect={(currentValue) => {
+                            searchCompanyId(company.name);
+                            setValue(currentValue);
+                            setOpen(false);
+                          }}
+                        >
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={company.logo} loading="lazy" />
+                            <AvatarFallback>
+                              {company.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {company.name}
+                          {value === company.name && (
+                            <Check size={16} strokeWidth={2} className="ml-auto" />
+                          )}
+                        </CommandItem>
+                      </div>
+                    );
+                  }}
+                </List>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 });
 
-export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms }) {
+const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose, title, experienceLevel, location, company }) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button size="sm" variant="outline">View Search Insights</Button>
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-md mx-auto sm:max-w-lg"> {/* Added responsive classes */}
+        <SheetHeader>
+          <SheetTitle>Search Insights for {title}</SheetTitle>
+          <SheetDescription>
+            Make changes to your profile here. Click save when done.
+          </SheetDescription>
+        </SheetHeader>
+        <JobPostingsChart
+          title={title}
+          experienceLevel={experienceLevel}
+          location={location}
+          company={company}
+        />
+        <SheetFooter>
+          <SheetClose asChild>
+            <Button type="button" onClick={onClose}>Close</Button>
+          </SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+});
+
+
+
+const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+        </div>
+        {value ? (
+          <span className="text-muted-foreground truncate font-medium">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue placeholder="Level" />
+        )}
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel>Experience Level</SelectLabel>
+          <SelectItem value="null">Any</SelectItem>
+          <SelectItem value="internship">Internship</SelectItem>
+          <SelectItem value="entry">Entry Level / Associate</SelectItem>
+          <SelectItem value="junior">Junior</SelectItem>
+          <SelectItem value="senior">Senior Level</SelectItem>
+          <SelectItem value="lead">Lead</SelectItem>
+          <SelectItem value="manager">Manager</SelectItem>
+          <SelectItem value="director">Director</SelectItem>
+          <SelectItem value="vp">Vice President</SelectItem>
+          <SelectItem value="executive">Executive</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+});
+
+const LocationSelect = memo(function LocationSelect({ onChange, value }) {
+  const states = {
+    "null": "Any",
+    "remote": "Remote",
+    "new york": "New York",
+    "california": "California",
+    "texas": "Texas",
+    "florida": "Florida",
+    "illinois": "Illinois",
+    "pennsylvania": "Pennsylvania",
+    "ohio": "Ohio",
+    "georgia": "Georgia",
+    "north carolina": "North Carolina",
+    "michigan": "Michigan",
+    "washington": "Washington",
+    "arizona": "Arizona",
+    "massachusetts": "Massachusetts",
+    "tennessee": "Tennessee",
+    "indiana": "Indiana",
+    "missouri": "Missouri",
+    "maryland": "Maryland",
+    "wisconsin": "Wisconsin",
+    "colorado": "Colorado",
+    "minnesota": "Minnesota",
+    "south carolina": "South Carolina",
+    "alabama": "Alabama",
+    "louisiana": "Louisiana",
+    "kentucky": "Kentucky",
+    "oregon": "Oregon",
+    "oklahoma": "Oklahoma",
+    "connecticut": "Connecticut",
+    "iowa": "Iowa",
+    "utah": "Utah",
+    "nevada": "Nevada",
+    "arkansas": "Arkansas",
+    "mississippi": "Mississippi",
+    "kansas": "Kansas",
+    "new mexico": "New Mexico",
+    "nebraska": "Nebraska",
+    "west virginia": "West Virginia",
+    "idaho": "Idaho",
+    "hawaii": "Hawaii",
+    "new hampshire": "New Hampshire",
+    "maine": "Maine",
+    "montana": "Montana",
+    "rhode island": "Rhode Island",
+    "delaware": "Delaware",
+    "south dakota": "South Dakota",
+    "north dakota": "North Dakota",
+    "alaska": "Alaska",
+    "vermont": "Vermont",
+    "wyoming": "Wyoming",
+  };
+
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+        </div>
+        {value ? (
+          <span className="text-muted-foreground truncate font-medium">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue placeholder="Location" />
+        )}
+
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel>State</SelectLabel>
+          {Object.entries(states).map(([stateValue, stateName]) => (
+            <SelectItem key={stateValue} value={stateValue}>
+              {stateName}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+});
+
+const JobCount = memo(function JobCount({ count, className }) {
+  return (
+    <span className={className}>
+      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-mono text-muted-foreground">
+        <span>{count} jobs</span>
+      </div>
+    </span>
+  );
+});
+
+function Input26({ onSearch, value, count }) {
+  const [searchValue, setSearchValue] = useState(value || "");
+  const [loading, setLoading] = useState(false);
+  const isFirstRender = useRef(true); // To track the initial mount
+
+  // Handle input change
+  const handleInputChange = (e) => {
+    setSearchValue(e.target.value);
+  };
+
+  // Effect to handle debounced search
+  useEffect(() => {
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // If there's no search value, you might want to handle it differently
+    if (searchValue.trim() === "") {
+      return;
+    }
+
+    // Set loading to true when search is about to be triggered
+    setLoading(true);
+
+    // Set up a debounce timer
+    const handler = setTimeout(async () => {
+      try {
+        // Assume onSearch returns a promise
+        await onSearch(searchValue);
+      } catch (error) {
+        console.error("Search failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    }, 500); // 500ms debounce delay
+
+    // Cleanup the timeout if searchValue changes before debounce delay
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchValue, onSearch]);
+
+  // Sync with external value changes
+  useEffect(() => {
+    setSearchValue(value || "");
+  }, [value]);
+
+  return (
+    <div className="space-y-2 mb-4">
+      <div className="relative">
+        <Input
+          id="input-26"
+          className="peer pr-24 ps-9 h-12 rounded-xl text-[16px]"
+          placeholder="Search..."
+          type="search"
+          value={searchValue}
+          onChange={handleInputChange}
+        />
+        <JobCount count={count} className="absolute top-0 right-0 mr-4" />
+        <div className="pointer-events-none absolute z-10 inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+          {loading ? (
+            <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <Search size={16} strokeWidth={2} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const MemoizedInput26 = memo(Input26);
+
+const SaveSearchButton = memo(function SaveSearchButton({
+  title,
+  experienceLevel,
+  location,
+  savedSearches,
+  onSave,
+  className
+}) {
+  // Check if current search parameters match any saved search
+  const isAlreadySaved = savedSearches?.some(search => {
+    const params = JSON.parse(search.search_params);
+    return params.jobTitle === title &&
+      params.experienceLevel === experienceLevel &&
+      params.location === location;
+  });
+
+  if (isAlreadySaved) return null;
+
+  // Only show save button if there are actual search parameters
+  if (!title && !experienceLevel && !location) return null;
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onSave}
+      className={className}
+    >
+      <Bookmark className="h-3 w-3" />
+    </Button>
+  );
+});
+
+const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData }) {
+  return (
+    <div className="border rounded-lg shadow-sm px-2 py-2 mt-3 mb-0 md:mb-4 md:mt-0 relative">
+      <div className="flex items-center gap-2">
+        <Avatar className="w-8 h-8">
+          <AvatarFallback>{company.name?.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <p className="text-sm text-muted-foreground font-medium">
+          Showing jobs at <Link href={`/companies/${company.id}`}>
+            <strong className="font-semibold text-foreground">{company.name}</strong>
+          </Link>
+        </p>
+        <X size={14} className="ml-auto mr-2 cursor-pointer" onClick={resetCompanyData} />
+      </div>
+    </div>
+  );
+});
+
+const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms }) {
   if (!title || !synonyms?.length) return null;
 
   return (
@@ -293,512 +512,714 @@ export const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, syno
   );
 });
 
-const stripHTML = (str) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(str, 'text/html');
-    return doc.body.textContent || "";
-  };
-
 
 export default function JobPostingsPage() {
-    const { user, loading } = useAuth(); // Destructure loading
-    const router = useRouter();
-    const enabled = false;
-    const searchParams = useSearchParams();
-    const [insightsShown, setInsightsShown] = useState(false);
-    const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [data, setData] = useState([]);
-    const [totalJobs, setTotalJobs] = useState(0);
-    const [title, setTitle] = useState("");
-    const [experienceLevel, setExperienceLevel] = useState("");
-    const [location, setLocation] = useState("");
-    const [company, setCompany] = useState("");
-    const limit = 20;
-    const [companies, setCompanies] = useState([]);
-    const [companySearch, setCompanySearch] = useState("");
-    const [debouncedSearch] = useDebounce(companySearch, 300);
-    const [savedSearches, setSavedSearches] = useState([]);
-    const [currentController, setCurrentController] = useState(null);
-    const [titleSynonyms, setTitleSynonyms] = useState([]);
-    const [userProfile, setUserProfile] = useState(null);
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const enabled = false;
+  const searchParams = useSearchParams();
 
-    // Add a computed variable for filter text
-    const filterText = [
-        title && `Title: ${title}`,
-        experienceLevel && `Experience: ${experienceLevel}`,
-        location && `Location: ${location}`,
-        company && `Company: ${companies.find(c => c.id === company)?.name || company}`,
-    ].filter(Boolean).join(', ');
+  const [data, setData] = useState([]);
+  const [title, setTitle] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [location, setLocation] = useState("");
+  const [company, setCompany] = useState("");
+  const [count, setCount] = useState(0);
+  const limit = 20;
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [currentController, setCurrentController] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [companyData, setCompanyData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [insightsShown, setInsightsShown] = useState(false);
+  const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
+  const [llmResponse, setLlmResponse] = useState("");
+  const [companies, setCompanies] = useState([]);
+  const [viewMode, setViewMode] = useState('recent'); // Add this state
 
-    // Helper function to cancel pending requests
-    const cancelPendingRequests = () => {
-        if (currentController) {
-            currentController.abort();
-        }
+  const predefinedQuestions = [
+    "How can I improve my resume?",
+    "What skills are in high demand?",
+    "How to prepare for a job interview?",
+  ];
+
+  useEffect(() => {
+    const currentParams = {
+      title,
+      experienceLevel,
+      location,
+      company,
+      currentPage
     };
+    sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
+  }, [title, experienceLevel, location, company, currentPage]);
 
-    // Modified fetch function with cancellation
-    const fetchWithCancel = async (url, options = {}) => {
-        cancelPendingRequests();
-        const controller = new AbortController();
-        setCurrentController(controller);
+  // Sync states from URL params
+  useEffect(() => {
+    const params = Object.fromEntries([...searchParams]);
 
-        try {
-            const response = await fetch(url, {
-                ...options,
-                signal: controller.signal,
-            });
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log('Request cancelled');
-                return null;
-            }
-            throw error;
-        } finally {
-            setCurrentController(null);
-        }
-    };
+    if (Object.keys(params).length === 0) {
+      // Only restore from session if we're not explicitly clearing filters
+      const storedParams = sessionStorage.getItem('jobSearchParams');
+      if (storedParams && window.location.pathname !== '/job-postings') {
+        const parsedParams = JSON.parse(storedParams);
+        const newParams = new URLSearchParams({
+          ...(parsedParams.title && { title: parsedParams.title }),
+          ...(parsedParams.experienceLevel && { explevel: parsedParams.experienceLevel }),
+          ...(parsedParams.location && { location: parsedParams.location }),
+          ...(parsedParams.company && { company: parsedParams.company }),
+          page: parsedParams.currentPage || '1'
+        });
+        router.replace(`/job-postings?${newParams.toString()}`);
+        return;
+      }
+    }
 
-    useEffect(() => {
-        if (!loading) { 
-            const cacheKeyTotal = `totalJobs_${title}_${experienceLevel}_${location}_${company}`;
-            const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
-            const cachedTotal = sessionStorage.getItem(cacheKeyTotal);
-            const cachedData = sessionStorage.getItem(cacheKey);
-            const cacheExpiry = 3600 * 1000; // 1 hour in milliseconds
-            const now = Date.now();
-    
-            const isCacheValid = (key) => {
-                const cacheTimestamp = sessionStorage.getItem(`${key}_timestamp`);
-                return cacheTimestamp && now - parseInt(cacheTimestamp, 10) < cacheExpiry;
-            };
+    // Normal sync from URL params
+    setTitle(params.title || "");
+    setExperienceLevel(params.explevel || "");
+    setLocation(params.location || "");
+    setCompany(params.company || "");
+    setCurrentPage(parseInt(params.page) || 1);
+  }, [searchParams, router]);
 
-            async function fetchData() {
-                try {
-                    const result = await fetchWithCancel(`/api/job-postings?page=${currentPage}&limit=${limit}&title=${title}&experienceLevel=${experienceLevel}&location=${location}&company=${company}`);
-                    if (result) {
-                        setData(result.jobPostings);
-                        console.log(result.jobPostings);
-                        sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
-                        sessionStorage.setItem(`${cacheKey}_timestamp`, now);
-                    }
-                } catch (error) {
-                    console.error("Error fetching job postings:", error);
-                }
-            }
-
-
-            const resetCache = () => {
-                sessionStorage.removeItem(cacheKeyTotal);
-                sessionStorage.removeItem(`${cacheKeyTotal}_timestamp`);
-                sessionStorage.removeItem(cacheKey);
-                sessionStorage.removeItem(`${cacheKey}_timestamp`);
-            };
-    
-    
-            if (isCacheValid(cacheKey)) {
-                try {
-                    setData(JSON.parse(cachedData));
-                } catch (error) {
-                    resetCache();
-                    fetchData();
-                    console.error("Error parsing cached job postings:", error);
-                }
-            } else {
-                fetchData();
-            }
-        }
-
-        // Cleanup function to cancel pending requests when component unmounts or dependencies change
-        return () => {
-            cancelPendingRequests();
-        };
-    }, [user, loading, router, currentPage, title, experienceLevel, location, company]);
-
-    useEffect(() => {
-        const params = Object.fromEntries([...searchParams]);
-        setTitle(params.title || "");
-        setExperienceLevel(params.explevel || "");
-        setLocation(params.location || "");
-        setCompany(params.company || "");
-        setCurrentPage(parseInt(params.page) || 1);
-    }, [searchParams]);
-
-    
-    const handleResetFilters = () => {
-        setTitle("");
-        setExperienceLevel("");
-        setLocation("");
-        setCompany("");
-        setCurrentPage(1);
-        router.push('/job-postings');
-    };
-
-    const handleNextPage = () => {
-        setCurrentPage((prevPage) => prevPage + 1);
-    };
-
-    const handlePreviousPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage((prevPage) => prevPage - 1);
-        }
-    };
-
-    const handleSearch = async (searchValue) => {
-        setTitle(searchValue);
-        setCurrentPage(1);
-    };
-
-    const handleExperienceLevelChange = async (value) => {
-        cancelPendingRequests();
-        setExperienceLevel(value);
-        setCurrentPage(1);
-
-    };
-
-    const handleLocationChange = async (value) => {
-        cancelPendingRequests();
-        setLocation(value);
-        setCurrentPage(1);
-
-    };
-
-    const handleCompanyChange = (value) => {
-        setCompany(value);
-    };
-
-    const handleCompanySearch = (e) => {
-        setCompanySearch(e.target.value);
-    };
-
-    useEffect(() => {
-        if (!loading && user) {
-            fetch('/api/saved-searches', {
-                headers: {
-                    'Authorization': `Bearer ${user.token}`,
-                },
-            })
-                .then(response => response.json())
-                .then(data => setSavedSearches(data.savedSearches))
-                .catch(error => console.error('Error fetching saved searches:', error));
-        }
-    }, [user, loading]);
-
-    const applySavedSearch = (searchParams) => {
-        const params = JSON.parse(searchParams);
-        setTitle(params.jobTitle || '');
-        setExperienceLevel(params.experienceLevel || '');
-        setLocation(params.location || '');
-        setCurrentPage(1);
-    };
-
-    const handleSaveSearch = async () => {
-        if (!user) return;
-
-        const searchParams = {
-            jobTitle: title,
-            experienceLevel: experienceLevel,
-            location: location,
-        };
-
-        try {
-            const response = await fetch('/api/saved-searches', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`,
-                },
-                body: JSON.stringify({ searchParams }),
-            });
-
-            if (response.ok) {
-                const newSavedSearch = await response.json();
-                setSavedSearches([...savedSearches, newSavedSearch]);
-                toast({
-                    title: "Search saved",
-                    description: "Your search has been saved successfully.",
-                });
-            }
-        } catch (error) {
-            console.error('Error saving search:', error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to save search. Please try again.",
-            });
-        }
-    };
-
-    // Add state for showing alert
-
-    // Add state for LLM response
-    const [llmResponse, setLlmResponse] = useState("");
-
-    // Define predefined questions
-    const predefinedQuestions = [
-        "How can I improve my resume?",
-        "What skills are in high demand?",
-        "How to prepare for a job interview?",
-    ];
-
-    // Handle predefined question click with profile context
-    const handlePredefinedQuestion = async (question) => {
-        if (!user) return;
-
-        if (!userProfile) {
-            setLlmResponse("Loading user profile...");
-            return;
-        }
-
-        const technicalSkills = userProfile.user.technical_skills || 'None specified';
-        const softSkills = userProfile.user.soft_skills || 'None specified';
-        const otherSkills = userProfile.user.other_skills || 'None specified';
-
-        // Create a detailed system message with profile information
-        const systemMessage = {
-            role: "system",
-            content: `
-You are a helpful career assistant. You are talking to ${userProfile.user.username}.
-Here is their profile:
-
-### Professional Summary
-${userProfile.user.professionalSummary || 'No summary available.'}
-
-### Work Experience
-${userProfile.experience && userProfile.experience.length > 0 
-? userProfile.experience.map(exp => 
-    `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-- **Location**: ${exp.location || 'Not specified'}
-- **Description**: ${exp.description || 'No description available'}
-- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-: 'No work experience available.'}
-
-### Education
-${userProfile.education && userProfile.education.length > 0
-? userProfile.education.map(edu => 
-    `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-- **Grade**: ${edu.grade || 'Not specified'}
-- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-: 'No education details available.'}
-
-### Skills
-- **Technical Skills**: ${technicalSkills}
-- **Soft Skills**: ${softSkills}
-- **Other Skills**: ${otherSkills}
-
-### Job Preferences
-- **Desired Job Title**: ${userProfile.user.desired_job_title || 'Not specified'}
-- **Preferred Location**: ${userProfile.user.desired_location || 'Any location'}
-- **Preferred Salary**: $${userProfile.user.jobPreferredSalary || 'Not specified'}
-- **Employment Type**: ${userProfile.user.employment_type || 'Not specified'}
-- **Preferred Industries**: ${userProfile.user.preferred_industries || 'Not specified'}
-- **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
-
-Please provide relevant career advice and job search assistance based on their profile.
-            `,
-        };
-
-        const userMessage = { role: "user", content: question };
-        const newMessages = [systemMessage, userMessage];
-        setLlmResponse("Loading...");
-
-        try {
-            const response = await fetch("http://localhost:1234/v1/chat/completions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: "qwen2-0.5b-instruct",
-                    messages: newMessages,
-                    temperature: 0.7,
-                    max_tokens: 500,
-                    stream: false,
-                }),
-            });
-
-            const data = await response.json();
-            const content = data.choices[0]?.message?.content || "No response.";
-            setLlmResponse(content);
-        } catch (error) {
-            console.error("Error fetching LLM response:", error);
-            setLlmResponse("Failed to get a response. Please try again.");
-        }
-    };
-
-    useEffect(() => {
-        async function fetchUserProfile() {
-            if (user) {
-                try {
-                    const response = await fetch('/api/user/profile', {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                        },
-                    });
-                    const profile = await response.json();
-                    setUserProfile(profile);
-        
-                } catch (error) {
-                    console.error('Error fetching user profile:', error);
-                }
-            }
-        }
-        
-        fetchUserProfile();
-    }, [user]);
-
+  const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
-        <div className="container mx-auto py-10 px-4 max-w-4xl">
-            <MemoizedInput26 onSearch={handleSearch} value={title} />
-            <ScrollArea>
-            <div className="flex w-full gap-4 pb-2 md:pb-8">
-            {user && (
-                    <SaveSearchButton
-                        title={title}
-                        experienceLevel={experienceLevel}
-                        location={location}
-                        savedSearches={savedSearches}
-                        onSave={handleSaveSearch}
-                        className="whitespace-nowrap text-muted-foreground bg-muted h-[30px] rounded-lg dark:bg-neutral-900 border-none w-[30px]"
-                    />
-                )}
-<Button 
-    className={`h-[30px] size-sm rounded-lg ${
-        location === "remote" 
-            ? "bg-neutral-600 text-white hover:bg-neutral-800" // Selected state
-            : "bg-muted dark:bg-neutral-900 shadow-none hover:text-background hover:bg-neutral-500 dark:hover:text-foreground dark:hover:bg-neutral-700 text-muted-foreground" // Default state
-    }`}
-    onClick={() => setLocation(location === "remote" ? "" : "remote")}
->
-    Remote
-</Button>
-            <ExperienceLevelSelect onChange={handleExperienceLevelChange} value={experienceLevel} />
-                <LocationSelect onChange={handleLocationChange} value={location} />
-                <Button 
-                    variant="outline"  
-                    size="sm"
-                    onClick={handleResetFilters}
-                    className="whitespace-nowrap w-[30px] h-[30px] rounded-lg ml-auto"
-                >
-                    <FilterX size={14} strokeWidth={1.5} />
-                </Button>
-            </div>
-            </ScrollArea>
-            {user && enabled && (
-                            <>
-                <div className="flex flex-row mb-2 gap-4">
-                    <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
-                      <BriefcaseBusiness size={16} strokeWidth={1.5} />
-                        <span>Applied</span>
-                    </Button>
-                    <SearchInsightsSheet title={title} />
-                </div>
-                <SaveSearchButton
-                    title={title}
-                    experienceLevel={experienceLevel}
-                    location={location}
-                    savedSearches={savedSearches}
-                    onSave={handleSaveSearch}
-                    className="whitespace-nowrap"
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+            <Filter size={14} className="mr-2" />
+            Filter</Button>
+        </PopoverTrigger>
+        <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-[13px] font-medium">Filter job postings</p>
+              <p className="text-xs text-muted-foreground">
+                Filter through over {count} job postings!
+              </p>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Company</span>
+                <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
+              </div>
+
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Experience Level</span>
+                <ExperienceLevelSelect
+                  onChange={(value) => {
+                    const params = new URLSearchParams(searchParams);
+                    if (value === "null") {
+                      params.delete("explevel");
+                    } else {
+                      params.set("explevel", value);
+                    }
+                    // Only reset page to 1 when changing filters
+                    params.set("page", "1");
+                    router.push(`/job-postings?${params.toString()}`);
+                  }}
+                  value={experienceLevel}
                 />
-                </>
-            )}
-            { savedSearchesVisible && savedSearches.length > 0 && (
-                <div className="mt-4 mb-6">
-                    <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-sm font-semibold">Saved Searches</h2>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => router.push('/job-postings/saved-searches')}
-                            className="h-8 w-8 p-0"
-                        >
-                            <Plus  size={16} strokeWidth={1.5} />
-                        </Button>
-                    </div>
-                        <div className="flex space-x-4 pb-2">
-                            {savedSearches.map((search) => {
-                                const params = JSON.parse(search.search_params);
-                                return (
-                                    <Badge
-                                        key={search.id}
-                                        variant="outline"
-                                        className="cursor-pointer hover:bg-accent"
-                                        onClick={() => applySavedSearch(search.search_params)}
-                                    >
-                                        {params.jobTitle} • {params.experienceLevel} • {params.location}
-                                    </Badge>
-                                );
-                            })}
-                        </div>
-                </div>
-            )}
-
-{insightsShown && (
-            <div>
-                { predefinedQuestions.map((question, index) => (
-                    <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        className="mr-2 mb-2 shadow-none bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10 text-muted-foreground/60"
-                        onClick={() => handlePredefinedQuestion(question)} // Pass userProfile is now handled internally
-                    >
-                        <SparkleIcon className="h-3 w-3 text-muted-foreground/60" />
-                        <p className="text-sm font-medium">
-                        {question}
-                        </p>
-                    </Button>
-                ))}
+              </div>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Location</span>
+                <LocationSelect
+                  onChange={(value) => {
+                    const params = new URLSearchParams(searchParams);
+                    if (value === "null") {
+                      params.delete("location");
+                    } else {
+                      params.set("location", value);
+                    }
+                    // Only reset page to 1 when changing filters
+                    params.set("page", "1");
+                    router.push(`/job-postings?${params.toString()}`);
+                  }}
+                  value={location}
+                />
+              </div>
             </div>
-        )}
-
-            {/* LLM Response */}
-            {llmResponse && (
-                <div className="mb-6 p-4 border rounded-md bg-gray-100">
-                    <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
-                </div>
+            {(title || experienceLevel || location || company) && (
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
+                setCompanyData([]);
+                setCompany("");
+                sessionStorage.removeItem('jobSearchParams'); // Add this line
+                router.push('/job-postings');
+              }}>
+                Clear
+              </Button>
             )}
-
-            <div>
-            {data && data.length > 0 ? (
-                <div key="job-postings">
-                   <JobList data={data} />
-                </div>
-            ) : (
-                <p>No job postings found. Adjust your search criteria.</p>
-            )}
-            </div>
-            <div className="flex justify-between mt-4">
-                <Pagination>
-                    <PaginationContent>
-                        <PaginationItem>
-                            <PaginationPrevious href="#" onClick={handlePreviousPage} disabled={currentPage === 1} />
-                        </PaginationItem>
-                        <PaginationItem>
-                            <PaginationLink href="#" onClick={() => setCurrentPage(1)} isActive={currentPage === 1}>1</PaginationLink>
-                        </PaginationItem>
-                        {currentPage > 1 && (
-                            <PaginationItem>
-                                <PaginationLink href="#" isActive>{currentPage}</PaginationLink>
-                            </PaginationItem>
-                        )}
-                        {currentPage > 1 && (
-                            <PaginationItem>
-                                <PaginationLink href="#" onClick={() => setCurrentPage(currentPage + 1)}>{currentPage + 1}</PaginationLink>
-                            </PaginationItem>
-                        )}
-                        <PaginationItem>
-                            <PaginationEllipsis />
-                        </PaginationItem>
-                        <PaginationItem>
-                            <PaginationNext href="#" onClick={handleNextPage} />
-                        </PaginationItem>
-                    </PaginationContent>
-                </Pagination>
-            </div>
-        </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
+  }
+
+  // Helper: Cancel current requests
+  const cancelPendingRequests = () => {
+    if (currentController) {
+      currentController.abort();
+    }
+  };
+
+  const resetCompanyData = () => {
+    setCompanyData([]);
+    sessionStorage.removeItem('jobSearchParams'); // Add this line
+    const params = Object.fromEntries([...searchParams]);
+    delete params.company;
+    params.page = '1';
+    router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+  };
+
+  const searchCompanyId = (id) => {
+    const params = Object.fromEntries([...searchParams]);
+    params.company = id;
+    params.page = '1';
+    router.push(`/job-postings?${new URLSearchParams(params).toString()}`);
+  };
+
+  // Helper: Fetch with cancellation
+  const fetchWithCancel = async (url, options = {}) => {
+    cancelPendingRequests();
+    const controller = new AbortController();
+    setCurrentController(controller);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request cancelled');
+        return null;
+      }
+      throw error;
+    } finally {
+      setCurrentController(null);
+    }
+  };
+
+  // Builds a URL with updated page (or other params) while preserving existing query parameters
+  function buildHref(pageNumber) {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', pageNumber.toString());
+    return `/job-postings?${params.toString()}`;
+  }
+
+  useEffect(() => {
+    if (!loading) {
+      // After the previous session storage items
+      const storedViewMode = sessionStorage.getItem('jobViewMode');
+      if (storedViewMode) {
+        setViewMode(storedViewMode);
+        if (storedViewMode === 'suggested') {
+          fetchSuggestedJobs();
+        }
+      }
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheExpiry = 3 * 60 * 1000; // 3 minutes
+      const now = Date.now();
+
+      async function fetchCompanies() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/companies`
+          );
+          if (result) {
+            setCompanies(result || []);
+          }
+        } catch (error) {
+          console.error("Error fetching companies:", error);
+        }
+      }
+
+
+      fetchCompanies();
+
+      async function fetchCompanyData() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/companies/${company}`
+          );
+
+          if (result) {
+            setCompanyData(result);
+          }
+
+        } catch (error) {
+          console.error("Error fetching company data:", error);
+        }
+      }
+      if (company) {
+        fetchCompanyData();
+      }
+
+      const isCacheValid = (key) => {
+        const cacheTimestamp = sessionStorage.getItem(`${key}_timestamp`);
+        return cacheTimestamp && now - parseInt(cacheTimestamp, 10) < cacheExpiry;
+      };
+
+      async function fetchData() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`,
+            {
+
+            }
+          );
+          if (result) {
+            setData(result.jobPostings || []);
+            sessionStorage.setItem(cacheKey, JSON.stringify(result.jobPostings));
+            sessionStorage.setItem(`${cacheKey}_timestamp`, now);
+          }
+        } catch (error) {
+          console.error("Error fetching job postings:", error);
+        }
+      }
+
+      async function fetchJobCount() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+          );
+          if (result) {
+            setCount(result.totalJobs || 0);
+          }
+        } catch (error) {
+          console.error("Error fetching job count:", error);
+        }
+      }
+
+      const resetCache = () => {
+        sessionStorage.removeItem(cacheKey);
+        sessionStorage.removeItem(`${cacheKey}_timestamp`);
+      };
+
+      if (isCacheValid(cacheKey) && cachedData) {
+        try {
+          setData(JSON.parse(cachedData));
+          fetchJobCount();
+        } catch (error) {
+          resetCache();
+          fetchData();
+          fetchJobCount();
+          console.error("Error parsing cached job postings:", error);
+        }
+      } else {
+        fetchData();
+        fetchJobCount();
+      }
+    }
+
+  }, [user, loading, currentPage, title, experienceLevel, location, company]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      fetch('/api/saved-searches', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+      })
+        .then(response => response.json())
+        .then(data => setSavedSearches(data.savedSearches))
+        .catch(error => console.error('Error fetching saved searches:', error));
+    }
+  }, [user, loading]);
+
+  const applySavedSearch = (searchParamsStr) => {
+    const params = JSON.parse(searchParamsStr);
+    const newParams = new URLSearchParams({
+      title: params.jobTitle || '',
+      explevel: params.experienceLevel || '',
+      location: params.location || '',
+      page: '1'
+    });
+    router.push(`/job-postings?${newParams.toString()}`);
+  };
+
+  const handleSearch = useCallback(
+    (val) => {
+      const params = new URLSearchParams(searchParams);
+      // Only reset page if the search term has changed
+      if (params.get('title') !== val) {
+        params.set('page', '1');
+      }
+      params.set('title', val);
+      router.push(`/job-postings?${params.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  const handleSaveSearch = async () => {
+    if (!user) return;
+
+    const searchParamsObj = {
+      jobTitle: title,
+      experienceLevel: experienceLevel,
+      location: location,
+
+    };
+
+    try {
+      const response = await fetch('/api/saved-searches', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({ searchParams: searchParamsObj }),
+      });
+
+      if (response.ok) {
+        const newSavedSearch = await response.json();
+        setSavedSearches([...savedSearches, newSavedSearch]);
+        toast({
+          title: "Search saved",
+          description: "Your search has been saved successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Error saving search:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save search. Please try again.",
+      });
+    }
+  };
+
+  const handlePredefinedQuestion = async (question) => {
+    if (!user) return;
+
+    if (!userProfile) {
+      setLlmResponse("Loading user profile...");
+      return;
+    }
+
+    const technicalSkills = userProfile.user.technical_skills || 'None specified';
+    const softSkills = userProfile.user.soft_skills || 'None specified';
+    const otherSkills = userProfile.user.other_skills || 'None specified';
+
+    const systemMessage = {
+      role: "system",
+      content: `
+  You are a helpful career assistant. You are talking to ${userProfile.user.username}.
+  Here is their profile:
+  
+  ### Professional Summary
+  ${userProfile.user.professionalSummary || 'No summary available.'}
+  
+  ### Work Experience
+  ${userProfile.experience && userProfile.experience.length > 0
+          ? userProfile.experience.map(exp =>
+            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+  - **Location**: ${exp.location || 'Not specified'}
+  - **Description**: ${exp.description || 'No description available'}
+  - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
+          : 'No work experience available.'}
+  
+  ### Education
+  ${userProfile.education && userProfile.education.length > 0
+          ? userProfile.education.map(edu =>
+            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+  - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
+  - **Grade**: ${edu.grade || 'Not specified'}
+  - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
+          : 'No education details available.'}
+  
+  ### Skills
+  - **Technical Skills**: ${technicalSkills}
+  - **Soft Skills**: ${softSkills}
+  - **Other Skills**: ${otherSkills}
+  
+  ### Job Preferences
+  - **Desired Job Title**: ${userProfile.user.desired_job_title || 'Not specified'}
+  - **Preferred Location**: ${userProfile.user.desired_location || 'Any location'}
+  - **Preferred Salary**: $${userProfile.user.jobPreferredSalary || 'Not specified'}
+  - **Employment Type**: ${userProfile.user.employment_type || 'Not specified'}
+  - **Preferred Industries**: ${userProfile.user.preferred_industries || 'Not specified'}
+  - **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
+  
+  Please provide relevant career advice and job search assistance based on their profile.
+              `,
+    };
+
+    const userMessage = { role: "user", content: question };
+    const newMessages = [systemMessage, userMessage];
+    setLlmResponse("Loading...");
+
+    try {
+      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "qwen2-0.5b-instruct",
+          messages: newMessages,
+          temperature: 0.7,
+          max_tokens: 500,
+          stream: false,
+        }),
+      });
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content || "No response.";
+      setLlmResponse(content);
+    } catch (error) {
+      console.error("Error fetching LLM response:", error);
+      setLlmResponse("Failed to get a response. Please try again.");
+    }
+  };
+
+  const userSavedSearches = () => {
+    router.push('/job-postings/saved-searches');
+  };
+
+  useEffect(() => {
+    async function fetchUserProfile() {
+      if (user) {
+        try {
+          const response = await fetch('/api/user/profile', {
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+            },
+          });
+          const profile = await response.json();
+          setUserProfile(profile);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    }
+
+    fetchUserProfile();
+  }, [user]);
+
+  // Add this function to handle toggle
+  const fetchRecentJobs = async () => {
+    try {
+      const result = await fetchWithCancel(
+        `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+      );
+      if (result) {
+        setData(result.jobPostings || []);
+      }
+    } catch (error) {
+      console.error("Error fetching job postings:", error);
+    }
+  };
+
+  const handleViewModeChange = async (value) => {
+    if (!value) return; // Skip if value is empty (prevents deselection)
+    setViewMode(value);
+    sessionStorage.setItem('jobViewMode', value);
+
+    if (value === 'suggested') {
+      await fetchSuggestedJobs();
+    } else if (value === 'recent') {
+      await fetchRecentJobs();
+    }
+  };
+
+  const fetchSuggestedJobs = async () => {
+    try {
+      const response = await fetch(`/api/job-postings/suggested?page=${currentPage}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      const result = await response.json();
+      setData(result.jobPostings);
+    } catch (error) {
+      console.error('Error fetching suggested jobs:', error);
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
+      <div className="z-0">
+        <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+        {user && (
+          <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-4 ">
+            <h3 className="text-sm text-muted-foreground font-medium">
+              Saved Searches
+            </h3>
+            <Button variant="ghost" type="button" size="icon" onClick={userSavedSearches}>
+              <Plus size={16} strokeWidth={1.5} />
+            </Button>
+          </div>
+        )}
+        <ScrollArea>
+          <div className="flex flex-row items-center gap-4 mb-6">
+            {!loading && user && savedSearches && savedSearches.length > 0 && (
+              savedSearches.map((search) => (
+                <SavedSearchButton
+                  key={search.id}
+                  name={search.search_name}
+                  title={search.search_criteria.title}
+                  experienceLevel={search.search_criteria.experienceLevel}
+                  location={search.search_criteria.location}
+                />
+              ))
+            )}
+          </div>
+          <ScrollBar className="w-full" />
+        </ScrollArea>
+      </div>
+
+      {/* user buttons */}
+      {user && enabled && (
+        <>
+          <div className="flex flex-row mb-2 gap-4">
+            <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
+              <BriefcaseBusiness size={16} strokeWidth={1.5} />
+              <span>Applied</span>
+            </Button>
+            <SearchInsightsSheet title={title} />
+          </div>
+        </>
+      )}
+
+      {companyData && companyData.name &&
+        <CompanyInfo company={companyData} resetCompanyData={resetCompanyData} />
+      }
+
+      {false && (
+        <div>
+          {predefinedQuestions.map((question, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              className="mr-2 mb-2 shadow-none bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10 text-muted-foreground/60"
+              onClick={() => handlePredefinedQuestion(question)}
+            >
+              <SparkleIcon className="h-3 w-3 text-muted-foreground/60" />
+              <p className="text-sm font-medium">{question}</p>
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {llmResponse && (
+        <div className="mb-6 p-4 border rounded-md bg-gray-100">
+          <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
+        </div>
+      )}
+
+      <div>
+        {data && data.length > 0 ? (
+          <div key="job-postings">
+            <div className="mb-4 items-center flex gap-4">
+              {user && ( // Only show toggle if user is logged in
+                <ToggleGroup type="single" value={viewMode} onValueChange={handleViewModeChange}>
+                  <ToggleGroupItem value="recent" aria-label="Recent jobs" className="px-3">
+                    <Clock className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="suggested" aria-label="Suggested jobs" className="px-3">
+                    <Sparkles className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              )}
+              <FilterPopover
+                experienceLevel={experienceLevel}
+                location={location}
+                company={company}
+              />
+              <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
+                <div className="flex flex-col space-y-1">
+                  {title && <span className="">Job Title: {title}</span>}
+                  {experienceLevel && <span className="">Experience Level: {experienceLevel}</span
+                  >}
+                  {location && <span className="">Location: {location}</span>}
+                </div>
+              </span>
+            </div>
+            <JobList data={data} />
+          </div>
+        ) : (
+          <p>No job postings found. Adjust your search criteria.</p>
+        )}
+      </div>
+
+      <div className="flex justify-between mt-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) {
+                    router.push(buildHref(currentPage - 1));
+                  }
+                }}
+                href={currentPage > 1 ? buildHref(currentPage - 1) : undefined}
+                disabled={currentPage === 1}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink
+                href={buildHref(1)}
+                isActive={currentPage === 1}
+              >
+                1
+              </PaginationLink>
+            </PaginationItem>
+
+            {/* Show ellipsis if current page is far from 1 */}
+            {currentPage > 2 && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+
+            {/* Current page link (when greater than 1) */}
+            {currentPage > 1 && (
+              <PaginationItem>
+                <PaginationLink
+                  href={buildHref(currentPage)}
+                  isActive
+                >
+                  {currentPage}
+                </PaginationLink>
+              </PaginationItem>
+            )}
+
+            {data && data.length == limit && (
+              <PaginationItem>
+                <PaginationLink
+                  href={buildHref(currentPage + 1)}
+
+                >
+                  {currentPage + 1}
+                </PaginationLink>
+              </PaginationItem>
+            )}
+
+            {/* Ellipsis before next link */}
+            {data && data.length == limit && (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )}
+
+            {/* Next page link */}
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (data && data.length === limit) {
+                    router.push(buildHref(currentPage + 1));
+                  }
+                }}
+                href={data && data.length === limit ? buildHref(currentPage + 1) : undefined}
+                disabled={data && data.length < limit}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </div>
+  );
 }

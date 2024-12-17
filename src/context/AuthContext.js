@@ -1,23 +1,22 @@
 "use client";
 import React, { createContext, useState, useEffect } from 'react';
-import jwt from 'jsonwebtoken'; 
+import jwt from 'jsonwebtoken';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        // Use a try-catch here since client-side jwt.decode doesn't verify the signature
         const decoded = jwt.decode(token);
-        if (decoded && decoded.exp * 1000 > Date.now()) { // Check token expiration
-          setUser({ token, username: decoded.username, id: decoded.id, avatar: decoded.avatar }); // Include avatar
+        if (decoded && decoded.exp * 1000 > Date.now()) {
+          setUser({ token, username: decoded.username, id: decoded.id, avatar: decoded.avatar });
         } else {
-          localStorage.removeItem('token'); // Remove expired token
+          localStorage.removeItem('token');
           setUser(null);
         }
       } catch (error) {
@@ -26,12 +25,12 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
     }
-    setLoading(false); // Set loading to false after verification
+    setLoading(false);
   }, []);
 
   const login = (token, username, id, avatar) => {
     localStorage.setItem('token', token);
-    setUser({ token, username, id, avatar}); 
+    setUser({ token, username, id, avatar });
   };
 
   const logout = () => {
@@ -40,7 +39,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}> {/* Provide loading */}
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
