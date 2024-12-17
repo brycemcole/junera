@@ -435,7 +435,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </BreadcrumbList>
       </Breadcrumb>
       <div>
-      <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
+      <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
         
         <Link className="flex flex-row items-center gap-4" href={`/companies/${jobPosting.company_id}`}>
         <Avatar alt={jobPosting.companyName} className="w-8 h-8 rounded-full">
@@ -446,10 +446,10 @@ Please assess the qualifications and provide a brief explanation of whether the 
       </Link>
       </h3>
       </div>
-      <h1 data-scroll-title className="text-2xl mb-2 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
+      <h1 data-scroll-title className="text-2xl mb-4 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
       {keywords && keywords.length > 0 && (
-  <div className="mb-4">
-    <ul className="flex flex-wrap gap-2">
+  <div className="mb-8">
+    <ul className="flex flex-wrap gap-4 gap-y-3">
       {keywords.map((keyword, index) => {
         const colors = [
           { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
@@ -478,14 +478,14 @@ Please assess the qualifications and provide a brief explanation of whether the 
     </ul>
   </div>
 )}
-      <div className="mb-2 flex flex-wrap gap-4 gap-y-1 text-md font-medium text-neutral-500 items-start">
+      <div className="mb-8 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-neutral-500 items-start">
         {jobPosting.salary_range_str && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Zap className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
             <span>{jobPosting.salary_range_str}</span>
             </div>
         )}
-<div className="flex items-center gap-1">
+<div className="flex items-center gap-2">
 {(jobPosting?.salary && Number(jobPosting.salary) > 0) || (jobPosting?.salary_max && Number(jobPosting.salary_max) > 0) ? (
           <div className="flex items-center gap-2">
             <DollarSign className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
@@ -509,18 +509,18 @@ Please assess the qualifications and provide a brief explanation of whether the 
       : `${jobPosting.applicants} applicants`}
   </span>
 </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <MapPin className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
           <span>{jobPosting.location}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Timer className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
           <span>{formatDistanceToNow(jobPosting.postedDate)}</span>
         </div>
 
         {jobPosting?.experienceLevel && (
           <>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Zap className="h-[14px] w-[14px] sm:h-4 sm:w-4" />
           <span>{jobPosting.experienceLevel}</span>
         </div>
@@ -532,7 +532,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
       <div className="flex flex-wrap flex-row gap-4 gap-y-3 mt-4 mb-4">
       <Link className="w-full md:w-auto" href={`${jobPosting.link}`}>
       
-      <Button className="group text-md w-full md:w-auto font-medium text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500" variant="" >
+      <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500" >
       <Briefcase className="-ms-1 me-2 opacity-60" size={16} strokeWidth={2} aria-hidden="true" />
       Apply on {new URL(jobPosting.link).hostname.split('.').slice(-2, -1)[0]}
       <ArrowRight 

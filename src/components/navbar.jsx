@@ -196,7 +196,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-background border-b border-muted-accent">
+    <nav className="bg-background/40 backdrop-blur-md m-4 border rounded-lg mb-0 border-muted-accent">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center max-w-4xl">
         <div className="flex items-center space-x-2">
           <Link href="/">
