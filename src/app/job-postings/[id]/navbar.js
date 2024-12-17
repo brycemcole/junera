@@ -23,23 +23,21 @@ export function StickyNavbar({ title, companyName, companyLogo, companyId }) {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-background border-b shadow-sm z-50 py-1 px-4">
-      <div className="container mx-auto max-w-4xl flex flex-col">
+    <div className="fixed top-0 left-0 right-0 bg-background rounded-lg max-w-4xl mx-4 m-4 mt-2 border shadow-sm z-1000 py-1 px-4">
+      <div className="container flex flex-col">
         <div className="flex flex-row w-full items-center">
-        <Link href={`/companies/${companyId}`}>
-          <Button variant="link" className="p-0 text-sm font-medium">
+          <Button variant="link" className="p-0 text-xs font-mono">
             <Avatar className="w-5 h-5 mr-1">
               <AvatarImage src={companyLogo} alt={companyName} />
               <AvatarFallback>{companyName?.[0]}</AvatarFallback>
             </Avatar>
             {companyName}
           </Button>
-        </Link>
-        <Button className="ml-auto" variant="ghost" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          Back To Top
-        </Button>
+          <Button className="ml-auto" variant="ghost" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            Back To Top
+          </Button>
         </div>
-        <p className="text-lg font-semibold truncate">{title}</p>
+        <p className="text-sm font-mono">{title}</p>
       </div>
     </div>
   );

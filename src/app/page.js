@@ -1,31 +1,27 @@
-"use client"
-import { Button } from "@/components/ui/button"
-import {useAuth} from "@/context/AuthContext"
-import { useRouter } from 'next/navigation';
- 
-import Link from "next/link";
-import "./styles.css"  
-import { useEffect } from "react";
- 
-  
+"use client";
+import ExampleJobPostings from "@/components/ExampleJobPostings";
+import LastUpdated from "@/components/LastUpdated";
+import "./styles.css"
+import { useAuth } from '@/context/AuthContext';
+
+
 export default function Home() {
-  const user = useAuth()
-  const router = useRouter()
+  const { user, loading } = useAuth();
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start w-full">
-        <div className="flex gap-4 items-center flex-col sm:flex-col w-full">
-            <h1 className="text-4xl font-bold text-center">Welcome to Junera</h1>
-            <p className="text-center text-muted-foreground">A new way to find STEM jobs.</p>
-            <div className="flex gap-4"> 
-              <Link href="/login">
-                <Button className="w-full">Get Started</Button>
-                </Link>
-                <Button className="w-full" variant="outline">Learn More</Button>
-            </div>
-      <div>
-    </div>
-        </div>
+    <div className="container py-20 px-4 mx-auto max-w-4xl md:px-0 w-full">
+      <main className="space-y-4 items-center">
+        <h1 className="text-3xl text-center dark:text-neutral-200 font-mono">
+          junera
+        </h1>
+        <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg">
+          A fast, focused job board for STEM professionals.
+          Updated daily with new job postings.
+          <LastUpdated />
+
+        </p>
+        <br />
+        <br />
+        <ExampleJobPostings />
       </main>
     </div>
   );

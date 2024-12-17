@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import axios from "axios";
 import { useState, useEffect } from "react";
 import { useAuth } from '@/context/AuthContext'; 
-import PasswordForm from './password-form';
 import {
   Form,
   FormControl,

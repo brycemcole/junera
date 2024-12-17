@@ -1,4 +1,4 @@
-import { getConnection } from "@/lib/db";
+import { createDatabaseConnection } from "@/lib/db";
 import {
     Accordion,
     AccordionContent,
@@ -22,21 +22,19 @@ import {
 import { Factory, MapPin, Pin, Rocket, Twitter, X } from "lucide-react";
   
 async function getCompanyById(id) {
-  const pool = await getConnection();
-  const result = await pool
-    .request()
-    .input("id", id)
-    .query("SELECT * FROM companies WHERE id = @id");
+  const db = await createDatabaseConnection();
+  const result = await db.executeQuery(`
+    SELECT * FROM companies WHERE id = @id; 
+    `, { id });
 
   return result.recordset[0]; // Return the first (and only) result
 }
 
 async function getJobPostingsByCompanyId(companyId) {
-    const pool = await getConnection();
-    const result = await pool
-        .request()
-        .input("companyId", companyId)
-        .query("SELECT TOP 25 id, title, company_id, salary, postedDate, experienceLevel, location FROM jobPostings WHERE company_id = @companyId ORDER BY postedDate DESC");
+    const db = await createDatabaseConnection();
+  const result = await db.executeQuery(`
+    SELECT TOP 25 id, title, company_id, salary, postedDate, experienceLevel, location FROM jobPostings WHERE company_id = @companyId ORDER BY postedDate DESC
+    `, { companyId });
     return result.recordset;
 }
 
@@ -51,7 +49,7 @@ export default async function CompanyPage({ params }) {
     }
 
 return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
         <Breadcrumb className="mb-4">
             <BreadcrumbList>
                 <BreadcrumbItem>
@@ -127,8 +125,8 @@ return (
   {job.experienceLevel && <span>{job.experienceLevel}</span>}
   {(job.location || job.experienceLevel) && job.postedDate && <span> | </span>}
   {job.postedDate && <span>{new Date(job.postedDate).toLocaleDateString()}</span>}
-  {(job.location || job.experienceLevel || job.postedDate) && job.salary !== undefined && job.salary !== null && <span> | </span>}
-  {job.salary !== undefined && job.salary !== null && <span>{job.salary > 0 ? `$${job.salary}` : "N/A"}</span>}
+  {(job.location || job.experienceLevel || job.postedDate) && job.salary !== undefined && job.salary !== null}
+  {job.salary !== undefined && job.salary !== null && <span>{job.salary > 0 ? `| $${job.salary}` : ""}</span>}
 </p>
                     </Link>
                 </li>

@@ -1,214 +1,341 @@
-// /pages/api/jobPostings.js (or your appropriate file)
-import { getConnection } from "@/lib/db";
-import sql from 'mssql';
-import { getCompanies } from "@/lib/companyCache";
-import { performance } from 'perf_hooks'; // Import the performance API
+// /pages/api/jobPostings.js
 
-function formatSearchTerms(text) {
-  if (!text) return '';
-  const terms = text.trim().split(' ').filter(t => t);
-  return terms.map(term => `"*${term}*"`).join(' AND ');
-}
+import { query } from "@/lib/pgdb"; // Import the query method from db.js
+import { headers } from "next/headers";
+import { performance } from 'perf_hooks';
+const he = require('he');
 
-
+// Utility function to scan keywords
 function scanKeywords(text) {
-  const keywordsList = ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++', 'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust', 'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps', 'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB', 'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD', 'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub', 'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ', 'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode', 'Android Studio'];
-  const foundKeywords = keywordsList.filter(keyword => text.includes(keyword));
-  return foundKeywords;
+  if (!text) return [];
+  const keywordsList = [
+    'JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++',
+    'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust',
+    'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps',
+    'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB',
+    'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD',
+    'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub',
+    'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ',
+    'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode',
+    'Android Studio', 'Unity', 'Unreal Engine', 'Blender', 'Maya', 'Photoshop',
+    'Google Office', 'Microsoft office', 'Adobe Creative Suite', 'Figma', 'Sketch', 'Project Management', 'Excel', 'SaaS',
+    'PaaS', 'IaaS', 'NFT', 'Blockchain', 'Cryptocurrency', 'Web3', 'Solidity', 'Rust', 'Golang', 'Ruby', 'Scala', 'Kotlin',
+    'Swift', 'Objective-C', 'Flutter', 'React Native', 'Ionic', 'Xamarin', 'PhoneGap', 'Cordova', 'NativeScript', 'Electron', 'Government Consulting',
+    'Semiconductors', 'Aerospace', 'Defense', 'Healthcare', 'Finance', 'Banking', 'Insurance', 'Retail', 'E-commerce', 'Education', 'Transportation',
+  ];
+
+  const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const lowerText = text.toLowerCase();
+  return keywordsList.filter(keyword => {
+    const escapedKeyword = escapeRegex(keyword.toLowerCase());
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'g');
+    return regex.test(lowerText);
+  });
 }
 
 
-export async function GET(req) {
-  const [pool, companies] = await Promise.all([getConnection(), getCompanies()]);
-  const { searchParams } = new URL(req.url);
-  const jobId = searchParams.get("id");
+// ### Updated Utility Function: Extract Salary ###
+/**
+ * Extracts salary information from a given text.
+ * Handles various formats such as:
+ * - 'USD $100,000-$200,000'
+ * - '$100k-120k'
+ * - '55/hr - 65/hr'
+ * - '$4200 monthly'
+ * - etc.
+ *
+ * @param {string} text - The text to extract salary from.
+ * @returns {string} - The extracted salary string or an empty string if not found.
+ */
+function extractSalary(text) {
+  if (!text) return "";
 
-  // Initialize an object to store timing information
-  const timings = {};
+  // Step 1: Decode HTML entities
+  // Create a temporary DOM element to leverage the browser's HTML parser
+  const decodedString = he.decode(text);
 
-  // Record the start time of the entire GET handler
-  const overallStart = performance.now();
+  // Step 2: Remove HTML tags
+  const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
 
-  // If jobId is provided, fetch single job posting
-  if (jobId) {
-    try {
-      // Start timing for getting the DB connection
-      const dbConnStart = performance.now();
-      const pool = await getConnection();
-      const dbConnEnd = performance.now();
-      timings.getConnection = dbConnEnd - dbConnStart;
+  // Step 3: Normalize HTML entities and special characters
+  const normalizedText = textWithoutTags
+    .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
+    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
+    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
+    .replace(/&amp;/g, '&')        // Replace &amp; with &
+    .replace(/&lt;/g, '<')         // Replace &lt; with <
+    .replace(/&gt;/g, '>')         // Replace &gt; with >
+    .trim();
 
-      // Start timing for fetching companies
-      const companiesStart = performance.now();
-      const companies = await getCompanies();
-      const companiesEnd = performance.now();
-      timings.getCompanies = companiesEnd - companiesStart;
+  // Define regex patterns
+  const patterns = [
+    // 1. Salary ranges with dashes (e.g., "$128,000—$152,000 USD")
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
 
-      // Start timing for building and executing the query
-      const queryStart = performance.now();
-      const request = pool.request();
-      request.input('id', sql.Int, parseInt(jobId));
+    // 2. Salary ranges with 'to' wording (e.g., "$35,000 to $45,000 per year")
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
 
-      // Modified query to include keywords
-      const query = `
-        SELECT 
-          jp.id, 
-          jp.title, 
-          jp.location, 
-          jp.postedDate, 
-          jp.salary,
-          jp.salary_range_str,
-          jp.experienceLevel,
-          jp.company_id,
-          jp.description,
-          jp.keywords
-        FROM jobPostings jp WITH (NOLOCK)
-        WHERE jp.id = @id AND jp.deleted = 0
-      `;
+    // 3. k-based salary ranges (e.g., "$100k—$120k")
+    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
 
-      const result = await request.query(query);
-      const queryEnd = performance.now();
-      timings.queryExecution = queryEnd - queryStart;
+    // 4. Hourly ranges (e.g., "55/hr - 65/hr")
+    /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
 
-      if (result.recordset.length === 0) {
-        const overallEnd = performance.now();
-        timings.total = overallEnd - overallStart;
-        return new Response(JSON.stringify({ error: "Job not found", timings }), { status: 404 });
+    // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
+    /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
+
+    // 6. Single salary mentions (e.g., "$85,000")
+    /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
+  ];
+
+  let matchesWithDollar = [];
+  let matchesWithoutDollar = [];
+
+  // Iterate through each pattern and collect matches
+  for (const pattern of patterns) {
+    const matches = Array.from(normalizedText.matchAll(pattern));
+    for (const match of matches) {
+      if (pattern.source.includes('\\$')) {
+        // Patterns that require '$' are stored in matchesWithDollar
+        matchesWithDollar.push({
+          text: match[0].trim(),
+          index: match.index
+        });
+      } else {
+        // Patterns that do NOT require '$' are stored in matchesWithoutDollar
+        matchesWithoutDollar.push({
+          text: match[0].trim(),
+          index: match.index
+        });
       }
-
-      const job = result.recordset[0];
-      const companyInfo = companies[job.company_id] || { name: "Unknown", logo: null };
-
-      const formattedJob = {
-        id: job.id,
-        title: job.title,
-        company: companyInfo.name,
-        experienceLevel: job.experienceLevel,
-        location: job.location,
-        salary: job.salary,
-        salary_range_str: job.salary_range_str,
-        logo: companyInfo.logo,
-        postedDate: job.postedDate,
-        description: job.description,
-        keywords: job.keywords ? job.keywords.split(',').map(k => k.trim()) : [] // Convert comma-separated string to array
-      };
-
-      const overallEnd = performance.now();
-      timings.total = overallEnd - overallStart;
-
-      return new Response(JSON.stringify({ job: formattedJob, timings }), { status: 200 });
-    } catch (error) {
-      console.error("Error fetching job posting:", error);
-      const overallEnd = performance.now();
-      timings.total = overallEnd - overallStart;
-      return new Response(JSON.stringify({ error: "Error fetching job posting", timings }), { status: 500 });
     }
   }
 
+  // Function to find the match with the highest index
+  const getLastMatch = (matches) => {
+    return matches.reduce((prev, current) => {
+      return (prev.index > current.index) ? prev : current;
+    }, matches[0]);
+  };
+
+  // Prioritize matches with '$'
+  if (matchesWithDollar.length > 0) {
+    const lastMatch = getLastMatch(matchesWithDollar);
+    return lastMatch.text;
+  }
+  // If no matches with '$', consider matches without '$'
+  else if (matchesWithoutDollar.length > 0) {
+    const lastMatch = getLastMatch(matchesWithoutDollar);
+    return lastMatch.text;
+  }
+
+  // Return empty string if no matches found
+  return "";
+}
+
+// Add shared utility functions at the top of the file
+const processJobPostings = (jobs) => {
+  return jobs.map((job) => {
+    const keywords = scanKeywords(job.description);
+    const remoteKeyword = job.location?.toLowerCase().includes('remote') ? 'Remote' : "";
+    const salary = extractSalary(job.description);
+
+    return {
+      id: job.job_id,
+      title: job.title || "",
+      company: job.company || "",
+      companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`,
+      experienceLevel: job.experiencelevel || "",
+      description: job.description || "",
+      location: job.location || "",
+      salary: salary,
+      postedDate: job.created_at ? job.created_at.toISOString() : "",
+      remoteKeyword: remoteKeyword,
+      keywords: keywords,
+    };
+  });
+};
+
+export async function GET(req) {
+  const url = req.url;
+  const { searchParams } = new URL(url);
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 20;
   const offset = (page - 1) * limit;
 
-  // Extract and sanitize search filters
   const title = searchParams.get("title")?.trim() || "";
-  const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
-  const location = searchParams.get("location")?.trim() || "";
+  const location = searchParams.get("location")?.trim().toLowerCase() || "";
   const company = searchParams.get("company")?.trim() || "";
+  const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
+
+  // 1. Define state name to abbreviation mapping
+  const stateMap = {
+    'alabama': 'AL',
+    'alaska': 'AK',
+    'arizona': 'AZ',
+    'arkansas': 'AR',
+    'california': 'CA',
+    'colorado': 'CO',
+    'connecticut': 'CT',
+    'delaware': 'DE',
+    'florida': 'FL',
+    'georgia': 'GA',
+    'hawaii': 'HI',
+    'idaho': 'ID',
+    'illinois': 'IL',
+    'indiana': 'IN',
+    'iowa': 'IA',
+    'kansas': 'KS',
+    'kentucky': 'KY',
+    'louisiana': 'LA',
+    'maine': 'ME',
+    'maryland': 'MD',
+    'massachusetts': 'MA',
+    'michigan': 'MI',
+    'minnesota': 'MN',
+    'mississippi': 'MS',
+    'missouri': 'MO',
+    'montana': 'MT',
+    'nebraska': 'NE',
+    'nevada': 'NV',
+    'new hampshire': 'NH',
+    'new jersey': 'NJ',
+    'new mexico': 'NM',
+    'new york': 'NY',
+    'north carolina': 'NC',
+    'north dakota': 'ND',
+    'ohio': 'OH',
+    'oklahoma': 'OK',
+    'oregon': 'OR',
+    'pennsylvania': 'PA',
+    'rhode island': 'RI',
+    'south carolina': 'SC',
+    'south dakota': 'SD',
+    'tennessee': 'TN',
+    'texas': 'TX',
+    'utah': 'UT',
+    'vermont': 'VT',
+    'virginia': 'VA',
+    'washington': 'WA',
+    'west virginia': 'WV',
+    'wisconsin': 'WI',
+    'wyoming': 'WY'
+  };
+
+  // 2. Create reverse mapping: abbreviation to full state name
+  const abbrMap = {};
+  for (const [name, abbr] of Object.entries(stateMap)) {
+    abbrMap[abbr.toLowerCase()] = name;
+  }
+
+  // 3. Generate search terms based on the input location
+  let locationSearchTerms = [location];
+
+  if (stateMap[location]) {
+    // If the input is a full state name, add its abbreviation
+    locationSearchTerms.push(stateMap[location].toLowerCase());
+  } else if (abbrMap[location]) {
+    // If the input is a state abbreviation, add its full name
+    locationSearchTerms.push(abbrMap[location].toLowerCase());
+  }
+
+  const timings = {};
+  const overallStart = performance.now();
 
   try {
-    // Start timing for fetching companies
-    const companiesStart = performance.now();
-    const companiesEnd = performance.now();
-    timings.getCompanies = companiesEnd - companiesStart;
-
-    // Start timing for getting the DB connection
-    const dbConnStart = performance.now();
-    const dbConnEnd = performance.now();
-    timings.getConnection = dbConnEnd - dbConnStart;
-
-    // Build the optimized search query without JOIN
-    let query = `
+    // Build query
+    let queryText = `
       SELECT 
-        jp.id, 
-        jp.title, 
-        jp.location, 
-        jp.description,
-        jp.postedDate, 
-        jp.salary,
-        jp.salary_range_str,
-        jp.experienceLevel,
-        jp.company_id
-      FROM jobPostings jp WITH (NOLOCK)
-      WHERE jp.deleted = 0
+        id, 
+        job_id,
+        source_url,
+        experiencelevel,
+        title, 
+        company, 
+        location,
+        description,
+        created_at
+      FROM jobPostings
+      WHERE 1 = 1
     `;
 
-    // Add filters
-    if (title) query += ` AND FREETEXT(jp.title, @title)`;
-    if (experienceLevel) query += ` AND jp.experienceLevel = @experienceLevel`;
-    if (location) query += ` AND CONTAINS(jp.location, @location)`;
-    if (company) query += ` AND jp.company_id = @company_id`;
+    const params = [];
+    const entryLevelIndicators = ['1 year of', 'graduate', 'entry level', 'junior'];
+    const entryLevelTitleIndicators = ['new grad', 'college graduate', 'associate'];
+    const exclusionIndicators = ['senior', 'manager', 'lead', 'director', 'principal', 'vice', 'vp', 'head'];
+    let paramIndex = 1; // PostgreSQL uses 1-based indexing for parameters
 
-    query += `
-      ORDER BY 
-        jp.postedDate DESC, jp.id, jp.title, jp.location
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
-    `;
-
-    // Start timing for query preparation
-    const queryPrepStart = performance.now();
-    const request = pool.request();
-
-    // Format search terms with OR conditions
-    if (title) request.input('title', sql.NVarChar, formatSearchTerms(title));
-    if (location) request.input('location', sql.NVarChar, formatSearchTerms(location));
-    if (experienceLevel) request.input('experienceLevel', sql.NVarChar, experienceLevel);
-    if (company) {
-      // Assuming 'company' is the company name, find the corresponding ID
-      const companyEntry = Object.entries(companies).find(
-        ([id, details]) => details.name.toLowerCase() === company.toLowerCase()
-      );
-      if (companyEntry) {
-        request.input('company_id', sql.Int, parseInt(companyEntry[0]));
-      } else {
-        // If company not found, return empty results
-        const queryPrepEnd = performance.now();
-        timings.queryPreparation = queryPrepEnd - queryPrepStart;
-        const overallEnd = performance.now();
-        timings.total = overallEnd - overallStart;
-        return new Response(JSON.stringify({ jobPostings: [], timings }), { status: 200 });
-      }
+    // Full-text search on title (using ILIKE for simplicity)
+    if (title) {
+      // Replace spaces with & for AND logic in to_tsquery
+      const formattedTitle = title.trim().replace(/\s+/g, ' & ');
+      queryText += ` AND to_tsvector('english', title) @@ to_tsquery('english', $${paramIndex})`;
+      params.push(formattedTitle);
+      paramIndex++;
     }
-    request.input('offset', sql.Int, offset);
-    request.input('limit', sql.Int, limit);
+
+    if (experienceLevel) {
+      // Existing logic for other experience levels
+      queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
+      params.push(`%${experienceLevel}%`);
+      paramIndex++;
+    }
+
+    // 4. Modify the location filter to include both full state names and abbreviations with precise matching
+    if (location) {
+      const locationConditions = [];
+      const locationParams = [];
+
+      locationSearchTerms.forEach(term => {
+        // Check if the term is an abbreviation (length <= 2)
+        if (term.length <= 2) {
+          // Regex pattern to match whole word or preceded by a comma and/or space
+          // Pattern explanation:
+          // (^|,\s*)ny(\s*|$)
+          const regexPattern = `(^|,\\s*)${term}(\\s*|$)`;
+          locationConditions.push(`location ~* $${paramIndex}`);
+          locationParams.push(regexPattern);
+          paramIndex++;
+        } else {
+          // For full state names, use ILIKE with wildcards
+          locationConditions.push(`location ILIKE $${paramIndex}`);
+          locationParams.push(`%${term}%`);
+          paramIndex++;
+        }
+      });
+
+      // Combine conditions with OR
+      queryText += ` AND (${locationConditions.join(' OR ')})`;
+
+      // Add parameters
+      params.push(...locationParams);
+    }
+
+    if (company) {
+      queryText += ` AND company = $${paramIndex}`;
+      params.push(company);
+      paramIndex++;
+    }
+
+    queryText += `
+      ORDER BY 
+        created_at DESC, id DESC, title, location
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
+    `;
+    params.push(limit, offset);
+    paramIndex += 2;
+
+    const queryPrepStart = performance.now();
+    const queryExecStart = performance.now();
+    const result = await query(queryText, params);
+    const queryExecEnd = performance.now();
+    timings.queryExecution = queryExecEnd - queryExecStart;
     const queryPrepEnd = performance.now();
     timings.queryPreparation = queryPrepEnd - queryPrepStart;
 
-    // Start timing for executing the query
-    const queryExecStart = performance.now();
-    const result = await request.query(query);
-    const queryExecEnd = performance.now();
-    timings.queryExecution = queryExecEnd - queryExecStart;
-
-    const jobPostings = result.recordset.map((job) => {
-      const companyInfo = companies[job.company_id] || { name: "Unknown", logo: null };
-      const keywords = scanKeywords(job.description);
-      const remoteKeyword = job.location.toLowerCase().includes('remote') ? 'Remote' : null;
-
-      console.log(keywords);
-      return {
-        id: job.id,
-        title: job.title,
-        company: companyInfo.name,
-        experienceLevel: job.experienceLevel,
-        description: job.description,
-        location: job.location,
-        salary: job.salary,
-        logo: companyInfo.logo,
-        postedDate: job.postedDate,
-        remoteKeyword,
-        keywords
-      };
-    });
+    // Process results
+    const jobPostings = processJobPostings(result.rows);
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
@@ -220,4 +347,49 @@ export async function GET(req) {
     timings.total = overallEnd - overallStart;
     return new Response(JSON.stringify({ error: "Error fetching job postings", timings }), { status: 500 });
   }
-} 
+}
+
+export async function PUT(req) {
+  try {
+    const { jobId, summary } = await req.json();
+
+    // Validate inputs
+    if (!jobId || !summary) {
+      return new Response(
+        JSON.stringify({ error: "Job ID and summary are required" }),
+        { status: 400 }
+      );
+    }
+
+    // Update the job posting with the new summary
+    const updateQuery = `
+      UPDATE jobPostings 
+      SET summary = $1 
+      WHERE job_id = $2 
+      RETURNING *`;
+
+    const result = await query(updateQuery, [summary, jobId]);
+
+    if (result.rows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Job posting not found" }),
+        { status: 404 }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: result.rows[0]
+      }),
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error("Error updating job posting:", error);
+    return new Response(
+      JSON.stringify({ error: "Error updating job posting" }),
+      { status: 500 }
+    );
+  }
+}

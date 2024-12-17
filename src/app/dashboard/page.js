@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
+import CollapsibleDemo from './collapsible';
 
 // Lazy load dashboard sections
 const BookmarkedJobs = memo(lazy(() => import('@/components/BookmarkedJobs')));
@@ -46,6 +47,25 @@ export default function DashboardPage() {
   const [errorBookmarkedJobs, setErrorBookmarkedJobs] = useState(null);
   const [errorSavedSearches, setErrorSavedSearches] = useState(null);
 
+  // Add a simple cache
+  const cache = {};
+
+  // Helper functions for caching
+  const getCachedData = (key) => {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    const { timestamp, data } = JSON.parse(cached);
+    if (Date.now() - timestamp > 5 * 60 * 1000) { // 5 minutes
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  };
+
+  const setCachedData = (key, data) => {
+    localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data }));
+  };
+
   useEffect(() => {
     if (!loading) { // Check if loading is complete
       if (!user) {
@@ -56,83 +76,40 @@ export default function DashboardPage() {
             'Authorization': `Bearer ${user.token}`,
           };
 
-          // Fetch Recently Viewed Jobs
-          try {
-            const responseViewed = await fetch('/api/dashboard/recently-viewed', { headers });
-            console.log(responseViewed);
-            if (!responseViewed.ok) throw new Error("Error fetching recently viewed jobs.");
-            const dataViewed = await responseViewed.json();
-            setRecentlyViewed(dataViewed);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentlyViewed(error.message);
-          } finally {
-            setLoadingRecentlyViewed(false);
-          }
+          // Helper function to fetch and cache data
+          const fetchAndCache = async (url, setData, setError, setLoading, cacheKey) => {
+            const cachedData = getCachedData(cacheKey);
+            try {
+              const response = await fetch(url, { headers });
+              if (!response.ok) throw new Error(`Error fetching ${cacheKey}.`);
+              const data = await response.json();
+              setCachedData(cacheKey, data);
+              setData(data);
+            } catch (error) {
+              console.error(error);
+              setError(error.message);
+            } finally {
+              setLoading(false);
+            }
+          };
 
-          try {
-            const responseSaved = await fetch('/api/saved-searches', { headers });
-            if (!responseSaved.ok) throw new Error("Error fetching saved searches.");
-            const dataSaved = await responseSaved.json();
-            setSavedSearches(dataSaved);
-          } catch (error) {
-            console.error(error);
-            setErrorSavedSearches(error.message);
-          } finally {
-            setLoadingSavedSearches(false);
-          }
+          // Fetch Recently Viewed Jobs
+          await fetchAndCache('/api/dashboard/recently-viewed', setRecentlyViewed, setErrorRecentlyViewed, setLoadingRecentlyViewed, 'recentlyViewed');
+
+          // Fetch Saved Searches
+          await fetchAndCache('/api/saved-searches', setSavedSearches, setErrorSavedSearches, setLoadingSavedSearches, 'savedSearches');
 
           // Fetch Recently Applied Jobs
-          try {
-            const responseApplied = await fetch('/api/dashboard/applied-jobs', { headers });
-            if (!responseApplied.ok) throw new Error("Error fetching recently applied jobs.");
-            const dataApplied = await responseApplied.json();
-            setRecentlyApplied(dataApplied.userJobs);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentlyApplied(error.message);
-          } finally {
-            setLoadingRecentlyApplied(false);
-          }
+          await fetchAndCache('/api/dashboard/applied-jobs', setRecentlyApplied, setErrorRecentlyApplied, setLoadingRecentlyApplied, 'applied-jobs');
 
           // Fetch Matching Jobs
-          try {
-            const responseMatching = await fetch('/api/dashboard/matching-jobs', { headers });
-            if (!responseMatching.ok) throw new Error("Error fetching matching jobs.");
-            const dataMatching = await responseMatching.json();
-            setMatchingJobs(dataMatching);
-          } catch (error) {
-            console.error(error);
-            setErrorMatchingJobs(error.message);
-          } finally {
-            setLoadingMatchingJobs(false);
-          }
+          await fetchAndCache('/api/dashboard/matching-jobs', setMatchingJobs, setErrorMatchingJobs, setLoadingMatchingJobs, 'matchingJobs');
 
           // Fetch Recent Companies
-          try {
-            const responseCompanies = await fetch('/api/dashboard/recent-companies', { headers });
-            if (!responseCompanies.ok) throw new Error("Error fetching recent companies.");
-            const dataCompanies = await responseCompanies.json();
-            setRecentCompanies(dataCompanies);
-          } catch (error) {
-            console.error(error);
-            setErrorRecentCompanies(error.message);
-          } finally {
-            setLoadingRecentCompanies(false);
-          }
+          await fetchAndCache('/api/dashboard/recent-companies', setRecentCompanies, setErrorRecentCompanies, setLoadingRecentCompanies, 'recentCompanies');
 
           // Fetch Bookmarked Jobs
-          try {
-            const responseBookmarks = await fetch('/api/dashboard/bookmarked-jobs', { headers });
-            if (!responseBookmarks.ok) throw new Error("Error fetching bookmarked jobs.");
-            const dataBookmarks = await responseBookmarks.json();
-            setBookmarkedJobs(dataBookmarks);
-          } catch (error) {
-            console.error(error);
-            setErrorBookmarkedJobs(error.message);
-          } finally {
-            setLoadingBookmarkedJobs(false);
-          }
+          await fetchAndCache('/api/dashboard/bookmarked-jobs', setBookmarkedJobs, setErrorBookmarkedJobs, setLoadingBookmarkedJobs, 'bookmarkedJobs');
         }
 
         fetchData();
@@ -175,26 +152,26 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 relative col-span-2 md:col-span-1">
-            <CardTitle className="mb-2 w-full flex">
+        <Suspense fallback={<Skeleton />}>
+          <Card className="py-2 border-none shadow-none bg-transparent relative col-span-2 md:col-span-1">
+            <CardTitle className="mb-4 w-full flex">
               Saved Searches
               {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
-        <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
-        <Button variant="ghost" size="sm" className="absolute right-3 bottom-3 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
+            </CardTitle>
+            <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
+            <Button variant="ghost" size="sm" className="absolute right-0 font-mono decoration-dotted underline underline-offset-4 top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
 
           </Card>
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
           <Card className="p-4 col-span-2 relative">
-            <CardTitle className="mb-2">
+            <CardTitle className="mb-4">
               New Jobs Matching Your Searches
               {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <MatchingJobs
                 loading={loadingSavedSearches}
@@ -206,15 +183,15 @@ export default function DashboardPage() {
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 col-span-2 relative">
-            <CardTitle className="mb-2">
+          <Card className="border-transparent shadow-none col-span-2 relative">
+            <CardTitle className="mb-4">
               Bookmarked Jobs
               {loadingBookmarkedJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorBookmarkedJobs && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <BookmarkedJobs
-                jobs={bookmarkedJobs}
+                jobs={bookmarkedJobs.bookmarkedJobs}
                 loading={loadingBookmarkedJobs}
                 error={errorBookmarkedJobs}
               />
@@ -245,10 +222,10 @@ export default function DashboardPage() {
               Recently Applied Jobs
               {loadingRecentlyApplied && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
               {errorRecentlyApplied && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               <RecentlyAppliedJobs
-                jobs={recentlyApplied}
+                jobs={recentlyApplied} // This now contains the {appliedJobs: [...]} structure
                 loading={loadingRecentlyApplied}
                 error={errorRecentlyApplied}
                 router={router}

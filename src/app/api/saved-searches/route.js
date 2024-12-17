@@ -1,8 +1,7 @@
-"use strict";
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
-import sql from 'mssql';
+import { query } from '@/lib/pgdb';
+import { getCached, setCached } from '@/lib/cache';
 
 const SECRET_KEY = process.env.SESSION_SECRET || 'your-secret-key';
 
@@ -14,16 +13,23 @@ export async function GET(request) {
   }
   const token = authHeader.split(' ')[1];
 
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
     const userId = decoded.id;
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .query('SELECT * FROM saved_searches WHERE user_id = @userId;');
+    const result = await query(
+      'SELECT * FROM saved_searches WHERE user_id = $1 AND is_active = true',
+      [userId]
+    );
 
-    return NextResponse.json({ savedSearches: result.recordset }, { status: 200 });
+    setCached('saved-searches', token, result.rows);
+
+    return NextResponse.json({ savedSearches: result.rows }, { status: 200 });
   } catch (error) {
     console.error('Error fetching saved searches:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -41,24 +47,38 @@ export async function POST(request) {
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
     const userId = decoded.id;
-    const { searchParams } = await request.json();
+    const body = await request.json();
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('userId', sql.NVarChar, userId)
-      .input('searchParams', sql.NVarChar, JSON.stringify(searchParams))
-      .query(`
-        INSERT INTO saved_searches (user_id, search_params) 
-        OUTPUT INSERTED.id, INSERTED.user_id, INSERTED.search_params, INSERTED.created_at, INSERTED.updated_at
-        VALUES (@userId, @searchParams);
-      `);
+    if (!body.searchName) {
+      return NextResponse.json({ error: 'Search name is required' }, { status: 400 });
+    }
 
-    const insertedSearch = result.recordset[0];
+    const searchCriteria = {
+      title: body.searchCriteria.title || '',
+      location: body.searchCriteria.location || '',
+      experienceLevel: body.searchCriteria.experienceLevel || ''
+    };
 
-    return NextResponse.json(insertedSearch, { status: 201 });
+    const result = await query(
+      `INSERT INTO saved_searches 
+        (user_id, search_name, search_criteria, notify) 
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [
+        userId,
+        body.searchName,
+        JSON.stringify(searchCriteria),
+        body.notify || false
+      ]
+    );
+
+    return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {
     console.error('Error creating saved search:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({
+      error: 'Internal Server Error',
+      details: error.message
+    }, { status: 500 });
   }
 }
 
@@ -73,20 +93,24 @@ export async function PUT(request) {
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
     const userId = decoded.id;
-    const { id, searchParams } = await request.json();
+    const { id, searchName, searchCriteria, notify } = await request.json();
 
-    const pool = await getConnection();
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('userId', sql.NVarChar, userId)
-      .input('searchParams', sql.NVarChar, JSON.stringify(searchParams))
-      .query(`
-        UPDATE saved_searches 
-        SET search_params = @searchParams, updated_at = GETDATE()
-        WHERE id = @id AND user_id = @userId;
-      `);
+    const result = await query(
+      `UPDATE saved_searches 
+       SET search_name = $1, 
+           search_criteria = $2, 
+           notify = $3,
+           updated_at = NOW()
+       WHERE id = $4 AND user_id = $5
+       RETURNING *`,
+      [searchName, searchCriteria, notify, id, userId]
+    );
 
-    return NextResponse.json({ message: 'Saved search updated successfully' }, { status: 200 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0], { status: 200 });
   } catch (error) {
     console.error('Error updating saved search:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -106,20 +130,18 @@ export async function DELETE(request) {
     const userId = decoded.id;
     const { id } = await request.json();
 
-    const pool = await getConnection();
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .input('userId', sql.NVarChar, userId)
-      .query(`
-        DELETE FROM saved_searches 
-        WHERE id = @id AND user_id = @userId;
-      `);
+    const result = await query(
+      `DELETE FROM saved_searches 
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`,
+      [id, userId]
+    );
 
-    if (result.rowsAffected[0] > 0) {
-      return NextResponse.json({ message: 'Saved search deleted successfully' }, { status: 200 });
-    } else {
+    if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Saved search not found' }, { status: 404 });
     }
+
+    return NextResponse.json({ message: 'Saved search deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('Error deleting saved search:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

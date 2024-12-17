@@ -1,6 +1,4 @@
-
-import { getConnection } from "@/lib/db";
-import sql from 'mssql';
+import { query } from "@/lib/pgdb";
 import { getCompanies } from "@/lib/companyCache";
 
 export async function GET(req) {
@@ -13,42 +11,57 @@ export async function GET(req) {
   }
 
   try {
-    const pool = await getConnection();
     const companies = await getCompanies();
-    
-    const request = pool.request()
-      .input('id', sql.Int, parseInt(jobId))
-      .input('limit', sql.Int, limit);
 
-    const query = `
-      WITH SourceJob AS (
-        SELECT title, experienceLevel, location
-        FROM jobPostings WITH (NOLOCK)
-        WHERE id = @id
-      )
-      SELECT TOP (@limit)
-        jp.id, jp.title, jp.location, jp.postedDate, 
-        jp.salary, jp.experienceLevel, jp.company_id
-      FROM jobPostings jp WITH (NOLOCK)
-      CROSS JOIN SourceJob sj
-      WHERE jp.id != @id 
-        AND jp.deleted = 0
+    // Get source job details first
+    const sourceQuery = `
+      SELECT title, experiencelevel, location
+      FROM jobpostings 
+      WHERE job_id = $1`;
+
+    const sourceResult = await query(sourceQuery, [jobId]);
+
+    if (sourceResult.rows.length === 0) {
+      return new Response(JSON.stringify({ error: "Job not found" }), { status: 404 });
+    }
+
+    const sourceJob = sourceResult.rows[0];
+
+    // Get similar jobs
+    const similarQuery = `
+      SELECT 
+        job_id as id,
+        title,
+        location,
+        created_at as "postedDate",
+        company,
+        salary,
+        experiencelevel,
+      FROM jobpostings
+      WHERE job_id != $1 
+        AND deleted = false
         AND (
-          jp.experienceLevel = sj.experienceLevel
-          OR jp.location LIKE '%' + sj.location + '%'
+          experiencelevel = $2
+          OR location ILIKE '%' || $3 || '%'
         )
-      ORDER BY jp.postedDate DESC`;
+      ORDER BY created_at DESC
+      LIMIT $4`;
 
-    const result = await request.query(query);
+    const result = await query(similarQuery, [
+      jobId,
+      sourceJob.experiencelevel,
+      sourceJob.location,
+      limit
+    ]);
 
-    const similarJobs = result.recordset.map(job => ({
+    const similarJobs = result.rows.map(job => ({
       id: job.id,
       title: job.title,
-      company: companies[job.company_id]?.name || "Unknown",
-      experienceLevel: job.experienceLevel,
+      company: job.company || "Unknown",
+      experienceLevel: job.experiencelevel,
       location: job.location,
       salary: job.salary,
-      logo: companies[job.company_id]?.logo || null,
+      logo: 'null',
       postedDate: job.postedDate
     }));
 
