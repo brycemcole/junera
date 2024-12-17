@@ -13,7 +13,7 @@ function AppliedJobs({ jobs }) {
   }
 
   if (jobs.length === 0) {
-    return <p>You haven't applied to any jobs yet.</p>;
+    return <p>You haven&apos;t applied to any jobs yet.</p>;
   }
 
   return (

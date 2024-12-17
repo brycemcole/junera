@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useAuth } from '@/context/AuthContext';
 
-const components: { title: string; href: string; description: string }[] = [
+const components = [
   {
     title: "All Job Postings",
     href: "/job-postings",
@@ -154,10 +154,7 @@ export function NavbarMenu() {
   )
 }
 
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
+const ListItem = (({ className, title, children, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink asChild>

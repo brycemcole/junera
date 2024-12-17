@@ -103,7 +103,7 @@ export default function MatchingJobs({ savedSearches, loading, error }) {
             </Link>
 
             <div className="text-xs text-muted-foreground mt-1">
-              <p>Matching "{job.matchedSearch}"</p>
+              <p>Matching &quot;{job.matchedSearch}&quot;</p>
               <p className="mt-0.5">
                 {[
                   job.matchingCriteria.experienceLevel,

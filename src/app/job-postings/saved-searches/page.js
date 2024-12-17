@@ -46,7 +46,6 @@ import { X, Search, Bell, MapPin, Briefcase, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from "lucide-react";
 import { useState } from 'react'
-import { ToastDemo } from "@/components/toast-demo";
 import { ToastAction } from "@/components/ui/toast";
 
 const SavedSearchCard = ({ search, onEdit, onDelete }) => {
@@ -199,7 +198,7 @@ export default function SavedSearchPage() {
           });
       }
     }
-  }, [user, loading, router]); // Added loading to dependencies
+  }, [user, loading, router, toast]); // Added toast to dependencies
 
   if (loading) {
     return (
