@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { query } from '@/lib/pgdb';
@@ -68,3 +67,5 @@ export async function GET(request) {
     return NextResponse.json({ isApplied: false });
   }
 }
+
+export const dynamic = 'force-dynamic';
