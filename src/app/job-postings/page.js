@@ -322,6 +322,7 @@ export default function JobPostingsPage() {
     const [titleSynonyms, setTitleSynonyms] = useState([]);
     const [userProfile, setUserProfile] = useState(null);
 
+<<<<<<< Updated upstream
     // Add a computed variable for filter text
     const filterText = [
         title && `Title: ${title}`,
@@ -334,6 +335,195 @@ export default function JobPostingsPage() {
     const cancelPendingRequests = () => {
         if (currentController) {
             currentController.abort();
+=======
+  const [data, setData] = useState([]);
+  const [title, setTitle] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [location, setLocation] = useState("");
+  const [company, setCompany] = useState("");
+  const [count, setCount] = useState(0);
+  const limit = 20;
+  const [savedSearches, setSavedSearches] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [companyData, setCompanyData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [insightsShown, setInsightsShown] = useState(false);
+  const [savedSearchesVisible, setSavedSearchesVisible] = useState(false);
+  const [llmResponse, setLlmResponse] = useState("");
+  const [companies, setCompanies] = useState([]);
+
+  const predefinedQuestions = [
+    "How can I improve my resume?",
+    "What skills are in high demand?",
+    "How to prepare for a job interview?",
+  ];
+
+  useEffect(() => {
+    const currentParams = {
+      title,
+      experienceLevel,
+      location,
+      company,
+      currentPage
+    };
+    sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
+  }, [title, experienceLevel, location, company, currentPage]);
+
+  const FilterPopover = ({ experienceLevel, location, company }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+            <Filter size={14} className="mr-2" />
+            Filter</Button>
+        </PopoverTrigger>
+        <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-[13px] font-medium">Filter job postings</p>
+              <p className="text-xs text-muted-foreground">
+                Filter through over {count} job postings!
+              </p>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Company</span>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
+                </Suspense>
+              </div>
+
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Experience Level</span>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ExperienceLevelSelect
+                    onChange={(value) => {
+                      const params = {
+                        title,
+                        experienceLevel: value === "null" ? "" : value,
+                        location,
+                        company,
+                        page: "1"
+                      };
+                      const newParams = new URLSearchParams(params);
+                      router.push(`/job-postings?${newParams.toString()}`);
+                    }}
+                    value={experienceLevel}
+                  />
+                </Suspense>
+              </div>
+              <div className="grid grid-cols-2 items-center gap-2">
+                <span className="text-foreground text-xs">Location</span>
+                <LocationSelect
+                  onChange={(value) => {
+                    const params = {
+                      title,
+                      experienceLevel,
+                      location: value === "null" ? "" : value,
+                      company,
+                      page: "1"
+                    };
+                    const newParams = new URLSearchParams(params);
+                    router.push(`/job-postings?${newParams.toString()}`);
+                  }}
+                  value={location}
+                />
+              </div>
+            </div>
+            {(title || experienceLevel || location || company) && (
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
+                setCompanyData([]);
+                setCompany("");
+                setTitle("");
+                setExperienceLevel("");
+                setLocation("");
+                setCurrentPage(1);
+                router.push(`/job-postings`);
+              }}>
+                Clear
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  const currentControllerRef = useRef(null);
+
+  const fetchWithCancel = useCallback(async (url, options = {}) => {
+    if (currentControllerRef.current) {
+      currentControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    currentControllerRef.current = controller;
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request cancelled');
+        return null;
+      }
+      throw error;
+    } finally {
+      currentControllerRef.current = null;
+    }
+  }, []);
+
+  const resetCompanyData = () => {
+    setCompanyData([]);
+    setCompany("");
+    setCurrentPage(1);
+    router.push(`/job-postings`);
+  };
+
+  const searchCompanyId = (id) => {
+    setCompany(id);
+    setCurrentPage(1);
+    const params = {
+      title,
+      experienceLevel,
+      location,
+      company: id,
+      page: '1'
+    };
+    const newParams = new URLSearchParams(params);
+    router.push(`/job-postings?${newParams.toString()}`);
+  };
+
+  function buildHref(pageNumber) {
+    const params = {
+      title,
+      experienceLevel,
+      location,
+      company,
+      page: pageNumber.toString()
+    };
+    const newParams = new URLSearchParams(params);
+    return `/job-postings?${newParams.toString()}`;
+  }
+
+  useEffect(() => {
+    if (!loading) {
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheExpiry = 3 * 60 * 1000;
+      const now = Date.now();
+
+      async function fetchCompanies() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/companies`
+          );
+          if (result) {
+            setCompanies(result || []);
+          }
+        } catch (error) {
+          console.error("Error fetching companies:", error);
+>>>>>>> Stashed changes
         }
     };
 
@@ -359,6 +549,71 @@ export default function JobPostingsPage() {
         } finally {
             setCurrentController(null);
         }
+<<<<<<< Updated upstream
+=======
+      }
+
+      async function fetchJobCount() {
+        try {
+          const result = await fetchWithCancel(
+            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+          );
+          if (result) {
+            setCount(result.totalJobs || 0);
+          }
+        } catch (error) {
+          console.error("Error fetching job count:", error);
+        }
+      }
+
+      const resetCache = () => {
+        sessionStorage.removeItem(cacheKey);
+        sessionStorage.removeItem(`${cacheKey}_timestamp`);
+      };
+
+      if (isCacheValid(cacheKey) && cachedData) {
+        try {
+          setData(JSON.parse(cachedData));
+          fetchJobCount();
+        } catch (error) {
+          resetCache();
+          fetchData();
+          fetchJobCount();
+          console.error("Error parsing cached job postings:", error);
+        }
+      } else {
+        fetchData();
+        fetchJobCount();
+      }
+    }
+
+  }, [user, loading, currentPage, title, experienceLevel, location, company, fetchWithCancel]);
+
+  useEffect(() => {
+    if (!loading && user) {
+      fetch('/api/saved-searches', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+      })
+        .then(response => response.json())
+        .then(data => setSavedSearches(data.savedSearches))
+        .catch(error => console.error('Error fetching saved searches:', error));
+    }
+  }, [user, loading]);
+
+  const applySavedSearch = (searchParamsStr) => {
+    const params = JSON.parse(searchParamsStr);
+    setTitle(params.jobTitle || '');
+    setExperienceLevel(params.experienceLevel || '');
+    setLocation(params.location || '');
+    setCurrentPage(1);
+    const newParams = {
+      title: params.jobTitle || '',
+      explevel: params.experienceLevel || '',
+      location: params.location || '',
+      page: '1'
+>>>>>>> Stashed changes
     };
 
     useEffect(() => {
@@ -598,6 +853,7 @@ ${userProfile.education && userProfile.education.length > 0
 - **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
 
 Please provide relevant career advice and job search assistance based on their profile.
+<<<<<<< Updated upstream
             `,
         };
 
@@ -625,6 +881,9 @@ Please provide relevant career advice and job search assistance based on their p
             console.error("Error fetching LLM response:", error);
             setLlmResponse("Failed to get a response. Please try again.");
         }
+=======
+      `,
+>>>>>>> Stashed changes
     };
 
     useEffect(() => {
