@@ -82,7 +82,7 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
 
   return (
     <Button
-      className="group h-auto gap-4 py-3 text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+      className="group h-auto gap-4 py-3 bg-background text-left shadow-sm hover:shadow-md transition-shadow duration-300"
       variant="outline"
       onClick={redirectToSearch}
     >
