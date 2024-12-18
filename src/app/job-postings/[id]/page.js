@@ -997,24 +997,31 @@ Please assess the qualifications and provide a brief explanation of whether the 
               </TabsTrigger>
             </TabsList>
             <TabsContent value="tab-1">
+              {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
+                <Summarization
+                  title="Job Posting Summary"
+                  message={llmResponse || jobPosting.summary}
+                  loading={loadingLLMReponse}
+                  error={errorLLMResponse}
+                />
+              )}
               <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
+
                 <div type="single" className="w-full" defaultValue="item-description">
                   {[
                     { key: 'description', label: 'Job Description' }
 
                   ].map(({ key, label }) => (
-                    typeof jobPosting[key] === 'string' && jobPosting[key].length > 4 && (
-                      <p className="leading-loose text-sm">
-                        <div>
-                          <div
-                            dangerouslySetInnerHTML={{
-                              __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
-                            }}
-                          />
+                    <p key={key} className="leading-loose text-sm">
+                      <div>
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
+                          }}
+                        />
 
-                        </div>
-                      </p>
-                    )
+                      </div>
+                    </p>
                   ))}
                 </div>
               </div>
@@ -1022,22 +1029,24 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <TabsContent value="tab-2">
 
               <div className="flex flex-col space-y-2 mb-4">
-                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-                  <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
+                <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
+                  <Button variant="link" size="sm" className="text-sm px-0">
                     See more {jobPosting.experienceLevel} jobs
-                  </Link>
-                </p>
-                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-                  <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
-                    See jobs in {jobPosting.location.trim()}
-                  </Link>
-                </p>
-                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-                  <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
-                    See more {jobPosting.title.trim()} jobs
-                  </Link>
+                  </Button>
+                </Link>
 
-                </p>
+                <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
+                  <Button variant="link" size="sm" className="text-sm px-0">
+                    See jobs in {jobPosting.location.trim()}
+                  </Button>
+                </Link>
+                <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
+                  <Button variant="link" size="sm" className="text-sm px-0">
+
+                    See more {jobPosting.title.trim()} jobs
+                  </Button>
+                </Link>
+
               </div>
               <Suspense fallback={<div>Loading similar jobs...</div>}>
                 <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
@@ -1053,14 +1062,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </Tabs>
         </div>
 
-        {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
-          <Summarization
-            title="Job Posting Summary"
-            message={llmResponse || jobPosting.summary}
-            loading={loadingLLMReponse}
-            error={errorLLMResponse}
-          />
-        )}
 
         {user && insightsShown && (
           <>
