@@ -1000,20 +1000,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
                 <div type="single" className="w-full" defaultValue="item-description">
                   {[
-                    { key: 'companyDescription', label: 'Company Description' },
-                    { key: 'description', label: 'Job Description' },
-                    { key: 'responsibilities', label: 'Responsibilities' },
-                    { key: 'requirements', label: 'Requirements' },
-                    { key: 'Benefits', label: 'Benefits' },
-                    { key: 'MinimumQualifications', label: 'Minimum Requirements' },
-                    { key: 'relocation', label: 'Relocation Assistance' },
-                    { key: 'EqualOpportunityEmployerInfo', label: 'Equal Opportunity Employer Info' },
-                    { key: 'IsRemote', label: 'Remote Work Availability' },
-                    { key: 'H1BVisaSponsorship', label: 'H1B Visa Sponsorship' },
-                    { key: 'HoursPerWeek', label: 'Hours Per Week' },
-                    { key: 'Schedule', label: 'Schedule' },
-                    { key: 'NiceToHave', label: 'Nice to Have' },
-                    { key: 'raw_description_no_format', label: 'Job Link Description' }
+                    { key: 'description', label: 'Job Description' }
 
                   ].map(({ key, label }) => (
                     typeof jobPosting[key] === 'string' && jobPosting[key].length > 4 && (
