@@ -35,7 +35,7 @@ const jobCategories = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-100 dark:bg-black">
+    <footer className="bg-white dark:bg-black">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
         <div className="flex justify-center">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 justify-center">
