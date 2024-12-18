@@ -94,11 +94,7 @@ export function CollapsibleJobs({ title, jobPostings, open = false }) {
                     <div className="flex items-center gap-2">
                         <Calendar className="h-3 w-3 text-foreground" />
                         <span>
-                            {jobPostings[0]?.postedDate
-                                ? `${formatDistanceToNow(new Date(jobPostings[0].postedDate), {
-                                    addSuffix: true,
-                                })}`
-                                : "N/A"}
+                            {jobPostings[0]?.postedDate}
                         </span>
                     </div>
                 </div>
@@ -143,9 +139,7 @@ export function CollapsibleJobs({ title, jobPostings, open = false }) {
                             <div className="flex items-center gap-2">
                                 <Calendar className="h-3 w-3 text-foreground" />
                                 <span>
-                                    {posting?.postedDate
-                                        ? `${formatDistanceToNow(new Date(posting.postedDate), { addSuffix: true })}`
-                                        : "N/A"}
+                                    {posting?.postedDate}
                                 </span>
 
                             </div>

@@ -3,11 +3,15 @@ const { Pool } = require('pg');
 require('dotenv').config(); // Ensure you have dotenv installed and configured
 
 const pool = new Pool({
-    user: process.env.DB_USER,       // e.g., 'postgres'
-    host: process.env.DB_HOST,       // e.g., 'localhost'
-    database: process.env.DB_NAME, // e.g., 'jobdb'
-    password: process.env.DB_PASS, // your PostgreSQL password
-    port: process.env.DB_PORT,         // 5432
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
+    ssl: {
+        rejectUnauthorized: false,
+        require: true
+    }
 });
 
 pool.on('error', (err) => {
