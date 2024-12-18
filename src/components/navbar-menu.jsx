@@ -13,7 +13,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import { Navigation } from "lucide-react"
+import { BookMarked, BriefcaseBusiness, Navigation, Star } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useAuth } from '@/context/AuthContext';
@@ -111,6 +111,21 @@ export function NavbarMenu() {
                   {component.description}
                 </ListItem>
               ))}
+
+{user && !loading ? (
+  <>
+  <ListItem href="/job-postings/applied" title={<>Your Jobs<BriefcaseBusiness className="float-right mr-2" size={14} /></>}>
+    Manage your job applications and profile.
+  </ListItem>
+  <ListItem href="/saved" title={<>Bookmarked Jobs<BookMarked className="float-right mr-2" size={14} /></>}>
+    Manage your job applications and profile.
+  </ListItem>
+  </>
+) : (
+  <ListItem href="/login" title="Login">
+    Sign in to access your dashboard.
+  </ListItem>
+)}
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
@@ -123,11 +138,33 @@ export function NavbarMenu() {
             </NavigationMenuLink>
           </Link>
         </NavigationMenuItem>
-        <NavigationMenuItem onClick={logout}>
-              <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                Logout
-              </NavigationMenuLink>
-          </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuTrigger className="bg-transparent">Profile</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <ul className="grid gap-3 p-6 z-100 opacity-100 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+              <li className="row-span-3">
+                <NavigationMenuLink asChild>
+                  <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-lime-50 dark:bg-lime-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
+                    <div className="mb-2 mt-4 text-lg font-medium">
+                      {user.username}
+                    </div>
+                    <p className="text-sm leading-tight text-muted-foreground">
+
+                    </p>
+                    </Link>
+                </NavigationMenuLink>
+              </li>
+              <ListItem href="/profile" title="Profile">
+                {user.username}'s profile
+              </ListItem>
+              <ListItem href="/notifications" title="Notifications">
+                View your notifications
+              </ListItem>
+              <ListItem href="#" title="Logout" onClick={logout}>
+              </ListItem>
+            </ul>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
           <Link href="/p/[username]" as={`/p/${username}`} passHref>
           </Link>
         </>

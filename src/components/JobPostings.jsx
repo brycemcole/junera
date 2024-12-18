@@ -63,7 +63,7 @@ export const JobList = ({ data, loading, error }) => {
       {data.map((job, index) => (
         <div
           key={job.id}
-          className={`${index !== data.length - 1 ? 'border-b' : ''} md:px-6 group py-3 md:py-3 space-y-2 text-sm cursor-pointer md:border md:rounded-xl md:mb-4 transition duration-200 ease-in-out`}
+          className={`${index !== data.length - 1 ? 'border-b' : ''} group py-3 md:py-3 space-y-2 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out`}
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
           {/* Header Section */}
@@ -92,9 +92,6 @@ export const JobList = ({ data, loading, error }) => {
             
             {job?.title || "No job titles available"}
           </span>
-          <div>
-            <p className="text-md text-foreground line-clamp-3 leading-relaxed" dangerouslySetInnerHTML={{ __html: stripHTML(decodeHTMLEntities(job?.description)) }} />
-          </div>
           <div className="flex items-center gap-2">
             <ul className="flex flex-wrap gap-2">
             {job.remoteKeyword && (
