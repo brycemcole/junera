@@ -155,7 +155,7 @@ export function NavbarMenu() {
                 </NavigationMenuLink>
               </li>
               <ListItem href="/profile" title="Profile">
-                {user.username}'s profile
+                {user.username}&apos;s profile
               </ListItem>
               <ListItem href="/notifications" title="Notifications">
                 View your notifications

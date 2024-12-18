@@ -92,17 +92,17 @@ export default function MatchingJobs({ savedSearches, loading, error }) {
                 <AvatarImage src={job.companyLogo} alt={job.company} />
                 <AvatarFallback>{job.company?.[0]}</AvatarFallback>
               </Avatar>
-              <span className="text-sm text-muted-foreground">{job.company}</span>
+              <span className="text-sm text-foreground">{job.company}</span>
             </div>
             
             <Link href={`/job-postings/${job.id}`} className="block group-hover:underline">
               <h3 className="text-foreground font-medium mt-1">
                 <span className="text-lime-600">{job.title}</span>
-                {job.location && <span className="text-muted-foreground"> in {job.location}</span>}
+                {job.location && <span className="text-foreground"> in {job.location}</span>}
               </h3>
             </Link>
 
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-xs text-foreground mt-1">
               <p>Matching &quot;{job.matchedSearch}&quot;</p>
               <p className="mt-0.5">
                 {[
