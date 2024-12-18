@@ -59,7 +59,7 @@ export const JobList = ({ data, loading, error }) => {
     );
   }
   return (
-    <div className="border rounded-xl shadow-sm px-4 md:px-0 md:border-none md:shadow-none">
+    <div className="rounded-xl shadow-sm md:px-0 md:border-none md:shadow-none">
       {data.map((job, index) => (
         <div
           key={job.id}
@@ -140,7 +140,11 @@ export const JobList = ({ data, loading, error }) => {
             <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3 text-muted-foreground" />
               <span>
-                {job?.created_at}
+                {job?.postedDate
+                  ? `${formatDistanceToNow(new Date(job.postedDate), {
+                      addSuffix: true,
+                    })}`
+                  : "N/A"}
               </span>
             </div>
             {job?.salary ? (

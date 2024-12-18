@@ -144,7 +144,7 @@ const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   return (
     <CollapsibleJobs
       title="Similar Job Postings"
-      open={false}
+      open={true}
       jobPostings={similarJobs}
     />
   );
@@ -175,7 +175,7 @@ const CompanySimilarJobs = ({ company }) => {
   return (
     <CollapsibleJobs
       title={`More Jobs at ${company}`}
-      open={false}
+      open={true}
       jobPostings={similarJobs}
     />
   );
@@ -389,6 +389,46 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
     </DropdownMenu>
   );
 };
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+function TabDemo() {
+  return (
+    <Tabs defaultValue="tab-1">
+      <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
+        <TabsTrigger
+          value="tab-1"
+          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+        >
+          Tab 1
+        </TabsTrigger>
+        <TabsTrigger
+          value="tab-2"
+          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+        >
+          Tab 2
+        </TabsTrigger>
+        <TabsTrigger
+          value="tab-3"
+          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+        >
+          Tab 3
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="tab-1">
+        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 1</p>
+      </TabsContent>
+      <TabsContent value="tab-2">
+        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 2</p>
+      </TabsContent>
+      <TabsContent value="tab-3">
+        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+
 
 export default function JobPostingPage({ params }) {
   const { id } = use(params);
@@ -787,250 +827,284 @@ Please assess the qualifications and provide a brief explanation of whether the 
   const { keywords, relatedPostings } = data;
 
   return (
-    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
+    <>
       <StickyNavbar
         title={jobPosting.title}
         companyName={jobPosting.company}
         companyLogo={''}
         companyId={1}
       />
-      <Breadcrumb className="mb-4">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/job-postings?company=${jobPosting.company}`}>{jobPosting.company}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{jobPosting.job_id}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-      <div>
-        <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
+      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href={`/job-postings?company=${jobPosting.company}`}>{jobPosting.company}</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{jobPosting.job_id}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+        <div>
+          <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
 
-          <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
-            <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
-              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-              <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            {jobPosting.company}
-          </Link>
-        </h3>
-      </div>
-      <h1 data-scroll-title className="text-2xl mb-4 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
-      {keywords && keywords.length > 0 && (
-        <div className="mb-8">
-          <ul className="flex flex-wrap gap-4 gap-y-3">
-            {keywords.map((keyword, index) => {
-              const colors = [
-                { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
-                { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-600/10" },
-                { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-600/10" },
-                { bg: "bg-sky-500/10", text: "text-sky-600", border: "border-sky-600/10" },
-                { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-600/10" },
-                { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-600/10" },
-                { bg: "bg-pink-500/10", text: "text-pink-600", border: "border-pink-600/10" },
-                { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-600/10" },
-                { bg: "bg-purple-500/10", text: "text-purple-600", border: "border-purple-600/10" },
-              ];
-
-              const color = colors[index % colors.length]; // Rotate colors based on index
-
-              return (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
-                >
-                  {keyword}
-                </Badge>
-              );
-            })}
-          </ul>
+            <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
+              <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
+                <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+                <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              {jobPosting.company}
+            </Link>
+          </h3>
         </div>
-      )}
-      <div className="mb-4 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-muted-foreground items-start">
-        {jobPosting?.salary ? (
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-3 w-3 text-muted-foreground" />
-            <span>
-              {jobPosting.salary}
-            </span>
+        <h1 data-scroll-title className="text-2xl mb-4 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
+        {keywords && keywords.length > 0 && (
+          <div className="mb-8">
+            <ul className="flex flex-wrap gap-4 gap-y-3">
+              {keywords.map((keyword, index) => {
+                const colors = [
+                  { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
+                  { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-600/10" },
+                  { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-600/10" },
+                  { bg: "bg-sky-500/10", text: "text-sky-600", border: "border-sky-600/10" },
+                  { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-600/10" },
+                  { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-600/10" },
+                  { bg: "bg-pink-500/10", text: "text-pink-600", border: "border-pink-600/10" },
+                  { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-600/10" },
+                  { bg: "bg-purple-500/10", text: "text-purple-600", border: "border-purple-600/10" },
+                ];
+
+                const color = colors[index % colors.length]; // Rotate colors based on index
+
+                return (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
+                  >
+                    {keyword}
+                  </Badge>
+                );
+              })}
+            </ul>
           </div>
-        ) : jobPosting?.salary_range_str ? (
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-3 w-3 text-muted-foreground" />
-            <span>
-              {jobPosting.salary_range_str}
-            </span>
-          </div>
-        ) : null}
-        <div className="flex items-center gap-2">
-
-          <User
-            className={`h-[14px] w-[14px] sm:h-4 sm:w-4 ${jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"
-              }`}
-          />
-          <span
-            className={jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"}
-          >
-            {jobPosting.applicants === 0
-              ? "Be the first applicant"
-              : `${jobPosting.applicants} applicants`}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin size={16} />
-          <span>{jobPosting.location}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Timer size={16} />
-          <span>{jobPosting.created_at}</span>
-        </div>
-
-        {jobPosting?.experienceLevel && (
-          <>
+        )}
+        <div className="mb-4 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-muted-foreground items-start">
+          {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
-              <Zap size={16} />
-              <span>{jobPosting.experienceLevel}</span>
+              <DollarSign className="h-3 w-3 text-muted-foreground" />
+              <span>
+                {jobPosting.salary}
+              </span>
+            </div>
+          ) : jobPosting?.salary_range_str ? (
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-3 w-3 text-muted-foreground" />
+              <span>
+                {jobPosting.salary_range_str}
+              </span>
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2">
+
+            <User
+              className={`h-[14px] w-[14px] sm:h-4 sm:w-4 ${jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"
+                }`}
+            />
+            <span
+              className={jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"}
+            >
+              {jobPosting.applicants === 0
+                ? "Be the first applicant"
+                : `${jobPosting.applicants} applicants`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin size={16} />
+            <span>{jobPosting.location}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Timer size={16} />
+            <span>{formatDistanceToNow(jobPosting.created_at)}</span>
+          </div>
+
+          {jobPosting?.experienceLevel && (
+            <>
+              <div className="flex items-center gap-2">
+                <Zap size={16} />
+                <span>{jobPosting.experienceLevel}</span>
+              </div>
+
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
+          <div>
+            <Link href={`/job-postings?company=${jobPosting.company}`}>
+              <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
+            </Link>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href={`${jobPosting.source_url}`}
+              target="_blank"
+              onClick={handleApplyClick} // Add onClick handler
+            >
+              <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
+                Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
+                <ArrowRight
+                  className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
+                  size={16}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </Button>
+            </Link>
+            <Button24 jobId={id} />
+            <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
+          </div>
+
+
+        </div>
+
+        <div>
+
+          <Tabs defaultValue="tab-1">
+            <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
+              <TabsTrigger
+                value="tab-1"
+                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+              >
+                Job Description
+              </TabsTrigger>
+              <TabsTrigger
+                value="tab-2"
+                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+              >
+                Suggested Jobs
+              </TabsTrigger>
+              <TabsTrigger
+                value="tab-3"
+                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
+              >
+                Company Info
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="tab-1">
+              <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
+                <div type="single" className="w-full" defaultValue="item-description">
+                  {[
+                    { key: 'companyDescription', label: 'Company Description' },
+                    { key: 'description', label: 'Job Description' },
+                    { key: 'responsibilities', label: 'Responsibilities' },
+                    { key: 'requirements', label: 'Requirements' },
+                    { key: 'Benefits', label: 'Benefits' },
+                    { key: 'MinimumQualifications', label: 'Minimum Requirements' },
+                    { key: 'relocation', label: 'Relocation Assistance' },
+                    { key: 'EqualOpportunityEmployerInfo', label: 'Equal Opportunity Employer Info' },
+                    { key: 'IsRemote', label: 'Remote Work Availability' },
+                    { key: 'H1BVisaSponsorship', label: 'H1B Visa Sponsorship' },
+                    { key: 'HoursPerWeek', label: 'Hours Per Week' },
+                    { key: 'Schedule', label: 'Schedule' },
+                    { key: 'NiceToHave', label: 'Nice to Have' },
+                    { key: 'raw_description_no_format', label: 'Job Link Description' }
+
+                  ].map(({ key, label }) => (
+                    typeof jobPosting[key] === 'string' && jobPosting[key].length > 4 && (
+                      <p className="leading-loose text-sm">
+                        <div>
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
+                            }}
+                          />
+
+                        </div>
+                      </p>
+                    )
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="tab-2">
+
+              <div className="flex flex-col space-y-2 mb-4">
+                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
+                  <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
+                    See more {jobPosting.experienceLevel} jobs
+                  </Link>
+                </p>
+                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
+                  <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
+                    See jobs in {jobPosting.location.trim()}
+                  </Link>
+                </p>
+                <p className="text-blue-500 font-medium hover:underline underline-offset-4">
+                  <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
+                    See more {jobPosting.title.trim()} jobs
+                  </Link>
+
+                </p>
+              </div>
+              <Suspense fallback={<div>Loading similar jobs...</div>}>
+                <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
+              </Suspense>
+
+              <Suspense fallback={<div>Loading similar jobs...</div>}>
+                <CompanySimilarJobs company={jobPosting.company} />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="tab-3">
+              <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
+          <Summarization
+            title="Job Posting Summary"
+            message={llmResponse || jobPosting.summary}
+            loading={loadingLLMReponse}
+            error={errorLLMResponse}
+          />
+        )}
+
+        {user && insightsShown && (
+          <>
+            <h3 className="text-md font-semibold mb-3">Quick Insights</h3>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
+                <Sparkle size={14} strokeWidth={2} className="text-muted-foreground" />
+              </Badge>
+              <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
+                <User size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
+
+                <p className="text-sm px-1 py-0.5 font-medium text-muted-foreground">
+                  Am I a good fit?
+                </p>
+              </Badge>
+              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-foreground/10" variant="secondary">
+                <Briefcase size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
+
+                <p className="text-sm px-1 py-0.5 font-semibold text-muted-foreground">
+                  What should I say in my cover letter?
+                </p>
+              </Badge>
+
             </div>
 
+            {showAlert && <AlertDemo />}
           </>
         )}
-      </div>
-
-      <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
-        <div>
-          <Link href={`/job-postings?company=${jobPosting.company}`}>
-            <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
-          </Link>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`${jobPosting.source_url}`}
-            target="_blank"
-            onClick={handleApplyClick} // Add onClick handler
-          >
-            <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
-              Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
-              <ArrowRight
-                className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
-                size={16}
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            </Button>
-          </Link>
-          <Button24 jobId={id} />
-          <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
-        </div>
-
 
       </div>
-
-      {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
-        <Summarization
-          title="Job Posting Summary"
-          message={llmResponse || jobPosting.summary}
-          loading={loadingLLMReponse}
-          error={errorLLMResponse}
-        />
-      )}
-
-      {user && insightsShown && (
-        <>
-          <h3 className="text-md font-semibold mb-3">Quick Insights</h3>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-              <Sparkle size={14} strokeWidth={2} className="text-muted-foreground" />
-            </Badge>
-            <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-              <User size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-              <p className="text-sm px-1 py-0.5 font-medium text-muted-foreground">
-                Am I a good fit?
-              </p>
-            </Badge>
-            <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-foreground/10" variant="secondary">
-              <Briefcase size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-              <p className="text-sm px-1 py-0.5 font-semibold text-muted-foreground">
-                What should I say in my cover letter?
-              </p>
-            </Badge>
-
-          </div>
-
-          {showAlert && <AlertDemo />}
-        </>
-      )}
-      <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
-        <Accordion type="single" className="w-full" defaultValue="item-description">
-          {[
-            { key: 'companyDescription', label: 'Company Description' },
-            { key: 'description', label: 'Job Description' },
-            { key: 'responsibilities', label: 'Responsibilities' },
-            { key: 'requirements', label: 'Requirements' },
-            { key: 'Benefits', label: 'Benefits' },
-            { key: 'MinimumQualifications', label: 'Minimum Requirements' },
-            { key: 'relocation', label: 'Relocation Assistance' },
-            { key: 'EqualOpportunityEmployerInfo', label: 'Equal Opportunity Employer Info' },
-            { key: 'IsRemote', label: 'Remote Work Availability' },
-            { key: 'H1BVisaSponsorship', label: 'H1B Visa Sponsorship' },
-            { key: 'HoursPerWeek', label: 'Hours Per Week' },
-            { key: 'Schedule', label: 'Schedule' },
-            { key: 'NiceToHave', label: 'Nice to Have' },
-            { key: 'raw_description_no_format', label: 'Job Link Description' }
-
-          ].map(({ key, label }) => (
-            typeof jobPosting[key] === 'string' && jobPosting[key].length > 4 && (
-              <AccordionItem className="text-md" key={key} value={`item-${key}`}>
-                <AccordionTrigger className="text-md font-semibold md:text-lg">{label}</AccordionTrigger>
-                <AccordionContent className="leading-loose">
-                  <div>
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
-                      }}
-                    />
-
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )
-          ))}
-        </Accordion>
-      </div>
-      <div className="flex flex-col space-y-2 mb-4">
-        <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-          <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
-            See more {jobPosting.experienceLevel} jobs
-          </Link>
-        </p>
-        <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-          <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
-            See jobs in {jobPosting.location.trim()}
-          </Link>
-        </p>
-        <p className="text-blue-500 font-medium hover:underline underline-offset-4">
-          <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
-            See more {jobPosting.title.trim()} jobs
-          </Link>
-
-        </p>
-      </div>
-      <Suspense fallback={<div>Loading similar jobs...</div>}>
-        <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
-      </Suspense>
-
-      <Suspense fallback={<div>Loading similar jobs...</div>}>
-        <CompanySimilarJobs company={jobPosting.company} />
-      </Suspense>
-    </div>
+    </>
   );
 }
 

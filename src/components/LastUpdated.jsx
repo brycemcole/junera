@@ -15,7 +15,7 @@ export const LastUpdated = () => {
             .then((res) => res.json())
             .then((data) => {
                 if (data.jobPostings && data.jobPostings.length > 0) {
-                    setData(data.jobPostings[0].created_at);
+                    setData(data.jobPostings[0].postedDate);
                 }
             })
             .catch((error) => console.error("Error fetching data:", error));
@@ -31,7 +31,7 @@ export const LastUpdated = () => {
 
     return (
         <><br/>
-            Last updated: {data}
+            Last updated: {formatDistanceToNow(data)} ago
         </>
     );
 }

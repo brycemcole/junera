@@ -118,7 +118,11 @@ return (
                     <div className="flex items-center gap-2">
                         <Calendar className="h-2 w-2 text-muted-foreground" />
                         <span>
-                            {job.postedDate}
+                            {job?.postedDate
+                                ? `${formatDistanceToNow(new Date(job.postedDate), {
+                                        addSuffix: true,
+                                    })}`
+                                : "N/A"}
                         </span>
                     </div>
                     {(job?.salary && Number(job.salary) > 0) || job?.salary_range_str ? (
