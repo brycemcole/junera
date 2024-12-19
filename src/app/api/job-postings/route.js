@@ -170,8 +170,9 @@ export async function GET(req) {
   const company = searchParams.get("company")?.trim() || "";
   const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
 
-  // 1. Define state name to abbreviation mapping
+  // Reintroduce the state name to abbreviation mapping
   const stateMap = {
+    'remote': 'N/A',
     'alabama': 'AL',
     'alaska': 'AK',
     'arizona': 'AZ',
@@ -224,13 +225,13 @@ export async function GET(req) {
     'wyoming': 'WY'
   };
 
-  // 2. Create reverse mapping: abbreviation to full state name
+  // Reverse mapping: abbreviation to full state name
   const abbrMap = {};
   for (const [name, abbr] of Object.entries(stateMap)) {
     abbrMap[abbr.toLowerCase()] = name;
   }
 
-  // 3. Generate search terms based on the input location
+  // Generate search terms based on the input location
   let locationSearchTerms = [location];
 
   if (stateMap[location]) {
@@ -249,74 +250,45 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
+    const params = [];
+    let paramIndex = 1;
+
     // Build query
     let queryText = `
       SELECT 
-        id, 
         job_id,
-        source_url,
-        experiencelevel,
-        title, 
-        company, 
+        title,
+        company,
         location,
         description,
+        experiencelevel,
         created_at
       FROM jobPostings
       WHERE 1 = 1
     `;
 
-    const params = [];
-    const entryLevelIndicators = ['1 year of', 'graduate', 'entry level', 'junior'];
-    const entryLevelTitleIndicators = ['new grad', 'college graduate', 'associate'];
-    const exclusionIndicators = ['senior', 'manager', 'lead', 'director', 'principal', 'vice', 'vp', 'head'];
-    let paramIndex = 1; // PostgreSQL uses 1-based indexing for parameters
-
-    // Full-text search on title (using ILIKE for simplicity)
+    // Full-text search on title
     if (title) {
-      // Replace spaces with & for AND logic in to_tsquery
-      const formattedTitle = title.trim().replace(/\s+/g, ' & ');
-      queryText += ` AND to_tsvector('english', title) @@ to_tsquery('english', $${paramIndex})`;
-      params.push(formattedTitle);
+      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
+      params.push(title.trim().replace(/\s+/g, ' & '));
       paramIndex++;
     }
 
+    // Experience level filter
     if (experienceLevel) {
-      // Existing logic for other experience levels
-      queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
-      params.push(`%${experienceLevel}%`);
+      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
+      params.push(experienceLevel);
       paramIndex++;
     }
 
-    // 4. Modify the location filter to include both full state names and abbreviations with precise matching
+    // Location filter using full-text search with 'simple' configuration
     if (location) {
-      const locationConditions = [];
-      const locationParams = [];
-
-      locationSearchTerms.forEach(term => {
-        // Check if the term is an abbreviation (length <= 2)
-        if (term.length <= 2) {
-          // Regex pattern to match whole word or preceded by a comma and/or space
-          // Pattern explanation:
-          // (^|,\s*)ny(\s*|$)
-          const regexPattern = `(^|,\\s*)${term}(\\s*|$)`;
-          locationConditions.push(`location ~* $${paramIndex}`);
-          locationParams.push(regexPattern);
-          paramIndex++;
-        } else {
-          // For full state names, use ILIKE with wildcards
-          locationConditions.push(`location ILIKE $${paramIndex}`);
-          locationParams.push(`%${term}%`);
-          paramIndex++;
-        }
-      });
-
-      // Combine conditions with OR
-      queryText += ` AND (${locationConditions.join(' OR ')})`;
-
-      // Add parameters
-      params.push(...locationParams);
+      queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
+      params.push(location);
+      paramIndex++;
     }
 
+    // Company filter
     if (company) {
       queryText += ` AND company = $${paramIndex}`;
       params.push(company);
@@ -325,12 +297,10 @@ export async function GET(req) {
 
     queryText += `
       ORDER BY 
-        created_at DESC, id DESC, title, location
+        created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
     `;
     params.push(limit, offset);
-    paramIndex += 2;
-
     const queryPrepStart = performance.now();
     const queryExecStart = performance.now();
     const result = await query(queryText, params /*, { signal }*/);

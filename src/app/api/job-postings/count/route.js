@@ -12,10 +12,9 @@ export async function GET(req) {
 
   // Extract and sanitize search filters
   const title = searchParams.get("title")?.trim() || "";
-  const experienceLevel = searchParams.get("experienceLevel")?.trim() || "";
+  const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
   const location = searchParams.get("location")?.trim() || "";
   const company = searchParams.get("company")?.trim() || "";
-
 
   // 1. Define state name to abbreviation mapping
   const stateMap = {
@@ -81,110 +80,49 @@ export async function GET(req) {
   // 3. Generate search terms based on the input location
   let locationSearchTerms = [location];
 
-  if (stateMap[location]) {
-    // If the input is a full state name, add its abbreviation
-    locationSearchTerms.push(stateMap[location].toLowerCase());
-  } else if (abbrMap[location]) {
-    // If the input is a state abbreviation, add its full name
-    locationSearchTerms.push(abbrMap[location].toLowerCase());
+  if (stateMap[location.toLowerCase()]) {
+    locationSearchTerms.push(stateMap[location.toLowerCase()]);
+  } else if (abbrMap[location.toLowerCase()]) {
+    locationSearchTerms.push(abbrMap[location.toLowerCase()]);
   }
+
   try {
+    // Prepare query parameters
+    const params = [];
+    let paramIndex = 1;
+
     // Build the count query
     let queryText = `
-      SELECT COUNT(jp.job_id) AS totalJobs
-      FROM jobPostings jp
-      WHERE 1=1
+      SELECT COUNT(*) AS totalJobs
+      FROM jobPostings
+      WHERE 1 = 1
     `;
 
-    const params = [];
-    const entryLevelIndicators = ['1 year of', 'graduate', 'entry level', 'junior'];
-    const entryLevelTitleIndicators = ['new grad', 'college graduate', 'associate'];
-    const exclusionIndicators = ['senior', 'manager', 'lead', 'director', 'principal', 'vice', 'vp', 'head'];
-    let paramIndex = 1; // PostgreSQL uses 1-based indexing for parameters
-
+    // Full-text search on title
     if (title) {
-      // Replace spaces with & for AND logic in to_tsquery
-      const formattedTitle = title.trim().replace(/\s+/g, ' & ');
-      queryText += ` AND to_tsvector('english', title) @@ to_tsquery('english', $${paramIndex})`;
-      params.push(formattedTitle);
+      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
+      params.push(title.trim().replace(/\s+/g, ' & '));
       paramIndex++;
     }
+
+    // Experience level filter using LOWER
     if (experienceLevel) {
-      if (experienceLevel === 'entry') {
-        // Build inclusion conditions for entry-level indicators in description
-        const descriptionConditions = entryLevelIndicators
-          .map((_, i) => `description ILIKE $${paramIndex + i}`)
-          .join(' OR ');
-
-        // Build inclusion conditions for entry-level indicators in title
-        const titleConditions = entryLevelTitleIndicators
-          .map((_, i) => `title ILIKE $${paramIndex + entryLevelIndicators.length + i}`)
-          .join(' OR ');
-
-        // Combine description and title inclusion conditions
-        const inclusionConditions = `(${descriptionConditions} OR ${titleConditions})`;
-
-        queryText += ` AND (${inclusionConditions})`;
-
-        // Add parameters for description indicators
-        const descriptionParams = entryLevelIndicators.map(indicator => `%${indicator}%`);
-        // Add parameters for title indicators
-        const titleParams = entryLevelTitleIndicators.map(indicator => `%${indicator}%`);
-
-        params.push(...descriptionParams, ...titleParams);
-        paramIndex += entryLevelIndicators.length + entryLevelTitleIndicators.length;
-
-        // Build exclusion conditions to exclude senior and similar roles
-        const exclusionConditions = exclusionIndicators
-          .map((_, i) => `(experiencelevel ILIKE $${paramIndex + i} OR description ILIKE $${paramIndex + i} OR title ILIKE $${paramIndex + i})`)
-          .join(' OR ');
-
-        queryText += ` AND NOT (${exclusionConditions})`;
-
-        // Add parameters for exclusion indicators
-        const exclusionParams = exclusionIndicators.map(indicator => `%${indicator}%`);
-        params.push(...exclusionParams);
-        paramIndex += exclusionIndicators.length;
-      } else {
-        // Existing logic for other experience levels
-        queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
-        params.push(`%${experienceLevel}%`);
-        paramIndex++;
-      }
+      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
+      params.push(experienceLevel);
+      paramIndex++;
     }
+
+    // Location filter using full-text search with 'simple' configuration
     if (location) {
-      const locationConditions = [];
-      const locationParams = [];
-
-      locationSearchTerms.forEach(term => {
-        // Check if the term is an abbreviation (length <= 2)
-        if (term.length <= 2) {
-          // Regex pattern to match whole word or preceded by a comma and/or space
-          // Pattern explanation:
-          // (^|,\s*)ny(\s*|$)
-          const regexPattern = `(^|,\\s*)${term}(\\s*|$)`;
-          locationConditions.push(`location ~* $${paramIndex}`);
-          locationParams.push(regexPattern);
-          paramIndex++;
-        } else {
-          // For full state names, use ILIKE with wildcards
-          locationConditions.push(`location ILIKE $${paramIndex}`);
-          locationParams.push(`%${term}%`);
-          paramIndex++;
-        }
-      });
-
-      // Combine conditions with OR
-      queryText += ` AND (${locationConditions.join(' OR ')})`;
-
-      // Add parameters
-      params.push(...locationParams);
+      queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
+      params.push(location);
+      paramIndex++;
     }
 
+    // Company filter
     if (company) {
-      // Assuming company is the company name (TEXT field)
-      queryText += ` AND company ILIKE $${paramIndex}`;
-      params.push(`%${company}%`);
+      queryText += ` AND company = $${paramIndex}`;
+      params.push(company);
       paramIndex++;
     }
 
