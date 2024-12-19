@@ -82,13 +82,13 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
 
   return (
     <Button
-      className="group h-auto gap-4 py-3 text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+      className="group h-auto gap-4 py-3 bg-background text-left shadow-sm hover:shadow-md transition-shadow duration-300"
       variant="outline"
       onClick={redirectToSearch}
     >
       <div className="space-y-1 w-[200px]">
-        <h3>{name}</h3>
-        <p className="text-muted-foreground text-wrap">
+        <p className="text-sm">{name}</p>
+        <p className="text-muted-foreground text-wrap truncate line-clamp-2 text-xs">
           <strong className="text-foreground">{title || 'Any'}</strong> jobs in <strong className="text-foreground">{location || 'Any location'}</strong> requiring <strong className="text-foreground">{experienceLevel || 'Any'}</strong> experience level.
         </p>
       </div>
@@ -136,7 +136,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm"
+            className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-xs rounded-lg border border shadow-sm"
           >
             {value ? (
               <span className="flex min-w-0 items-center gap-2">
@@ -147,8 +147,8 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                 <span className="truncate font-semibold">{value}</span>
               </span>
             ) : (
-              <span className="flex min-w-0 text-muted-foreground items-center gap-2">
-                <span className="truncate">Company</span>
+              <span className="flex min-w-0 text-foreground items-center gap-2">
+                <span className="truncate text-xs">Company</span>
               </span>
             )}
             <ChevronDown
@@ -247,15 +247,15 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
 const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+      <SelectTrigger className="relative ps-4 h-7 md:h-9 text-xs rounded-lg border border bg-background shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 group-has-[[disabled]]:opacity-50">
         </div>
         {value ? (
-          <span className="text-muted-foreground truncate font-medium">
+          <span className="text-foreground truncate text-xs font-medium">
             <SelectValue placeholder={value} />
           </span>
         ) : (
-          <SelectValue placeholder="Level" />
+          <SelectValue className="text-foreground truncate text-xs font-medium" placeholder="Level" />
         )}
       </SelectTrigger>
       <SelectContent>
@@ -333,11 +333,11 @@ const LocationSelect = memo(function LocationSelect({ onChange, value }) {
 
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative text-muted-foreground ps-4 h-9 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
+      <SelectTrigger className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
         <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
         </div>
         {value ? (
-          <span className="text-muted-foreground truncate font-medium">
+          <span className="text-foreground text-xs truncate font-medium">
             <SelectValue placeholder={value} />
           </span>
         ) : (
@@ -445,7 +445,7 @@ const SaveSearchButton = memo(function SaveSearchButton({
   const isAlreadySaved = savedSearches?.some(search => {
     const params = JSON.parse(search.search_params);
     return params.jobTitle === title &&
-      params.experienceLevel === experienceLevel &&
+      params.explevel === experienceLevel &&
       params.location === location;
   });
 
@@ -546,7 +546,7 @@ export default function JobPostingsPage() {
         </PopoverTrigger>
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
           <div className="space-y-3">
-            <div className="space-y-1">
+            <div className="space-y-4">
               <p className="text-[13px] font-medium">Filter job postings</p>
               <p className="text-xs text-muted-foreground">
                 Filter through over {count} job postings!
@@ -591,7 +591,7 @@ export default function JobPostingsPage() {
                     if (newLoc !== location) {
                       const params = {
                         title,
-                        experienceLevel,
+                        explevel: experienceLevel,
                         location: newLoc,
                         company,
                         page: "1"
@@ -659,7 +659,7 @@ export default function JobPostingsPage() {
       setCurrentPage(1);
       const params = {
         title,
-        experienceLevel,
+        explevel: experienceLevel,
         location,
         company: id,
         page: '1'
@@ -675,7 +675,7 @@ export default function JobPostingsPage() {
   function buildHref(pageNumber) {
     const params = {
       title,
-      experienceLevel,
+      explevel: experienceLevel,
       location,
       company,
       page: pageNumber.toString()
@@ -808,7 +808,7 @@ export default function JobPostingsPage() {
   const applySavedSearch = (searchParamsStr) => {
     const params = JSON.parse(searchParamsStr);
     const newTitle = params.jobTitle || '';
-    const newExp = params.experienceLevel || '';
+    const newExp = params.explevel || '';
     const newLoc = params.location || '';
     setTitle(newTitle);
     setExperienceLevel(newExp);
@@ -835,7 +835,7 @@ export default function JobPostingsPage() {
         setCurrentPage(1);
         const params = {
           title: val,
-          experienceLevel,
+          explevel: experienceLevel,
           location,
           company,
           page: '1'
@@ -1002,7 +1002,7 @@ Please provide relevant career advice and job search assistance based on their p
         <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
         <Suspense fallback={<div>Loading...</div>}>
           {user && (
-            <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-4 ">
+            <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
               <h3 className="text-sm text-muted-foreground font-medium">
                 Saved Searches
               </h3>

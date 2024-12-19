@@ -9,6 +9,7 @@ import EditProfileDialog from '@/components/edit-profile'
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { differenceInYears, differenceInMonths, parseISO } from 'date-fns';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,6 +21,38 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { format } from 'date-fns';
+import { enUS, fr } from 'date-fns/locale';
+
+function formatStartDate(date, locale = enUS) {
+    try {
+        return format(new Date(date), 'MMMM yyyy', { locale });
+    } catch (error) {
+        console.error('Invalid date:', date);
+        return 'Invalid Date';
+    }
+}
+const calculateDuration = (startDate, endDate) => {
+    const start = parseISO(startDate);
+    const end = endDate ? parseISO(endDate) : new Date();
+
+    const years = differenceInYears(end, start);
+    const months = differenceInMonths(end, start) % 12;
+
+    let duration = "";
+    if (years > 0) {
+        duration += `${years} year${years > 1 ? "s" : ""}`;
+    }
+    if (months > 0) {
+        if (duration) duration += ", ";
+        duration += `${months} month${months > 1 ? "s" : ""}`;
+    }
+    if (!duration) {
+        duration = "Less than a month";
+    }
+
+    return duration;
+};
 
 function ExperienceAvatar({ image, username }) {
     return (
@@ -53,6 +86,7 @@ function CancelDialog({ experience, onConfirm }) {
         </AlertDialog>
     );
 }
+
 
 
 export default function ProfilePage() {
@@ -562,11 +596,21 @@ export default function ProfilePage() {
                             <div className="flex flex-row items-center gap-4">
                                 <ExperienceAvatar image={`https://logo.clearbit.com/${encodeURIComponent(exp.company_name.replace('.com', ''))}.com`} username={exp.company_name} />
                                 <div className="flex flex-col">
+                                    <p className="text-sm text-muted-foreground">{exp.company_name}</p>
                                     <h3 className="font-semibold">{exp.job_title}</h3>
-                                    <p className="text-sm text-gray-600">{exp.company_name}</p>
-                                    <p className="text-sm">
-                                        {new Date(exp.start_date).toLocaleDateString()} - {exp.is_current ? 'Present' : new Date(exp.end_date).toLocaleDateString()}
-                                    </p>
+                                    {exp.is_current ?
+                                        (
+                                            <>
+                                                <p className="text-sm">
+                                                    {formatStartDate(exp.start_date)},  Present
+                                                </p>
+                                                
+                                            </>
+                                        ) : (
+                                            <p className="text-sm">
+                                                {formatStartDate(exp.start_date)},  {calculateDuration(exp.start_date, exp.end_date)}
+                                            </p>
+                                        )}
                                     <p className="mt-2">{exp.description}</p>
                                 </div>
                             </div>
@@ -601,7 +645,7 @@ export default function ProfilePage() {
                             </div>
                             <h3 className="font-semibold">{edu.institution_name}</h3>
                             <p className="text-sm">{edu.degree} in {edu.field_of_study}</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-muted-foreground">
                                 {new Date(edu.start_date).toLocaleDateString()} - {edu.is_current ? 'Present' : new Date(edu.end_date).toLocaleDateString()}
                             </p>
                         </div>

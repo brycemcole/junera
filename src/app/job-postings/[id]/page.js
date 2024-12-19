@@ -1012,16 +1012,16 @@ Please assess the qualifications and provide a brief explanation of whether the 
                     { key: 'description', label: 'Job Description' }
 
                   ].map(({ key, label }) => (
-                    <p key={key} className="leading-loose text-sm">
-                      <div>
+                    <div key={key}>
+                      <p className="leading-loose text-sm">
                         <div
                           dangerouslySetInnerHTML={{
                             __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
                           }}
                         />
 
-                      </div>
-                    </p>
+                      </p>
+                    </div>
                   ))}
                 </div>
               </div>

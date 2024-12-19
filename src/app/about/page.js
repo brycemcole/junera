@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 const sections = [
   { id: 'introduction', title: 'Introduction' },
-  { id: 'our-mission', title: 'Our Mission' },
-  { id: 'our-values', title: 'Our Values' },
 ]
 
 export default function About() {
@@ -41,32 +40,9 @@ export default function About() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="bg-black shadow-md p-4">
-        <h1 className="text-3xl font-bold mb-4 text-center">About Us</h1>
-        <nav className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => scrollToSection(section.id)}
-              className={`px-3 py-2 rounded transition-colors ${
-                activeSection === section.id
-                  ? 'bg-gray-300 bg-opacity-20 text-white'
-                  : 'hover:bg-gray-300 hover:bg-opacity-20 hover:text-white'
-              }`}
-            >
-              {section.title}
-            </button>
-          ))}
-          <button
-            onClick={() => scrollToSection('contact-us')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
-            Contact Us
-          </button>
-        </nav>
-      </header>
-      <main className="max-w-4xl mx-auto p-6">
+    <div className="min-h-screen text-primary">
+      <main className="max-w-4xl mx-auto p-6 text-md">
+        <h1 className="text-3xl dark:text-neutral-200 font-mono mb-8">About Junera</h1>
         {sections.map((section) => (
           <section
             key={section.id}
@@ -74,19 +50,19 @@ export default function About() {
             ref={(el) => (sectionRefs.current[section.id] = el)}
             className="mb-12"
           >
-            <h2 className="text-2xl font-semibold mb-4">{section.title}</h2>
+            <h2 className="text-lg font-medium mb-4">{section.title}</h2>
             {section.id === 'introduction' && (
-              <p className="text-gray-300">
-                Welcome to Junera! We strive to give you the advatage in STEM job searching by incorporating the necessary tools needed in todays job market and through providing a feedback-centrick platform where you can rate comapanies *something along the lines of being able to report if a company ghosted you and if job posting is down etc*
+              <p className="text-muted-foreground dark:text-neutral-300">
+                Welcome to junera, a smarter job board for STEM professionals.
               </p>
             )}
             {section.id === 'our-mission' && (
-              <p className="text-gray-300">
+              <p className="text-primary">
                 Our mission is to ......
               </p>
             )}
             {section.id === 'our-values' && (
-              <ul className="list-disc list-inside text-gray-300">
+              <ul className="list-disc list-inside">
                 <li>....</li>
               </ul>
             )}
@@ -97,16 +73,16 @@ export default function About() {
           ref={(el) => (sectionRefs.current['contact-us'] = el)}
           className="mb-12"
         >
-          <h2 className="text-2xl font-semibold mb-4">Contact Us</h2>
-          <div className="text-gray-700 dark:text-gray-300">
+          <h2 className="text-lg font-medium mb-4">Contact Us</h2>
+          <div className="text-muted-foreground dark:text-neutral-300">
             <p>If you have any feedback or would like to get in touch, please use the channels below:</p>
             <ul className="mt-2">
-              <li>Email: <a href="mailto:support@junera.us" className="text-blue-600 dark:text-blue-400 hover:underline">support@junera.us</a></li>
-              <li>Developer Emails: <a href="mailto:bryce@junera.us" className="text-blue-600 dark:text-blue-400 hover:underline">bryce@junera.us</a> & <a href="mailto:carlos@junera.us" className="text-blue-600 dark:text-blue-400 hover:underline">carlos@junera.us</a></li>
+              <li>Email: <Link href="mailto:support@junera.us"><Button variant="link" className="p-0">support@junera.us</Button></Link></li>
+              <li>Developer Emails: <Link href="mailto:bryce@junera.us"><Button variant="link" className="p-0">bryce@junera.us</Button></Link> & <Link href="mailto:carlos@junera.us"><Button variant="link" className="p-0">carlos@junera.us</Button></Link></li>
             </ul>
           </div>
         </section>
       </main>
-    </div>
+    </div >
   )
 }
