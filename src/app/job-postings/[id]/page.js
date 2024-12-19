@@ -215,14 +215,9 @@ function extractSalary(text) {
   // Step 2: Remove HTML tags
   const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
 
-  // Step 3: Normalize HTML entities and special characters
+  // Step 3: Normalize special characters
   const normalizedText = textWithoutTags
     .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
-    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
-    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
     .trim();
 
   // Define regex patterns
