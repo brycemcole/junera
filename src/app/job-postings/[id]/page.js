@@ -52,6 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { JobCard } from "../../../components/job-posting";
 import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
+import DOMPurify from 'dompurify';
 const stripHTML = (str) => {
   const allowedTags = ['b', 'i', 'strong', 'br', 'em', 'u'];
   const parser = new DOMParser();
@@ -1016,7 +1017,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
                       <p className="leading-loose text-sm">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
+                            __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
                           }}
                         />
 
