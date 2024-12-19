@@ -24,9 +24,6 @@ function extractSalary(text) {
     .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
     .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
     .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
     .trim();
 
   // Define regex patterns
