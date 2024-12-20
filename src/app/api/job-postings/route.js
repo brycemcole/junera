@@ -52,7 +52,6 @@ function extractSalary(text) {
   if (!text) return "";
 
   // Step 1: Decode HTML entities
-  // Create a temporary DOM element to leverage the browser's HTML parser
   const decodedString = he.decode(text);
 
   // Step 2: Remove HTML tags
@@ -85,7 +84,10 @@ function extractSalary(text) {
     // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
     /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
 
-    // 6. Single salary mentions (e.g., "$85,000")
+    // **6. Single salary mentions with 'per hour' or similar (e.g., "$35.00 per hour")**
+    /\$\s*\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(per\s*hour|hourly|per\s*hr|hr|h)\b/gi,
+
+    // 7. Single salary mentions (e.g., "$85,000")
     /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
   ];
 

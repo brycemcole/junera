@@ -59,17 +59,15 @@ export const JobList = ({ data, loading, error }) => {
     );
   }
   return (
-    <div className="rounded-xl shadow-sm md:px-0 md:border-none md:shadow-none">
+    <div className="md:px-0 border-none md:shadow-none">
       {data.map((job, index) => (
         <div
           key={job.id}
-          className={`${index !== data.length - 1 ? 'border-b' : ''} group py-3 md:py-3 space-y-2 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out`}
+          className={`${index !== data.length - 1 ? '' : ''} flex flex-row gap-4 items-center group py-3 md:py-3 space-y-0 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out`}
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
-          {/* Header Section */}
-          <div className="flex items-center gap-4 mb-1">
-            {job.company ? (
-              <Avatar className="w-6 h-6">
+                      {job.company ? (
+              <Avatar className="w-10 h-10">
                   <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
                   <AvatarFallback>
                   {job.company?.charAt(0).toUpperCase()}
@@ -82,50 +80,20 @@ export const JobList = ({ data, loading, error }) => {
                 </AvatarFallback>
               </Avatar>
             )}
+          {/* Header Section */}
+          <div className="flex flex-col">
+          <div className="flex items-center gap-4">
             <div className="flex flex-col">
               <span className="text-sm text-muted-foreground">
                 {job?.company || "No company name available"}
               </span>
             </div>
           </div>
-          <span className="font-semibold group-hover:underline text-xl">
+          <span className="font-semibold group-hover:underline text-md">
             
             {job?.title || "No job titles available"}
           </span>
-          <div className="flex items-center gap-2">
-            <ul className="flex flex-wrap gap-2">
-            {job.remoteKeyword && (
-              <Badge
-                variant="outline"
-                className="bg-green-500/10 text-green-600 rounded-md text-sm sm:text-[13px] font-medium border-green-600/10"
-              >
-                {job.remoteKeyword}
-              </Badge>
-            )}
-              {job.keywords && job.keywords.map((keyword, index) => {
-                const colors = [
-                  {
-                    bg: "bg-blue-500/10",
-                    text: "text-blue-600",
-                    border: "border-blue-600/10",
-                  },
-                ];
-
-                const color = colors[index % colors.length]; // Rotate colors based on index
-
-                return (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
-                  >
-                    {keyword}
-                  </Badge>
-                );
-              })}
-            </ul>
-          </div>
-          <div className="my-1 flex gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
+          <div className="flex md:gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3 text-muted-foreground" />
               <span>{job?.location || "N/A"}</span>
@@ -160,6 +128,7 @@ export const JobList = ({ data, loading, error }) => {
   </div>
 ) : null}
 
+          </div>
           </div>
         </div>
       ))}

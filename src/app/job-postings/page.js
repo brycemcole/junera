@@ -539,7 +539,7 @@ export default function JobPostingsPage() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+          <Button  className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
             <Filter size={14} className="mr-2" />
             Filter
           </Button>
@@ -1012,24 +1012,26 @@ Please provide relevant career advice and job search assistance based on their p
             </div>
           )}
         </Suspense>
-        <Suspense fallback={<div>Loading...</div>}>
-          <ScrollArea>
-            <div className="flex flex-row items-center gap-4 mb-6">
-              {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
-                savedSearches.map((search) => (
-                  <SavedSearchButton
-                    key={search.id}
-                    name={search.search_name}
-                    title={search.search_criteria.title}
-                    experienceLevel={search.search_criteria.experienceLevel}
-                    location={search.search_criteria.location}
-                  />
-                ))
-              )}
-            </div>
-            <ScrollBar className="w-full" />
-          </ScrollArea>
-        </Suspense>
+        {user && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <ScrollArea>
+              <div className="flex flex-row items-center gap-4 mb-6">
+                {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
+                  savedSearches.map((search) => (
+                    <SavedSearchButton
+                      key={search.id}
+                      name={search.search_name}
+                      title={search.search_criteria.title}
+                      experienceLevel={search.search_criteria.experienceLevel}
+                      location={search.search_criteria.location}
+                    />
+                  ))
+                )}
+              </div>
+              <ScrollBar className="w-full" />
+            </ScrollArea>
+          </Suspense>
+        )}
       </div>
 
       <Suspense fallback={<div>Loading...</div>}>
@@ -1062,7 +1064,7 @@ Please provide relevant career advice and job search assistance based on their p
         <div>
           {data && data.length > 0 ? (
             <div key="job-postings">
-              <div className="mb-4 items-center flex gap-4">
+              <div className="items-center flex gap-4">
                 <Suspense fallback={<div>Loading...</div>}>
                   <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
                 </Suspense>

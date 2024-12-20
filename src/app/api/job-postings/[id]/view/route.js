@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/pgdb';
 import jwt from 'jsonwebtoken';
-import sql from 'mssql';
 
 async function logInteraction(userId, jobId, interactionType) {
   await query(`
@@ -13,7 +12,7 @@ async function logInteraction(userId, jobId, interactionType) {
 export async function POST(req, { params }) {
   try {
     console.log('Tracking job view...');
-    const { id } = await params;
+    const { id } = params;
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,39 +22,33 @@ export async function POST(req, { params }) {
     const decoded = jwt.verify(token, process.env.SESSION_SECRET);
     const userId = decoded.id;
 
-    const pool = await getConnection();
-    const transaction = new sql.Transaction(pool);
-    await transaction.begin();
+    // Begin transaction
+    await query('BEGIN');
 
     try {
       // Update view count
-      await transaction.request()
-        .input('jobId', sql.NVarChar, id)
-        .query('UPDATE jobPostings SET views = ISNULL(views, 0) + 1 WHERE id = @jobId');
+      await query(
+        'UPDATE jobPostings SET views = COALESCE(views, 0) + 1 WHERE job_id = $1',
+        [id]
+      );
 
       // Add to recently viewed
-      await transaction.request()
-        .input('userId', sql.NVarChar, userId)
-        .input('jobId', sql.NVarChar, id)
-        .query(`
-          MERGE INTO user_recent_viewed_jobs AS target
-          USING (SELECT @userId as user_id, @jobId as jobPostings_id) AS source
-          ON target.user_id = source.user_id AND target.jobPostings_id = source.jobPostings_id
-          WHEN MATCHED THEN
-            UPDATE SET viewed_at = GETDATE()
-          WHEN NOT MATCHED THEN
-            INSERT (user_id, jobPostings_id, viewed_at, company_id)
-            VALUES (@userId, @jobId, GETDATE(), (SELECT company_id FROM jobPostings WHERE id = @jobId));
-        `);
+      await query(`
+        INSERT INTO user_recent_viewed_jobs (user_id, jobpostings_id, viewed_at, company_id)
+        VALUES ($1, $2, NOW(), (SELECT company_id FROM jobPostings WHERE job_id = $3))
+        ON CONFLICT (user_id, jobpostings_id)
+        DO UPDATE SET viewed_at = NOW()
+      `, [userId, id, id]);
 
-      await transaction.commit();
+      // Commit transaction
+      await query('COMMIT');
 
       // Log view interaction
       await logInteraction(userId, id, 'view');
 
       return NextResponse.json({ success: true });
     } catch (error) {
-      await transaction.rollback();
+      await query('ROLLBACK');
       throw error;
     }
   } catch (error) {

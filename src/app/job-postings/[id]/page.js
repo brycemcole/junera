@@ -6,6 +6,7 @@ import { formatDistanceToNow, set } from "date-fns";
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import DOMPurify from 'dompurify';
 import {
   Accordion,
   AccordionContent,
@@ -205,115 +206,6 @@ function InsightsButton({ onClick }) {
  * @param {string} text - The text to extract salary from.
  * @returns {string} - The extracted salary string or an empty string if not found.
  */
-function extractSalary(text) {
-  if (!text) return "";
-
-  // Step 1: Decode HTML entities
-  // Create a temporary DOM element to leverage the browser's HTML parser
-  const decodedString = he.decode(text);
-
-  // Step 2: Remove HTML tags
-  const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
-
-  // Step 3: Normalize HTML entities and special characters
-  const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
-    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
-    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
-    .trim();
-
-  // Define regex patterns
-  const patterns = [
-    // 1. Salary ranges with dashes (e.g., "$128,000—$152,000 USD")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 2. Salary ranges with 'to' wording (e.g., "$35,000 to $45,000 per year")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 3. k-based salary ranges (e.g., "$100k—$120k")
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 4. Hourly ranges (e.g., "55/hr - 65/hr")
-    /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
-
-    // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
-    /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
-
-    // 6. Single salary mentions (e.g., "$85,000")
-    /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
-  ];
-
-  let matchesWithDollar = [];
-  let matchesWithoutDollar = [];
-
-  // Iterate through each pattern and collect matches
-  for (const pattern of patterns) {
-    const matches = Array.from(normalizedText.matchAll(pattern));
-    for (const match of matches) {
-      if (pattern.source.includes('\\$')) {
-        // Patterns that require '$' are stored in matchesWithDollar
-        matchesWithDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      } else {
-        // Patterns that do NOT require '$' are stored in matchesWithoutDollar
-        matchesWithoutDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      }
-    }
-  }
-
-  // Function to find the match with the highest index
-  const getLastMatch = (matches) => {
-    return matches.reduce((prev, current) => {
-      return (prev.index > current.index) ? prev : current;
-    }, matches[0]);
-  };
-
-  // Prioritize matches with '$'
-  if (matchesWithDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithDollar);
-    return lastMatch.text;
-  }
-  // If no matches with '$', consider matches without '$'
-  else if (matchesWithoutDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithoutDollar);
-    return lastMatch.text;
-  }
-
-  // Return empty string if no matches found
-  return "";
-}
-
-function BellButton({ count }) {
-
-  const handleClick = () => {
-    setCount(0);
-  };
-
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      className="relative"
-      onClick={handleClick}
-      aria-label="Notifications"
-    >
-      <Bell size={16} strokeWidth={2} aria-hidden="true" />
-      {count > 0 && (
-        <Badge className="absolute -top-2 left-full min-w-5 -translate-x-1/2 px-1">
-          {count}
-        </Badge>
-      )}
-    </Button>
-  );
-}
 
 
 function Summarization({ title, message, loading, error }) {
@@ -835,21 +727,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
         companyId={1}
       />
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
-        <Breadcrumb className="mb-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href={`/job-postings?company=${jobPosting.company}`}>{jobPosting.company}</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{jobPosting.job_id}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
         <div>
           <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
 
@@ -957,13 +834,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               onClick={handleApplyClick} // Add onClick handler
             >
               <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
-                Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
-                <ArrowRight
-                  className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
+                Apply
               </Button>
             </Link>
             <Button24 jobId={id} />
@@ -1016,7 +887,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
                       <p className="leading-loose text-sm">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
+                            __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
                           }}
                         />
 

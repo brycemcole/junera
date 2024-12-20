@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { query } from '@/lib/pgdb';
 import { getCached, setCached } from '@/lib/cache';
 
-const SECRET_KEY = process.env.SESSION_SECRET || 'your-secret-key';
+const SECRET_KEY = process.env.SESSION_SECRET;
 
 // Handle GET requests to retrieve saved searches
 export async function GET(request) {

@@ -434,7 +434,7 @@ function DropdownMenuDemo() {
               <Link href="/register">
                 <DropdownMenuItem>
                   <UserPlus />
-                  <span>Register</span>
+                  <span>Sign Up</span>
                 </DropdownMenuItem>
               </Link>
             </>
@@ -455,7 +455,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-background max-w-4xl mx-4 md:mx-auto shadow-sm z-100 m-4 border rounded-lg mb-0 border-muted-accent">
+    <nav className="bg-background max-w-4xl mx-4 md:mx-auto shadow-sm z-100 m-4 border rounded-lg mb-0 border-muted-accent ">
       <div className="flex flex-row justify-between px-4 py-2 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
@@ -466,11 +466,22 @@ export default function Navbar() {
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
         </div>
-        <div className="md:hidden items-center flex gap-3">
+        <div className="md:hidden items-center flex gap-2">
           {user ? (
         <DropdownMenuDemo2 />
       ) : (
-        <></>
+        <>
+        <Button variant="ghost" className="text-customGreen font-semibold dark:text-white hover:text-primary hover:bg-accent">
+          <Link href="/register">
+           Sign Up
+          </Link>
+        </Button>
+        <Button className="font-semibold hover:text-primary hover:bg-accent">
+          <Link href="/login">
+           Login
+          </Link>
+        </Button>
+        </>
       )}
           <DropdownMenuDemo />
         </div>

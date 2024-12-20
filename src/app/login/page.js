@@ -93,7 +93,7 @@ function InputForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button className="w-full font-semibold hover:text-primary hover:bg-accent" type="submit">Login</Button>
       </form>
     </Form>
   )
