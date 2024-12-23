@@ -172,7 +172,7 @@ export async function GET(req) {
   const company = searchParams.get("company")?.trim() || "";
   const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
 
-  // Reintroduce the state name to abbreviation mapping
+  // State name to abbreviation mapping
   const stateMap = {
     'remote': 'N/A',
     'alabama': 'AL',
@@ -234,14 +234,18 @@ export async function GET(req) {
   }
 
   // Generate search terms based on the input location
-  let locationSearchTerms = [location];
+  let locationSearchTerms = [];
 
-  if (stateMap[location]) {
-    // If the input is a full state name, add its abbreviation
-    locationSearchTerms.push(stateMap[location].toLowerCase());
-  } else if (abbrMap[location]) {
-    // If the input is a state abbreviation, add its full name
-    locationSearchTerms.push(abbrMap[location].toLowerCase());
+  if (location) {
+    locationSearchTerms.push(location);
+
+    if (stateMap[location]) {
+      // If the input is a full state name, add its abbreviation
+      locationSearchTerms.push(stateMap[location].toLowerCase());
+    } else if (abbrMap[location]) {
+      // If the input is a state abbreviation, add its full name
+      locationSearchTerms.push(abbrMap[location].toLowerCase());
+    }
   }
 
   const timings = {};
@@ -284,9 +288,18 @@ export async function GET(req) {
     }
 
     // Location filter using full-text search with 'simple' configuration
-    if (location) {
-      queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
-      params.push(location);
+    if (locationSearchTerms.length > 0) {
+      // Escape single quotes in terms to prevent SQL injection
+      const escapedTerms = locationSearchTerms.map(term => term.replace(/'/g, "''"));
+
+      // Construct tsquery with OR logic
+      const tsquery = escapedTerms.map(term => {
+        // Replace spaces with ' & ' for multi-word terms
+        return term.includes(' ') ? term.split(' ').join(' & ') : term;
+      }).join(' | ');
+
+      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
+      params.push(tsquery);
       paramIndex++;
     }
 
@@ -303,6 +316,7 @@ export async function GET(req) {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
     `;
     params.push(limit, offset);
+
     const queryPrepStart = performance.now();
     const queryExecStart = performance.now();
     const result = await query(queryText, params /*, { signal }*/);
