@@ -9,13 +9,13 @@ export default function Footer() {
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-white">
           <span className="whitespace-nowrap">junera</span>
           <span className="hidden sm:inline text-gray-600">|</span>
-          <span className="whitespace-nowrap"><a href="/job-postings">Browse Jobs</a></span>
+          <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>
           <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><a href="/job-postings?explevel=internship">Internships</a></span>
+          <span className="whitespace-nowrap"><Link href="/job-postings?explevel=internship">Internships</Link></span>
           <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><a href="/job-postings?location=remote">Remote</a></span>
+          <span className="whitespace-nowrap"><Link href="/job-postings?location=remote">Remote</Link></span>
           <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><a href="/about">About</a></span>
+          <span className="whitespace-nowrap"><Link href="/about">About</Link></span>
         </div>
       </div>
     </footer>
