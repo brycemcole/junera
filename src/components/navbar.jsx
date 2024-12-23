@@ -62,11 +62,6 @@ function AvatarButton({ image, fullname, unreadCount }) {
           {fullname?.split(' ').map(name => name[0]).join('')}
         </AvatarFallback>
       </Avatar>
-      {unreadCount > 0 && (
-      <Badge className="absolute -top-2 left-full min-w-5 -translate-x-3 border-background px-1">
-        {unreadCount > 99 ? "99+" : unreadCount}
-      </Badge>
-      )}
     </div>
   );
 }
