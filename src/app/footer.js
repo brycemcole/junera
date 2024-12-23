@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 
 export default function Footer() {
   return (
-    <footer className="fixed bottom-0 w-full bg-black py-3">
+    <footer className="w-full bg-black py-3">
       <div className="container mx-auto px-4">
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-white">
           <span className="whitespace-nowrap">junera</span>
