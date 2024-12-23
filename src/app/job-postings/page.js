@@ -539,7 +539,7 @@ export default function JobPostingsPage() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button  className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+          <Button  className={`h-8 ${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
             <Filter size={14} className="mr-2" />
             Filter
           </Button>
