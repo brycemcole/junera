@@ -419,7 +419,12 @@ function Input26({ onSearch, value, count }) {
           value={searchValue}
           onChange={handleInputChange}
         />
-        <JobCount count={count} className="absolute top-0 right-0 mr-4" />
+        <Suspense fallback={<div>Loading...</div>}>
+          <span className="absolute top-0 right-0 mr-4">
+                  <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
+                  </span>
+                </Suspense>
+        
         <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
           {loading ? (
             <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
@@ -539,7 +544,7 @@ export default function JobPostingsPage() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button  className={`h-8 ${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+          <Button variant="ghost" className={`h-8 ${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
             <Filter size={14} className="mr-2" />
             Filter
           </Button>
@@ -1065,9 +1070,6 @@ Please provide relevant career advice and job search assistance based on their p
           {data && data.length > 0 ? (
             <div key="job-postings">
               <div className="items-center flex gap-4">
-                <Suspense fallback={<div>Loading...</div>}>
-                  <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
-                </Suspense>
                 <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
                   <div className="flex flex-col space-y-1">
                     {title && <span>Job Title: {title}</span>}
