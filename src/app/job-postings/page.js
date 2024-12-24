@@ -475,12 +475,12 @@ export default function JobPostingsPage() {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className={`h-8 ${experienceLevel || location || company
-              ? 'bg-blue-50 border-blue-100 hover:bg-blue-100/80 dark:bg-blue-950/50 dark:border-blue-800 dark:hover:bg-blue-950/80'
+            className={`h-8 w-8 ${experienceLevel || location || company
+              ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
               : 'hover:bg-background/90 dark:hover:bg-muted/30'
               }`}
           >
-            <Filter size={14} className="mr-2" />
+            <Filter size={14} />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
@@ -958,7 +958,7 @@ Please provide relevant career advice and job search assistance based on their p
             onChange={handleInputChange}
           />
           <Suspense fallback={<div>Loading...</div>}>
-            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-0">
+            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
             </span>
           </Suspense>
