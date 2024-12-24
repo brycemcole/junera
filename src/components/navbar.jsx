@@ -240,7 +240,7 @@ function DropdownMenuDemo2() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group"
+          className="group h-7 w-7"
           variant="ghost"
           size="icon"
           onClick={() => setOpen((prevState) => !prevState)}
@@ -466,12 +466,12 @@ export default function Navbar() {
         <DropdownMenuDemo2 />
       ) : (
         <>
-        <Button variant="ghost" className="text-customGreen h-8 font-semibold dark:text-white hover:text-primary hover:bg-accent">
+        <Button variant="ghost" className="text-customGreen h-7 font-semibold dark:text-white hover:text-primary hover:bg-accent">
           <Link href="/register">
            Sign Up
           </Link>
         </Button>
-        <Button className="font-semibold h-8 hover:text-primary hover:bg-accent">
+        <Button className="font-semibold rounded-full h-7 hover:text-primary hover:bg-accent">
           <Link href="/login">
            Login
           </Link>
