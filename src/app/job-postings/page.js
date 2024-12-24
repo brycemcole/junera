@@ -473,9 +473,14 @@ export default function JobPostingsPage() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" className={`h-8 ${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
+          <Button
+            variant="ghost"
+            className={`h-8 ${experienceLevel || location || company
+              ? 'bg-blue-50 border-blue-100 hover:bg-blue-100/80 dark:bg-blue-950/50 dark:border-blue-800 dark:hover:bg-blue-950/80'
+              : 'hover:bg-background/90 dark:hover:bg-muted/30'
+              }`}
+          >
             <Filter size={14} className="mr-2" />
-            Filter
           </Button>
         </PopoverTrigger>
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
@@ -900,77 +905,77 @@ Please provide relevant career advice and job search assistance based on their p
     // user action - one-time push
     router.push('/job-postings/saved-searches');
   };
-  
+
   function Input26({ onSearch, value, count }) {
-  const [searchValue, setSearchValue] = useState(value || "");
-  const [loading, setLoading] = useState(false);
-  const isFirstRender = useRef(true);
+    const [searchValue, setSearchValue] = useState(value || "");
+    const [loading, setLoading] = useState(false);
+    const isFirstRender = useRef(true);
 
-  const handleInputChange = (e) => {
-    setSearchValue(e.target.value);
-  };
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    if (searchValue.trim() === "") {
-      return;
-    }
-
-    setLoading(true);
-
-    const handler = setTimeout(async () => {
-      try {
-        await onSearch(searchValue);
-      } catch (error) {
-        console.error("Search failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
+    const handleInputChange = (e) => {
+      setSearchValue(e.target.value);
     };
-  }, [searchValue, onSearch]);
 
-  useEffect(() => {
-    setSearchValue(value || "");
-  }, [value]);
+    useEffect(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
 
-  return (
-    <div className="space-y-2 mb-4">
-      <div className="relative">
-        <Input
-          id="input-26"
-          className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
-          placeholder="Search..."
-          type="search"
-          value={searchValue}
-          onChange={handleInputChange}
-        />
-        <Suspense fallback={<div>Loading...</div>}>
-          <span className="absolute top-0 right-0 mr-4">
-                  <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
-                  </span>
-                </Suspense>
-        
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-          {loading ? (
-            <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Search size={16} strokeWidth={2} />
-          )}
+      if (searchValue.trim() === "") {
+        return;
+      }
+
+      setLoading(true);
+
+      const handler = setTimeout(async () => {
+        try {
+          await onSearch(searchValue);
+        } catch (error) {
+          console.error("Search failed:", error);
+        } finally {
+          setLoading(false);
+        }
+      }, 500);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [searchValue, onSearch]);
+
+    useEffect(() => {
+      setSearchValue(value || "");
+    }, [value]);
+
+    return (
+      <div className="space-y-2 mb-4">
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
+            placeholder="Search..."
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+          />
+          <Suspense fallback={<div>Loading...</div>}>
+            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-0">
+              <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
+            </span>
+          </Suspense>
+
+          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+            {loading ? (
+              <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Search size={16} strokeWidth={2} />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-const MemoizedInput26 = memo(Input26);
+  const MemoizedInput26 = memo(Input26);
 
   useEffect(() => {
     async function fetchUserProfile() {
