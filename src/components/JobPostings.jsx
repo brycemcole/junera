@@ -106,7 +106,7 @@ export const JobList = ({ data, loading, error }) => {
               />
             </div>
 
-            <div className="flex md:gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
+            <div className="flex md:gap-y-2 gap-x-4 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
               <div className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className="truncate">{job?.location || "N/A"}</span>

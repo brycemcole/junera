@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="w-full bg-primary py-3">
       <div className="container mx-auto px-4">
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-white">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-background">
           <span className="whitespace-nowrap">junera</span>
           <span className="hidden sm:inline text-gray-600">|</span>
           <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>
