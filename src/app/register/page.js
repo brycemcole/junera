@@ -47,14 +47,12 @@ function InputForm() {
   })
 
   function onSubmit(data) {
-    console.log("data: ", data);
     // Send data to the server
     fetch(`/api/register?${new URLSearchParams(data).toString()}`, {
       method: "GET",
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("data: ", data);
         if (data.userId) {
           toast("Account created successfully");
         } else {

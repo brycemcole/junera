@@ -36,8 +36,6 @@ export async function GET(req) {
     if (result.error) {
       return new Response(JSON.stringify({ error: result.error }), { status: 400 });
     }
-    console.log('result: ', result);
-    console.log('User ID:', result.userId);
 
     const token = jwt.sign({ id: result.userId, email: result.email, fullName: result.fullName, username: result.username, avatar: result.avatar, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 }, SECRET_KEY);
 

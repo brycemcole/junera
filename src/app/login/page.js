@@ -40,14 +40,12 @@ function InputForm() {
   })
 
   function onSubmit(data) {
-    console.log("data: ", data);
     // Send data to the server
     fetch(`/api/login?${new URLSearchParams(data).toString()}`, {
       method: "GET",
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("data: ", data);
         if (data.token) {
           localStorage.setItem('token', data.token); // Store token in localStorage
           login(data.token, data.username, data.userId, data.avatar); // Update user context

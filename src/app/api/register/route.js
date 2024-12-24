@@ -20,8 +20,6 @@ export async function GET(req) {
 
     try {
         const result = await createUserAccount(fullname, email, username, password);
-        console.log('result: ', result);
-        console.log('User ID:', result.rows[0]?.id);
         const userId = result.rows[0]?.id || 0;
 
         return new Response(JSON.stringify({ userId }), { status: 200 });
