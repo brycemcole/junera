@@ -99,7 +99,7 @@ export const JobList = ({ data, loading, error }) => {
             </span>
             <div className="group-hover:underline text-sm line-clamp-2 max-w-full">
               <p
-                className="m-0"
+                className="m-0 text-muted-foreground"
                 dangerouslySetInnerHTML={{
                   __html: stripHTML(decodeHTMLEntities(job?.description)),
                 }}
