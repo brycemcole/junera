@@ -251,9 +251,16 @@ function DropdownMenuDemo2() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 mr-4 mt-4">
-        <DropdownMenuGroup>
+       
+         <DropdownMenuGroup>
           {user && (
             <>
+            <DropdownMenuLabel className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium text-foreground">{user.fullname}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">
+            {user.email}
+          </span>
+        </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <User />
                   <span>Profile</span>
