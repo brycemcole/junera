@@ -15,6 +15,8 @@ export default function Button24({ jobId }) {
 
     useEffect(() => {
         const checkBookmarkStatus = async () => {
+            if (!jobId) return;
+            if (!user) return;
             if (!user?.token) return;
             
             try {
@@ -31,9 +33,17 @@ export default function Button24({ jobId }) {
         };
 
         checkBookmarkStatus();
-    }, [jobId, user?.token]);
+    }, [jobId, user?.token, user]);
 
     const handleToggle = async (pressed) => {
+        if (!user) {
+            toast({
+                title: "Authentication required",
+                description: "Please login to bookmark jobs",
+                variant: "destructive"
+            });
+            return;
+        }
         if (!user?.token) {
             toast({
                 title: "Authentication required",
@@ -77,6 +87,12 @@ export default function Button24({ jobId }) {
         }
     };
 
+    const handleClick = (e) => {
+        // Prevent the click event from propagating to parent elements
+        e.stopPropagation();
+    };
+
+    if (!user) return null;
     return (
         <TooltipProvider>
             <Tooltip>
@@ -91,6 +107,7 @@ export default function Button24({ jobId }) {
                             aria-label="Bookmark this"
                             pressed={bookmarked || isHovered}
                             onPressedChange={handleToggle}
+                            onClick={handleClick}  // Add this line
                         >
                             <Bookmark 
                                 size={16} 

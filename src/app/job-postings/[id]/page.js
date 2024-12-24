@@ -37,7 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bolt, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, Layers2, Loader2, Loader2Icon } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, PanelsTopLeft } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -284,41 +284,6 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-function TabDemo() {
-  return (
-    <Tabs defaultValue="tab-1">
-      <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
-        <TabsTrigger
-          value="tab-1"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 1
-        </TabsTrigger>
-        <TabsTrigger
-          value="tab-2"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 2
-        </TabsTrigger>
-        <TabsTrigger
-          value="tab-3"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 3
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="tab-1">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 1</p>
-      </TabsContent>
-      <TabsContent value="tab-2">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 2</p>
-      </TabsContent>
-      <TabsContent value="tab-3">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
-      </TabsContent>
-    </Tabs>
-  );
-}
 
 
 
@@ -726,7 +691,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         companyLogo={''}
         companyId={1}
       />
-      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
+      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
           <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
 
@@ -821,7 +786,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           )}
         </div>
 
-        <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
+        <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-8">
           <div>
             <Link href={`/job-postings?company=${jobPosting.company}`}>
               <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
@@ -846,91 +811,111 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
         <div>
 
-          <Tabs defaultValue="tab-1">
-            <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
-              <TabsTrigger
-                value="tab-1"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Job Description
-              </TabsTrigger>
-              <TabsTrigger
-                value="tab-2"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Suggested Jobs
-              </TabsTrigger>
-              <TabsTrigger
-                value="tab-3"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Company Info
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="tab-1">
-              {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
-                <Summarization
-                  title="Job Posting Summary"
-                  message={llmResponse || jobPosting.summary}
-                  loading={loadingLLMReponse}
-                  error={errorLLMResponse}
-                />
-              )}
-              <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
+          <div className="">
+            <Tabs defaultValue="tab-1">
+              <TabsList className="mb-0 pl-0 gap-1 bg-transparent">
+                <TabsTrigger
+                  value="tab-1"
+                  className="rounded-lg p-1.5 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                >
+                  <BookOpen
+                    className="-ms-0.5 me-1.5 opacity-60"
+                    size={16}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  Description
+                </TabsTrigger>
+                <TabsTrigger
+                  value="tab-2"
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                >
+                  <Blocks
+                    className="-ms-0.5 me-1.5 opacity-60"
+                    size={16}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  More Jobs
+                </TabsTrigger>
+                <TabsTrigger
+                  value="tab-3"
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+                >
+                  <Box
+                    className="-ms-0.5 me-1.5 opacity-60"
+                    size={16}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  Packages
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="tab-1">
+                {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
+                  <Summarization
+                    title="Job Posting Summary"
+                    message={llmResponse || jobPosting.summary}
+                    loading={loadingLLMReponse}
+                    error={errorLLMResponse}
+                  />
+                )}
+                <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
 
-                <div type="single" className="w-full" defaultValue="item-description">
-                  {[
-                    { key: 'description', label: 'Job Description' }
+                  <div type="single" className="w-full" defaultValue="item-description">
+                    {[
+                      { key: 'description', label: 'Job Description' }
 
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <p className="leading-loose text-sm">
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
-                          }}
-                        />
+                    ].map(({ key, label }) => (
+                      <div key={key}>
+                        <p className="leading-loose text-sm">
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
+                            }}
+                          />
 
-                      </p>
-                    </div>
-                  ))}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="tab-2">
+              </TabsContent>
+              <TabsContent value="tab-2">
 
-              <div className="flex flex-col space-y-2 mb-4">
-                <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
-                    See more {jobPosting.experienceLevel} jobs
-                  </Button>
-                </Link>
+                <div className="flex flex-col space-y-2 mb-4">
+                  <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
+                    <Button variant="link" size="sm" className="text-sm px-0">
+                      See more {jobPosting.experienceLevel} jobs
+                    </Button>
+                  </Link>
 
-                <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
-                    See jobs in {jobPosting.location.trim()}
-                  </Button>
-                </Link>
-                <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
+                  <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
+                    <Button variant="link" size="sm" className="text-sm px-0">
+                      See jobs in {jobPosting.location.trim()}
+                    </Button>
+                  </Link>
+                  <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
+                    <Button variant="link" size="sm" className="text-sm px-0">
 
-                    See more {jobPosting.title.trim()} jobs
-                  </Button>
-                </Link>
+                      See more {jobPosting.title.trim()} jobs
+                    </Button>
+                  </Link>
 
-              </div>
-              <Suspense fallback={<div>Loading similar jobs...</div>}>
-                <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
-              </Suspense>
+                </div>
+                <Suspense fallback={<div>Loading similar jobs...</div>}>
+                  <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
+                </Suspense>
 
-              <Suspense fallback={<div>Loading similar jobs...</div>}>
-                <CompanySimilarJobs company={jobPosting.company} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="tab-3">
-              <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
-            </TabsContent>
-          </Tabs>
+                <Suspense fallback={<div>Loading similar jobs...</div>}>
+                  <CompanySimilarJobs company={jobPosting.company} />
+                </Suspense>
+              </TabsContent>
+              <TabsContent value="tab-3">
+                <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
 
 

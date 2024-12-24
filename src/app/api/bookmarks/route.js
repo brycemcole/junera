@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { query } from '@/lib/pgdb';
+import { getCached, setCached, clearCache } from '@/lib/cache';
 
 export async function GET(request) {
   const authHeader = request.headers.get('Authorization');
@@ -20,6 +21,16 @@ export async function GET(request) {
     const decoded = jwt.verify(token, process.env.SESSION_SECRET);
     const userId = decoded.id;
 
+    // Check cache first
+    const cacheKey = `bookmark:${userId}:${jobId}`;
+    const cachedResult = await getCached(cacheKey);
+
+    if (cachedResult !== null) {
+      return NextResponse.json({
+        isBookmarked: cachedResult
+      });
+    }
+
     const result = await query(`
       SELECT COUNT(1) as count
       FROM user_interactions 
@@ -28,8 +39,13 @@ export async function GET(request) {
       AND interaction_type = 'bookmark'
     `, [userId, jobId]);
 
+    const isBookmarked = result.rows[0].count > 0;
+
+    // Cache the result for 1 hour
+    await setCached(cacheKey, isBookmarked, 3600);
+
     return NextResponse.json({
-      isBookmarked: result.rows[0].count > 0
+      isBookmarked
     });
   } catch (error) {
     console.error('GET error:', error);
@@ -59,6 +75,10 @@ export async function POST(request) {
       VALUES ($1, $2, 'bookmark')
       ON CONFLICT (user_id, job_posting_id, interaction_type) DO NOTHING
     `, [userId, jobPostingId]);
+
+    // Update cache after successful bookmark
+    const cacheKey = `bookmark:${userId}:${jobPostingId}`;
+    await setCached(cacheKey, true, 3600);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -91,6 +111,13 @@ export async function DELETE(request) {
     `, [userId, jobPostingId]);
 
     const deleted = result.rowCount > 0;
+
+    if (deleted) {
+      // Clear cache after successful deletion
+      const cacheKey = `bookmark:${userId}:${jobPostingId}`;
+      await clearCache(cacheKey);
+    }
+
     return NextResponse.json({ success: deleted });
   } catch (error) {
     console.error('DELETE error:', error);

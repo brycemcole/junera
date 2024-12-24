@@ -64,9 +64,71 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+const states = {
+  "null": "Any",
+  "remote": "Remote",
+  "new york": "New York",
+  "california": "California",
+  "texas": "Texas",
+  "florida": "Florida",
+  "illinois": "Illinois",
+  "pennsylvania": "Pennsylvania",
+  "ohio": "Ohio",
+  "georgia": "Georgia",
+  "north carolina": "North Carolina",
+  "michigan": "Michigan",
+  "washington": "Washington",
+  "arizona": "Arizona",
+  "massachusetts": "Massachusetts",
+  "tennessee": "Tennessee",
+  "indiana": "Indiana",
+  "missouri": "Missouri",
+  "maryland": "Maryland",
+  "wisconsin": "Wisconsin",
+  "colorado": "Colorado",
+  "minnesota": "Minnesota",
+  "south carolina": "South Carolina",
+  "alabama": "Alabama",
+  "louisiana": "Louisiana",
+  "kentucky": "Kentucky",
+  "oregon": "Oregon",
+  "oklahoma": "Oklahoma",
+  "connecticut": "Connecticut",
+  "iowa": "Iowa",
+  "utah": "Utah",
+  "nevada": "Nevada",
+  "arkansas": "Arkansas",
+  "mississippi": "Mississippi",
+  "kansas": "Kansas",
+  "new mexico": "New Mexico",
+  "nebraska": "Nebraska",
+  "west virginia": "West Virginia",
+  "idaho": "Idaho",
+  "hawaii": "Hawaii",
+  "new hampshire": "New Hampshire",
+  "maine": "Maine",
+  "montana": "Montana",
+  "rhode island": "Rhode Island",
+  "delaware": "Delaware",
+  "south dakota": "South Dakota",
+  "north dakota": "North Dakota",
+  "alaska": "Alaska",
+  "vermont": "Vermont",
+  "wyoming": "Wyoming",
+};
+
 
 function SavedSearchButton({ name, title, experienceLevel, location }) {
   const router = useRouter();
+
+  // Function to get badge color based on search type
+  const getBadgeColor = () => {
+    if (title) return "bg-blue-500";
+    if (experienceLevel) return "bg-emerald-500";
+    if (location) return "bg-purple-500";
+    return "bg-gray-500";
+  };
+
   const redirectToSearch = () => {
     const params = {
       title: title || "",
@@ -81,24 +143,17 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
   };
 
   return (
-    <Button
-      className="group h-auto gap-4 py-3 bg-background text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+    <Badge
       variant="outline"
+      className="gap-1.5 cursor-pointer hover:bg-accent"
       onClick={redirectToSearch}
     >
-      <div className="space-y-1 w-[200px]">
-        <p className="text-sm">{name}</p>
-        <p className="text-muted-foreground text-wrap truncate line-clamp-2 text-xs">
-          <strong className="text-foreground">{title || 'Any'}</strong> jobs in <strong className="text-foreground">{location || 'Any location'}</strong> requiring <strong className="text-foreground">{experienceLevel || 'Any'}</strong> experience level.
-        </p>
-      </div>
-      <ChevronRight
-        className="opacity-60 transition-transform group-hover:translate-x-0.5"
-        size={16}
-        strokeWidth={2}
+      <span
+        className={`size-1.5 rounded-full ${getBadgeColor()}`}
         aria-hidden="true"
       />
-    </Button>
+      {name}
+    </Badge>
   );
 }
 
@@ -136,7 +191,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-xs rounded-lg border border shadow-sm"
+            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-gray-50"
           >
             {value ? (
               <span className="flex min-w-0 items-center gap-2">
@@ -144,11 +199,13 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                   <AvatarImage src={companies.find((c) => c.name === value)?.logo} />
                   <AvatarFallback>{value.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span className="truncate font-semibold">{value}</span>
+                <span className="truncate font-semibold text-foreground">
+                  {value}
+                </span>
               </span>
             ) : (
-              <span className="flex min-w-0 text-foreground items-center gap-2">
-                <span className="truncate text-xs">Company</span>
+              <span className="flex min-w-0 text-muted-foreground items-center gap-2">
+                <span className="truncate">Company</span>
               </span>
             )}
             <ChevronDown
@@ -160,7 +217,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0"
+          className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0 bg-white rounded-lg shadow-lg"
           align="start"
         >
           <Command>
@@ -168,6 +225,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
               placeholder="Search companies..."
               value={searchTerm}
               onValueChange={(value) => setSearchTerm(value)}
+              className="border-b px-4 py-2"
             />
             <CommandList>
               <CommandEmpty>No company found.</CommandEmpty>
@@ -180,8 +238,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                 >
                   {({ index, style }) => {
                     const company = filteredCompanies[index];
+                    const isSelected = value === company.name;
                     return (
-                      <div style={style}>
+                      <div style={style} key={company.id}>
                         <CommandItem
                           value={company.name}
                           onSelect={(currentValue) => {
@@ -189,6 +248,8 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                             setValue(currentValue);
                             setOpen(false);
                           }}
+                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
+                            } hover:bg-gray-100`}
                         >
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={company.logo} loading="lazy" />
@@ -196,9 +257,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                               {company.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          {company.name}
-                          {value === company.name && (
-                            <Check size={16} strokeWidth={2} className="ml-auto" />
+                          <span className="truncate">{company.name}</span>
+                          {isSelected && (
+                            <Check size={16} strokeWidth={2} className="ml-auto text-green-500" />
                           )}
                         </CommandItem>
                       </div>
@@ -211,6 +272,121 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
         </PopoverContent>
       </Popover>
     </div>
+  );
+});
+
+const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
+  const options = [
+    {
+      value: "any",
+      label: "Any",
+      description: "All experience levels welcome"
+    },
+    {
+      value: "internship",
+      label: "Internship",
+      description: "Perfect for students and those seeking hands-on learning opportunities"
+    },
+    {
+      value: "entry",
+      label: "Entry Level / Associate",
+      description: "0-2 years of experience, ideal for recent graduates"
+    },
+    {
+      value: "junior",
+      label: "Junior",
+      description: "2-4 years of experience with proven skills"
+    },
+    {
+      value: "senior",
+      label: "Senior Level",
+      description: "5+ years of experience with deep expertise"
+    },
+    {
+      value: "lead",
+      label: "Lead",
+      description: "Technical leadership role guiding project direction"
+    },
+    {
+      value: "manager",
+      label: "Manager",
+      description: "People management responsibilities with team oversight"
+    },
+    {
+      value: "director",
+      label: "Director",
+      description: "Department-level leadership and strategic planning"
+    },
+    {
+      value: "vp",
+      label: "Vice President",
+      description: "Executive leadership with organizational impact"
+    },
+    {
+      value: "executive",
+      label: "Executive",
+      description: "C-level positions with company-wide influence"
+    },
+  ];
+
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-gray-50 [&_[data-desc]]:hidden">
+        {value ? (
+          <span className="text-foreground truncate">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue className="text-muted-foreground truncate" placeholder="Level" />
+        )}
+      </SelectTrigger>
+      <SelectContent className="bg-white w-[250px] rounded-lg shadow-lg [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
+        <SelectGroup>
+          <SelectLabel>Experience Level</SelectLabel>
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className={`px-4 py-2 cursor-pointer ${value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
+                } hover:bg-gray-100`}
+            >
+              {option.label}
+              <span className="mt-1 block text-xs text-muted-foreground" data-desc>
+                {option.description}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+});
+
+const LocationSelect = memo(function LocationSelect({ onChange, value }) {
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative text-muted-foreground ps-4 rounded-lg border border bg-background shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+        </div>
+        {value ? (
+          <span className="text-foreground truncate">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue placeholder="Location" />
+        )}
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel>State</SelectLabel>
+          {Object.entries(states).map(([stateValue, stateName]) => (
+            <SelectItem key={stateValue} value={stateValue}>
+              {stateName}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 });
 
@@ -244,119 +420,6 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
 });
 
 
-const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
-  return (
-    <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative ps-4 h-7 md:h-9 text-xs rounded-lg border border bg-background shadow-sm">
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 group-has-[[disabled]]:opacity-50">
-        </div>
-        {value ? (
-          <span className="text-foreground truncate text-xs font-medium">
-            <SelectValue placeholder={value} />
-          </span>
-        ) : (
-          <SelectValue className="text-foreground truncate text-xs font-medium" placeholder="Level" />
-        )}
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Experience Level</SelectLabel>
-          <SelectItem value="any">Any</SelectItem> {/* Changed from "" to "any" */}
-          <SelectItem value="internship">Internship</SelectItem>
-          <SelectItem value="entry">Entry Level / Associate</SelectItem>
-          <SelectItem value="junior">Junior</SelectItem>
-          <SelectItem value="senior">Senior Level</SelectItem>
-          <SelectItem value="lead">Lead</SelectItem>
-          <SelectItem value="manager">Manager</SelectItem>
-          <SelectItem value="director">Director</SelectItem>
-          <SelectItem value="vp">Vice President</SelectItem>
-          <SelectItem value="executive">Executive</SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-});
-
-const LocationSelect = memo(function LocationSelect({ onChange, value }) {
-  const states = {
-    "null": "Any",
-    "remote": "Remote",
-    "new york": "New York",
-    "california": "California",
-    "texas": "Texas",
-    "florida": "Florida",
-    "illinois": "Illinois",
-    "pennsylvania": "Pennsylvania",
-    "ohio": "Ohio",
-    "georgia": "Georgia",
-    "north carolina": "North Carolina",
-    "michigan": "Michigan",
-    "washington": "Washington",
-    "arizona": "Arizona",
-    "massachusetts": "Massachusetts",
-    "tennessee": "Tennessee",
-    "indiana": "Indiana",
-    "missouri": "Missouri",
-    "maryland": "Maryland",
-    "wisconsin": "Wisconsin",
-    "colorado": "Colorado",
-    "minnesota": "Minnesota",
-    "south carolina": "South Carolina",
-    "alabama": "Alabama",
-    "louisiana": "Louisiana",
-    "kentucky": "Kentucky",
-    "oregon": "Oregon",
-    "oklahoma": "Oklahoma",
-    "connecticut": "Connecticut",
-    "iowa": "Iowa",
-    "utah": "Utah",
-    "nevada": "Nevada",
-    "arkansas": "Arkansas",
-    "mississippi": "Mississippi",
-    "kansas": "Kansas",
-    "new mexico": "New Mexico",
-    "nebraska": "Nebraska",
-    "west virginia": "West Virginia",
-    "idaho": "Idaho",
-    "hawaii": "Hawaii",
-    "new hampshire": "New Hampshire",
-    "maine": "Maine",
-    "montana": "Montana",
-    "rhode island": "Rhode Island",
-    "delaware": "Delaware",
-    "south dakota": "South Dakota",
-    "north dakota": "North Dakota",
-    "alaska": "Alaska",
-    "vermont": "Vermont",
-    "wyoming": "Wyoming",
-  };
-
-  return (
-    <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
-        </div>
-        {value ? (
-          <span className="text-foreground text-xs truncate font-medium">
-            <SelectValue placeholder={value} />
-          </span>
-        ) : (
-          <SelectValue placeholder="Location" />
-        )}
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>State</SelectLabel>
-          {Object.entries(states).map(([stateValue, stateName]) => (
-            <SelectItem key={stateValue} value={stateValue}>
-              {stateName}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-});
 
 const JobCount = memo(function JobCount({ count, className }) {
   return (
@@ -490,19 +553,25 @@ export default function JobPostingsPage() {
               <p className="text-xs text-muted-foreground">
                 Filter through over {count} job postings!
               </p>
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Company</span>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Company</span>
+                  <p className="text-xs text-muted-foreground">Filter by specific company names</p>
+                </div>
                 <Suspense fallback={<div>Loading...</div>}>
                   <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
                 </Suspense>
               </div>
 
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Experience Level</span>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Experience Level</span>
+                  <p className="text-xs text-muted-foreground">Select required years of experience</p>
+                </div>
                 <Suspense fallback={<div>Loading...</div>}>
                   <ExperienceLevelSelect
                     onChange={(value) => {
-                      const newExp = value === "any" ? "" : value; // Ensure empty string for 'Any'
+                      const newExp = value === "any" ? "" : value;
                       if (newExp !== experienceLevel) {
                         const params = {
                           title,
@@ -522,8 +591,12 @@ export default function JobPostingsPage() {
                   />
                 </Suspense>
               </div>
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Location</span>
+
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Location</span>
+                  <p className="text-xs text-muted-foreground">Choose job location or remote work</p>
+                </div>
                 <LocationSelect
                   onChange={(value) => {
                     const newLoc = value === "null" ? "" : value;
@@ -553,7 +626,6 @@ export default function JobPostingsPage() {
                   setExperienceLevel("");
                   setLocation("");
                   setCurrentPage(1);
-                  // This is a user action; pushing once should be okay
                   router.push(`/job-postings`);
                 }}>
                   Clear
@@ -947,7 +1019,7 @@ Please provide relevant career advice and job search assistance based on their p
     }, [value]);
 
     return (
-      <div className="space-y-2 mb-4">
+      <div className="space-y-2 mb-2">
         <div className="relative">
           <Input
             id="input-26"
@@ -998,7 +1070,7 @@ Please provide relevant career advice and job search assistance based on their p
   }, [user]);
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0">
       <Suspense fallback={<div>Loading search parameters...</div>}>
         <SearchParamsHandler
           setTitle={setTitle}
@@ -1012,7 +1084,7 @@ Please provide relevant career advice and job search assistance based on their p
         <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
         <Suspense fallback={<div>Loading...</div>}>
           {user && (
-            <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
+            <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
               <h3 className="text-sm text-muted-foreground font-medium">
                 Saved Searches
               </h3>
@@ -1025,7 +1097,7 @@ Please provide relevant career advice and job search assistance based on their p
         {user && (
           <Suspense fallback={<div>Loading...</div>}>
             <ScrollArea>
-              <div className="flex flex-row items-center gap-4 mb-6">
+              <div className="flex flex-row items-center gap-4 mb-3">
                 {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
                   savedSearches.map((search) => (
                     <SavedSearchButton

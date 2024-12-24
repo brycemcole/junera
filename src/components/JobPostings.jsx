@@ -4,6 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; //
 import { Badge } from "@/components/ui/badge"; 
 import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
+import Button24 from "@/components/button24"
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
@@ -59,76 +60,83 @@ export const JobList = ({ data, loading, error }) => {
     );
   }
   return (
-    <div className="md:px-0 border-none md:shadow-none">
+    <div className="md:px-0 border-none md:shadow-none max-w-full">
       {data.map((job, index) => (
         <div
           key={job.id}
-          className={`${index !== data.length - 1 ? '' : ''} flex flex-row gap-4 items-center group py-3 md:py-3 space-y-0 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out`}
+          className="flex flex-row gap-4 items-start group py-3 md:py-3 space-y-0 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out max-w-[95vw] md:max-w-3xl"
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
-                      {job.company ? (
-              <Avatar className="w-10 h-10">
-                  <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-                  <AvatarFallback>
-                  {job.company?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            ) : (
-              <Avatar className="w-6 h-6">
-                <AvatarFallback>
-                  {job.company?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            )}
-          {/* Header Section */}
-          <div className="flex flex-col">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-sm text-muted-foreground">
-                {job?.company || "No company name available"}
-              </span>
-            </div>
-          </div>
-          <span className="font-semibold group-hover:underline text-md">
-            
-            {job?.title || "No job titles available"}
-          </span>
-          <div className="flex md:gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-3 w-3 text-muted-foreground" />
-              <span>{job?.location || "N/A"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-3 w-3 text-muted-foreground" />
-              <span>{job?.experienceLevel || "N/A"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-3 w-3 text-muted-foreground" />
-              <span>
-                {job?.postedDate
-                  ? `${formatDistanceToNow(new Date(job.postedDate), {
-                      addSuffix: true,
-                    })}`
-                  : "N/A"}
-              </span>
-            </div>
-            {job?.salary ? (
-  <div className="flex items-center gap-2">
-    <DollarSign className="h-3 w-3 text-muted-foreground" />
-    <span>
-      {job.salary}
-    </span>
-  </div>
-) : job?.salary_range_str ? (
-  <div className="flex items-center gap-2">
-    <DollarSign className="h-3 w-3 text-muted-foreground" />
-    <span>
-      {job.salary_range_str}
-    </span>
-  </div>
-) : null}
 
+          <div className="flex items-center flex-col gap-2">
+          {job.company ? (
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
+              <AvatarFallback>
+                {job.company?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <Avatar className="w-6 h-6 flex-shrink-0">
+              <AvatarFallback>
+                {job.company?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          <Button24 jobId={job.id} />
           </div>
+          {/* Header Section */}
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground truncate">
+                  {job?.company || "No company name available"}
+                </span>
+              </div>
+            </div>
+            <span className="font-semibold group-hover:underline text-md truncate">
+              {job?.title || "No job titles available"}
+            </span>
+            <div className="group-hover:underline text-sm line-clamp-2 max-w-full">
+              <p
+                className="m-0"
+                dangerouslySetInnerHTML={{
+                  __html: stripHTML(decodeHTMLEntities(job?.description)),
+                }}
+              />
+            </div>
+
+            <div className="flex md:gap-y-2 gap-x-4 text-[13px] font-medium text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate">{job?.location || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate">{job?.experienceLevel || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate">
+                  {job?.postedDate
+                    ? `${formatDistanceToNow(new Date(job.postedDate), {
+                        addSuffix: true,
+                      })}`
+                    : "N/A"}
+                </span>
+              </div>
+              {job?.salary ? (
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+                  <span className="truncate">{job.salary}</span>
+                </div>
+              ) : job?.salary_range_str ? (
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+                  <span className="truncate">{job.salary_range_str}</span>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ))}

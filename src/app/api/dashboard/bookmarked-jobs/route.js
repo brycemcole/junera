@@ -12,18 +12,19 @@ export async function GET(request) {
   const token = authHeader.split(' ')[1];
 
   try {
-    // Check cache first
-    const cachedBookmarkedJobs = getCached('bookmarked-jobs', token);
-    if (cachedBookmarkedJobs) {
-      return NextResponse.json({ bookmarkedJobs: cachedBookmarkedJobs });
-    }
-
     const decoded = jwt.verify(token, process.env.SESSION_SECRET);
-    const userId = decoded.id;
+    const userId = decoded.id;  // Changed from decoded.userId to decoded.id
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid token payload' }, { status: 400 });
+    console.log('Fetching bookmarked jobs for user:', userId);
+
+    // Check cache first - now properly awaited and using userId
+    const cachedBookmarkedJobs = await getCached('bookmarked-jobs', userId);
+    if (cachedBookmarkedJobs) {
+      console.log('Cache hit for user:', userId);
+      return NextResponse.json(cachedBookmarkedJobs);
     }
+
+    console.log('Cache miss for user:', userId);
 
     const result = await query(`
       SELECT 
@@ -36,7 +37,7 @@ export async function GET(request) {
       ORDER BY ui.interaction_date DESC
     `, [userId]);
 
-    console.log('Query result:', result.rows);
+    console.log('Fetched bookmarked jobs:', result.rows.length);
 
     const bookmarkedJobs = result.rows.map(job => ({
       id: job.job_id,
@@ -50,10 +51,10 @@ export async function GET(request) {
       bookmarkedAt: job.bookmarked_at?.toISOString() || ''
     }));
 
-    // Cache the results
-    setCached('bookmarked-jobs', token, bookmarkedJobs);
+    // Cache the results with userId instead of token
+    await setCached('bookmarked-jobs', userId, bookmarkedJobs, 300); // 5 minute TTL
 
-    return NextResponse.json({ bookmarkedJobs });
+    return NextResponse.json(bookmarkedJobs);  // Return directly without nesting
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

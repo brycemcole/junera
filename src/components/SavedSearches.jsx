@@ -13,7 +13,8 @@ export default function SavedSearches({ data, loading, error }) {
     useEffect(() => {
         if (data && data.savedSearches) {
             data.savedSearches.forEach(async (search) => {
-                const searchParams = JSON.parse(search.search_params);
+                if (!search.search_params) return;
+                const searchParams = search.search_params;
                 const query = new URLSearchParams({
                     title: searchParams.jobTitle || '',
                     experienceLevel: searchParams.experienceLevel || '',

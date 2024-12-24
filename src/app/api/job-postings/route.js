@@ -165,6 +165,19 @@ export async function GET(req) {
   const { searchParams } = new URL(url);
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 20;
+
+  if (page < 1 || limit < 1) {
+    return Response.json({ error: "Invalid page or limit" }, { status: 400 });
+  }
+
+  if (limit > 50) {
+    return Response.json({ error: "Limit exceeds maximum value" }, { status: 400 });
+  }
+
+  if (signal.aborted) {
+    return Response.json({ error: 'Request was aborted' }, { status: 499 });
+  }
+
   const offset = (page - 1) * limit;
 
   const title = searchParams.get("title")?.trim() || "";
@@ -331,15 +344,15 @@ export async function GET(req) {
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
 
-    return new Response(JSON.stringify({ jobPostings, timings }), { status: 200 });
+    return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
   } catch (error) {
     if (error.message === 'Request aborted') {
-      return new Response(JSON.stringify({ error: 'Request was aborted' }), { status: 499 });
+      return Response.json({ error: 'Request was aborted', ok: false }, { status: 499 });
     }
     console.error("Error fetching job postings:", error);
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
-    return new Response(JSON.stringify({ error: "Error fetching job postings", timings }), { status: 500 });
+    return Response.json({ error: "Error fetching job postings", timings, ok: false }, { status: 500 });
   }
 }
 

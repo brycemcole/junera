@@ -17,7 +17,6 @@ const SavedSearches = memo(lazy(() => import('@/components/SavedSearches')));
 const RecentlyViewedJobs = memo(lazy(() => import('@/components/RecentlyViewedJobs')));
 const RecentlyAppliedJobs = memo(lazy(() => import('@/components/RecentlyAppliedJobs')));
 const MatchingJobs = memo(lazy(() => import('@/components/MatchingJobs')));
-const RecentCompanies = memo(lazy(() => import('@/components/RecentCompanies')));
 
 export default function DashboardPage() {
   const { user, loading } = useAuth(); // Destructure loading
@@ -105,9 +104,6 @@ export default function DashboardPage() {
           // Fetch Matching Jobs
           await fetchAndCache('/api/dashboard/matching-jobs', setMatchingJobs, setErrorMatchingJobs, setLoadingMatchingJobs, 'matchingJobs');
 
-          // Fetch Recent Companies
-          await fetchAndCache('/api/dashboard/recent-companies', setRecentCompanies, setErrorRecentCompanies, setLoadingRecentCompanies, 'recentCompanies');
-
           // Fetch Bookmarked Jobs
           await fetchAndCache('/api/dashboard/bookmarked-jobs', setBookmarkedJobs, setErrorBookmarkedJobs, setLoadingBookmarkedJobs, 'bookmarkedJobs');
         }
@@ -153,7 +149,7 @@ export default function DashboardPage() {
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Suspense fallback={<Skeleton />}>
-          <Card className="border-none col-span-2 relative">
+          <Card className="border-none shadow-none col-span-2 relative">
             <CardTitle className="mb-4">
               New Jobs Matching Your Searches
               {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
@@ -161,9 +157,8 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription>
               <MatchingJobs
-                loading={loadingSavedSearches}
-                error={errorSavedSearches}
-                savedSearches={savedSearches}
+                loading={loadingMatchingJobs}
+                error={errorMatchingJobs}
               />
             </CardDescription>
           </Card>
@@ -190,7 +185,7 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription>
               <BookmarkedJobs
-                jobs={bookmarkedJobs.bookmarkedJobs}
+                jobs={bookmarkedJobs}  // Remove .bookmarkedJobs
                 loading={loadingBookmarkedJobs}
                 error={errorBookmarkedJobs}
               />
@@ -199,7 +194,7 @@ export default function DashboardPage() {
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 relative">
+          <Card className="p-4 relative col-span-2 md:col-span-1">
             <CardTitle className="mb-2">
               Recently Viewed Jobs
               {loadingRecentlyViewed && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
@@ -216,24 +211,8 @@ export default function DashboardPage() {
         </Suspense>
 
 
-        <Suspense fallback={<SkeletonCard />}>
-          <Card className="p-4 relative col-span-2">
-            <CardTitle className="mb-2">
-              Recently Launched companies
-              {loadingRecentCompanies && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
-              {errorRecentCompanies && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-            </CardTitle>
-            <CardDescription>
-              <RecentCompanies
-                companies={recentCompanies}
-                loading={loadingRecentCompanies}
-                error={errorRecentCompanies}
-              />
-            </CardDescription>
-          </Card>
-        </Suspense>
         <Suspense fallback={<Skeleton />}>
-          <Card className="p-4 relative">
+          <Card className="p-4 relative col-span-2 md:col-span-1">
             <CardTitle className="mb-2">
               Recently Applied Jobs
               {loadingRecentlyApplied && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}

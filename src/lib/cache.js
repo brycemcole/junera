@@ -6,41 +6,42 @@ const memoryCache = new Map();
 // Check Redis connection status
 const isRedisAvailable = () => client.isReady;
 
-export async function getCached(key) {
+export async function getCached(key, userId) {
+  const fullKey = `${key}:${userId}`;
   try {
     if (!isRedisAvailable()) {
       console.warn('Redis not available, using memory cache');
-      return memoryCache.get(key) || null;
+      return memoryCache.get(fullKey) || null;
     }
 
-    const data = await client.get(key);
+    const data = await client.get(fullKey);
     if (data) {
-      // Update memory cache with Redis data
       const parsed = JSON.parse(data);
-      memoryCache.set(key, parsed);
+      memoryCache.set(fullKey, parsed);
       return parsed;
     }
-    return memoryCache.get(key) || null;
+    return memoryCache.get(fullKey) || null;
   } catch (error) {
     console.error('Error fetching data from Redis:', error);
-    return memoryCache.get(key) || null;
+    return memoryCache.get(fullKey) || null;
   }
 }
 
-export async function setCached(key, value, ttl = 3600) {
+export async function setCached(key, userId, value, ttl = 3600) {
+  const fullKey = `${key}:${userId}`;
   try {
     if (!isRedisAvailable()) {
       console.warn('Redis not available, using memory cache only');
-      memoryCache.set(key, value);
+      memoryCache.set(fullKey, value);
       return;
     }
 
     const stringValue = JSON.stringify(value);
-    await client.set(key, stringValue, { EX: ttl });
-    memoryCache.set(key, value);
+    await client.set(fullKey, stringValue, { EX: ttl });
+    memoryCache.set(fullKey, value);
   } catch (error) {
     console.error('Error setting data in Redis:', error);
-    memoryCache.set(key, value);
+    memoryCache.set(fullKey, value);
   }
 }
 
