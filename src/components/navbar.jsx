@@ -323,7 +323,7 @@ function DropdownMenuDemo() {
       <DropdownMenuTrigger asChild>
         <Button
           className="group"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={() => setOpen((prevState) => !prevState)}
           aria-expanded={open}
@@ -466,12 +466,12 @@ export default function Navbar() {
         <DropdownMenuDemo2 />
       ) : (
         <>
-        <Button variant="ghost" className="text-customGreen font-semibold dark:text-white hover:text-primary hover:bg-accent">
+        <Button variant="ghost" className="text-customGreen h-8 font-semibold dark:text-white hover:text-primary hover:bg-accent">
           <Link href="/register">
            Sign Up
           </Link>
         </Button>
-        <Button className="font-semibold hover:text-primary hover:bg-accent">
+        <Button className="font-semibold h-8 hover:text-primary hover:bg-accent">
           <Link href="/login">
            Login
           </Link>
