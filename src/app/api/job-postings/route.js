@@ -166,8 +166,10 @@ export async function GET(req) {
   const { searchParams } = new URL(url);
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 20;
+  const strictParam = searchParams.get("strictSearch");
+  const strict = strictParam !== 'false'; // Defaults to true
 
-  // Create a more reliable cache key
+  // Create a more reliable cache key, including the strict flag
   const cacheKey = `jobPostings:${searchParams.toString()}`;
 
   if (page < 1 || limit < 1) {
@@ -274,18 +276,23 @@ export async function GET(req) {
     }
 
     // Try to get cached data first
+    /*
     const cachedData = await getCached(cacheKey);
     if (cachedData) {
       const parsedData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-      return Response.json({ 
-        jobPostings: parsedData.jobPostings, 
+      return Response.json({
+        jobPostings: parsedData.jobPostings,
         timings: { ...parsedData.timings, fromCache: true },
-        ok: true 
+        ok: true
       }, { status: 200 });
-    }
+    }*/
 
     const params = [];
     let paramIndex = 1;
+
+    // Separate parameter indices for relevance and filtering
+    let relevanceParams = [];
+    let filterParams = [];
 
     // Build query
     let queryText = `
@@ -297,53 +304,161 @@ export async function GET(req) {
         description,
         experiencelevel,
         created_at
+    `;
+
+    if (!strict) {
+      // Calculate relevance based on matched criteria
+      let relevanceCalculation = '(\n';
+
+      // Title relevance
+      if (title) {
+        relevanceCalculation += `  (CASE WHEN title_vector @@ to_tsquery('english', $${paramIndex}) THEN 1 ELSE 0 END) +\n`;
+        relevanceParams.push(title.trim().replace(/\s+/g, ' & '));
+        paramIndex++;
+      } else {
+        relevanceCalculation += `  0 +\n`;
+      }
+
+      // Experience Level relevance
+      if (experienceLevel) {
+        relevanceCalculation += `  (CASE WHEN LOWER(experiencelevel) = $${paramIndex} THEN 1 ELSE 0 END) +\n`;
+        relevanceParams.push(experienceLevel);
+        paramIndex++;
+      } else {
+        relevanceCalculation += `  0 +\n`;
+      }
+
+      // Location relevance
+      if (locationSearchTerms.length > 0) {
+        // Escape single quotes in terms to prevent SQL injection
+        const escapedTerms = locationSearchTerms.map(term => term.replace(/'/g, "''"));
+
+        // Construct tsquery with OR logic
+        const tsquery = escapedTerms.map(term => {
+          // Replace spaces with ' & ' for multi-word terms
+          return term.includes(' ') ? term.split(' ').join(' & ') : term;
+        }).join(' | ');
+
+        relevanceCalculation += `  (CASE WHEN location_vector @@ to_tsquery('simple', $${paramIndex}) THEN 1 ELSE 0 END) +\n`;
+        relevanceParams.push(tsquery);
+        paramIndex++;
+      } else {
+        relevanceCalculation += `  0 +\n`;
+      }
+
+      // Company relevance
+      if (company) {
+        relevanceCalculation += `  (CASE WHEN company = $${paramIndex} THEN 1 ELSE 0 END)\n`;
+        relevanceParams.push(company);
+        paramIndex++;
+      } else {
+        relevanceCalculation += `  0\n`;
+      }
+
+      relevanceCalculation += `) AS relevance`;
+
+      queryText += `, ${relevanceCalculation}`;
+    }
+
+    queryText += `
       FROM jobPostings
       WHERE 1 = 1
     `;
 
-    // Full-text search on title
-    if (title) {
-      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
-      params.push(title.trim().replace(/\s+/g, ' & '));
-      paramIndex++;
+    if (strict) {
+      // Strict mode: All conditions must be met (AND)
+      if (title) {
+        queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
+        filterParams.push(title.trim().replace(/\s+/g, ' & '));
+        paramIndex++;
+      }
+
+      if (experienceLevel) {
+        queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
+        filterParams.push(experienceLevel);
+        paramIndex++;
+      }
+
+      if (locationSearchTerms.length > 0) {
+        // Escape single quotes in terms to prevent SQL injection
+        const escapedTerms = locationSearchTerms.map(term => term.replace(/'/g, "''"));
+
+        // Construct tsquery with OR logic
+        const tsquery = escapedTerms.map(term => {
+          // Replace spaces with ' & ' for multi-word terms
+          return term.includes(' ') ? term.split(' ').join(' & ') : term;
+        }).join(' | ');
+
+        queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
+        filterParams.push(tsquery);
+        paramIndex++;
+      }
+
+      if (company) {
+        queryText += ` AND company = $${paramIndex}`;
+        filterParams.push(company);
+        paramIndex++;
+      }
+    } else {
+      // Non-strict mode: Any condition can be met (OR)
+      const conditions = [];
+
+      if (title) {
+        conditions.push(`title_vector @@ to_tsquery('english', $${paramIndex})`);
+        filterParams.push(title.trim().replace(/\s+/g, ' & '));
+        paramIndex++;
+      }
+
+      if (experienceLevel) {
+        conditions.push(`LOWER(experiencelevel) = $${paramIndex}`);
+        filterParams.push(experienceLevel);
+        paramIndex++;
+      }
+
+      if (locationSearchTerms.length > 0) {
+        // Escape single quotes in terms to prevent SQL injection
+        const escapedTerms = locationSearchTerms.map(term => term.replace(/'/g, "''"));
+
+        // Construct tsquery with OR logic
+        const tsquery = escapedTerms.map(term => {
+          // Replace spaces with ' & ' for multi-word terms
+          return term.includes(' ') ? term.split(' ').join(' & ') : term;
+        }).join(' | ');
+
+        conditions.push(`location_vector @@ to_tsquery('simple', $${paramIndex})`);
+        filterParams.push(tsquery);
+        paramIndex++;
+      }
+
+      if (company) {
+        conditions.push(`company = $${paramIndex}`);
+        filterParams.push(company);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        queryText += ` AND (${conditions.join(' OR ')})`;
+      }
     }
 
-    // Experience level filter
-    if (experienceLevel) {
-      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
-      params.push(experienceLevel);
-      paramIndex++;
+    if (!strict) {
+      // Order by relevance and then by creation date
+      queryText += `
+        ORDER BY 
+          relevance DESC,
+          created_at DESC
+      `;
+    } else {
+      // Strict mode: Order by creation date
+      queryText += `
+        ORDER BY 
+          created_at DESC
+      `;
     }
 
-    // Location filter using full-text search with 'simple' configuration
-    if (locationSearchTerms.length > 0) {
-      // Escape single quotes in terms to prevent SQL injection
-      const escapedTerms = locationSearchTerms.map(term => term.replace(/'/g, "''"));
-
-      // Construct tsquery with OR logic
-      const tsquery = escapedTerms.map(term => {
-        // Replace spaces with ' & ' for multi-word terms
-        return term.includes(' ') ? term.split(' ').join(' & ') : term;
-      }).join(' | ');
-
-      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
-      params.push(tsquery);
-      paramIndex++;
-    }
-
-    // Company filter
-    if (company) {
-      queryText += ` AND company = $${paramIndex}`;
-      params.push(company);
-      paramIndex++;
-    }
-
-    queryText += `
-      ORDER BY 
-        created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
-    `;
-    params.push(limit, offset);
+    // Add LIMIT and OFFSET
+    queryText += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1};`;
+    params.push(...relevanceParams, ...filterParams, limit, offset);
 
     const queryPrepStart = performance.now();
     const queryExecStart = performance.now();
@@ -374,6 +489,8 @@ export async function GET(req) {
     return Response.json({ error: "Error fetching job postings", timings, ok: false }, { status: 500 });
   }
 }
+
+
 
 export async function PUT(req) {
   const { signal } = req;

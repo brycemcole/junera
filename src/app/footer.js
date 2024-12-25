@@ -4,18 +4,21 @@ import { Button } from '@/components/ui/button'
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-primary py-3">
+    <footer className="w-full bg-background  py-3">
       <div className="container mx-auto px-4">
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-background">
-          <span className="whitespace-nowrap">junera</span>
-          <span className="hidden sm:inline text-gray-600">|</span>
-          <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>
-          <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><Link href="/job-postings?explevel=internship">Internships</Link></span>
-          <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><Link href="/job-postings?location=remote">Remote</Link></span>
-          <span className="hidden sm:inline text-gray-600">•</span>
-          <span className="whitespace-nowrap"><Link href="/about">About</Link></span>
+        <div className="flex flex-col items-center justify-center gap-3 text-sm text-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-foreground">
+            <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>
+            <span className="hidden sm:inline ">•</span>
+            <span className="whitespace-nowrap"><Link href="/job-postings?explevel=internship">Internships</Link></span>
+            <span className="hidden sm:inline">•</span>
+            <span className="whitespace-nowrap"><Link href="/job-postings?location=remote">Remote</Link></span>
+            <span className="hidden sm:inline ">•</span>
+            <span className="whitespace-nowrap"><Link href="/about">About</Link></span>
+          </div>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            junera {new Date().getFullYear()}
+          </span>
         </div>
       </div>
     </footer>

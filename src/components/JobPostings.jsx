@@ -64,12 +64,12 @@ export const JobList = ({ data, loading, error }) => {
       {data.map((job, index) => (
         <div
           key={job.id}
-          className="flex flex-row gap-4 items-start group py-3 md:py-3 space-y-0 md:space-y-1 text-sm cursor-pointer transition duration-200 ease-in-out max-w-[95vw] md:max-w-3xl"
+          className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[95vw] md:max-w-3xl"
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
 
-          <div className="flex items-center flex-col gap-2">
-          {job.company ? (
+<div className="flex flex-col justify-between">
+{job.company ? (
             <Avatar className="w-10 h-10 flex-shrink-0">
               <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
               <AvatarFallback>
@@ -87,19 +87,15 @@ export const JobList = ({ data, loading, error }) => {
           </div>
           {/* Header Section */}
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col">
                 <span className="text-sm text-muted-foreground truncate">
                   {job?.company || "No company name available"}
                 </span>
-              </div>
-            </div>
             <span className="font-semibold group-hover:underline text-md truncate">
               {job?.title || "No job titles available"}
             </span>
-            <div className="group-hover:underline text-sm line-clamp-2 max-w-full">
+            <div className="text-sm line-clamp-2 max-w-full">
               <p
-                className="m-0 text-muted-foreground"
+                className="m-0 text-foreground"
                 dangerouslySetInnerHTML={{
                   __html: stripHTML(decodeHTMLEntities(job?.description)),
                 }}
@@ -109,7 +105,9 @@ export const JobList = ({ data, loading, error }) => {
             <div className="flex md:gap-y-2 gap-x-4 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
               <div className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate">{job?.location || "N/A"}</span>
+                <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
+                  {job?.location || "N/A"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-muted-foreground" />

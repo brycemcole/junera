@@ -331,7 +331,7 @@ function DropdownMenuDemo() {
       <DropdownMenuTrigger asChild>
         <Button
           className="group"
-          variant="ghost"
+          variant="outline"
           size="icon"
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}

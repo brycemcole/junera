@@ -7,6 +7,9 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { buttonVariants } from "@/components/ui/button";
+
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetClose,
@@ -19,7 +22,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2 } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -492,7 +495,6 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
-
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
@@ -503,6 +505,7 @@ export default function JobPostingsPage() {
   const [experienceLevel, setExperienceLevel] = useState("");
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
+  const [strictSearch, setStrictSearch] = useState(true);
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -514,6 +517,7 @@ export default function JobPostingsPage() {
   const [llmResponse, setLlmResponse] = useState("");
   const [companies, setCompanies] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -683,11 +687,78 @@ export default function JobPostingsPage() {
     }
   };
 
+  function JobPostingsPagination({ currentPage, count, limit }) {
+    const totalPages = Math.ceil(count / limit);
+
+    const handlePageChange = (pageNumber) => {
+      if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
+        setPageLoading(true);
+        router.push(buildHref(pageNumber));
+      }
+    };
+
+    return (
+      <Pagination>
+        <PaginationContent className="w-full justify-between">
+          <PaginationItem>
+            <PaginationLink
+              className={cn(
+                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+                buttonVariants({
+                  variant: "outline",
+                }),
+              )}
+              href={buildHref(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage - 1);
+              }}
+              aria-label="Go to previous page"
+              aria-disabled={currentPage === 1}
+              role={currentPage === 1 ? "link" : undefined}
+            >
+              <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+            </PaginationLink>
+          </PaginationItem>
+
+          <PaginationItem>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              Page <span className="text-foreground">{currentPage}</span> of{" "}
+              <span className="text-foreground">{totalPages}</span>
+            </p>
+          </PaginationItem>
+
+          <PaginationItem>
+            <PaginationLink
+              className={cn(
+                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+                buttonVariants({
+                  variant: "outline",
+                }),
+              )}
+              href={buildHref(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage + 1);
+              }}
+              aria-label="Go to next page"
+              aria-disabled={currentPage === totalPages}
+              role={currentPage === totalPages ? "link" : undefined}
+            >
+              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+            </PaginationLink>
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
+
   function buildHref(pageNumber) {
     const params = {
       title,
       explevel: experienceLevel,
       location,
+      strictSearch,
       company,
       page: pageNumber.toString()
     };
@@ -697,7 +768,7 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}`;
       const cachedData = sessionStorage.getItem(cacheKey);
       const cacheExpiry = 3 * 60 * 1000;
       const now = Date.now();
@@ -746,25 +817,28 @@ export default function JobPostingsPage() {
 
       async function fetchData() {
         try {
+          setPageLoading(true); // Set loading state
           const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`
           );
           fetchControllers.push(result.controller); // Use fetchControllers here
           const dataResult = await result.promise;
-          setData(dataResult.jobPostings || []);
+          setData(dataResult.jobPostings || []); // Set the jobs data
           sessionStorage.setItem(cacheKey, JSON.stringify(dataResult.jobPostings));
           sessionStorage.setItem(`${cacheKey}_timestamp`, now);
         } catch (error) {
           if (error.name !== 'AbortError') {
             console.error("Error fetching job postings:", error);
           }
+        } finally {
+          setPageLoading(false); // Clear loading state
         }
       }
 
       async function fetchJobCount() {
         try {
           const result = fetchWithCancel(
-            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`
           );
           fetchControllers.push(result.controller); // Use fetchControllers here
           const countResult = await result.promise;
@@ -783,16 +857,17 @@ export default function JobPostingsPage() {
 
       if (isCacheValid(cacheKey) && cachedData) {
         try {
-          setData(JSON.parse(cachedData));
-          fetchJobCount();
+          const parsedData = JSON.parse(cachedData);
+          setData(parsedData); // Set data from cache immediately
+          setPageLoading(false); // Ensure loading is false when using cache
+          fetchJobCount(); // Still fetch the count
         } catch (error) {
-          resetCache();
-          fetchData();
-          fetchJobCount();
           console.error("Error parsing cached job postings:", error);
+          fetchData(); // Fallback to fetching if cache parse fails
+          fetchJobCount();
         }
       } else {
-        fetchData();
+        fetchData(); // Fetch if no valid cache
         fetchJobCount();
       }
 
@@ -801,7 +876,7 @@ export default function JobPostingsPage() {
       };
     }
 
-  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, fetchWithCancel]);
+  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, strictSearch, fetchWithCancel]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -849,6 +924,7 @@ export default function JobPostingsPage() {
           explevel: experienceLevel,
           location,
           company,
+          strict: strictSearch,
           page: '1'
         };
         const newParams = new URLSearchParams(params);
@@ -858,7 +934,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title]
+    [experienceLevel, location, company, router, title, strictSearch]
   );
 
   const handleSaveSearch = async () => {
@@ -1070,16 +1146,15 @@ Please provide relevant career advice and job search assistance based on their p
   }, [user]);
 
   return (
-    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0">
-      <Suspense fallback={<div>Loading search parameters...</div>}>
-        <SearchParamsHandler
-          setTitle={setTitle}
-          setExperienceLevel={setExperienceLevel}
-          setLocation={setLocation}
-          setCompany={setCompany}
-          setCurrentPage={setCurrentPage}
-        />
-      </Suspense>
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full">      <Suspense fallback={<div>Loading search parameters...</div>}>
+      <SearchParamsHandler
+        setTitle={setTitle}
+        setExperienceLevel={setExperienceLevel}
+        setLocation={setLocation}
+        setCompany={setCompany}
+        setCurrentPage={setCurrentPage}
+      />
+    </Suspense>
       <div className="z-0">
         <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
         <Suspense fallback={<div>Loading...</div>}>
@@ -1144,7 +1219,16 @@ Please provide relevant career advice and job search assistance based on their p
         )}
 
         <div>
-          {data && data.length > 0 ? (
+          {pageLoading ? (
+            <div className="space-y-4">
+              {[...Array(limit)].map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg animate-pulse">
+                  <div className="h-6 bg-accent rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-accent rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : data && data.length > 0 ? (
             <div key="job-postings">
               <div className="items-center flex gap-4">
                 <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
@@ -1155,7 +1239,7 @@ Please provide relevant career advice and job search assistance based on their p
                   </div>
                 </span>
               </div>
-              <JobList data={data} />
+              <JobList data={data} loading={pageLoading} error={null} />
             </div>
           ) : (
             <p>No job postings found. Adjust your search criteria.</p>
@@ -1164,76 +1248,11 @@ Please provide relevant career advice and job search assistance based on their p
 
         <div className="flex justify-between mt-4">
           <Suspense fallback={<div>Loading...</div>}>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) {
-                        router.push(buildHref(currentPage - 1));
-                      }
-                    }}
-                    href={currentPage > 1 ? buildHref(currentPage - 1) : undefined}
-                    disabled={currentPage === 1}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink
-                    href={buildHref(1)}
-                    isActive={currentPage === 1}
-                  >
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-
-                {currentPage > 2 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-
-                {currentPage > 1 && (
-                  <PaginationItem>
-                    <PaginationLink
-                      href={buildHref(currentPage)}
-                      isActive
-                    >
-                      {currentPage}
-                    </PaginationLink>
-                  </PaginationItem>
-                )}
-
-                {data && data.length === limit && (
-                  <PaginationItem>
-                    <PaginationLink
-                      href={buildHref(currentPage + 1)}
-                    >
-                      {currentPage + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                )}
-
-                {data && data.length === limit && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (data && data.length === limit) {
-                        router.push(buildHref(currentPage + 1));
-                      }
-                    }}
-                    href={data && data.length === limit ? buildHref(currentPage + 1) : undefined}
-                    disabled={data && data.length < limit}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <JobPostingsPagination
+              currentPage={currentPage}
+              count={count} // Total number of jobs
+              limit={limit} // Jobs per page (20 in your case)
+            />
           </Suspense>
         </div>
       </Suspense>
