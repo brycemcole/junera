@@ -191,7 +191,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-gray-50"
+            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent"
           >
             {value ? (
               <span className="flex min-w-0 items-center gap-2">
@@ -331,7 +331,7 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
 
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-gray-50 [&_[data-desc]]:hidden">
+      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent [&_[data-desc]]:hidden">
         {value ? (
           <span className="text-foreground truncate">
             <SelectValue placeholder={value} />
@@ -340,7 +340,7 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
           <SelectValue className="text-muted-foreground truncate" placeholder="Level" />
         )}
       </SelectTrigger>
-      <SelectContent className="bg-white w-[250px] rounded-lg shadow-lg [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
+      <SelectContent className="bg-background w-[250px] rounded-lg shadow-lg [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
         <SelectGroup>
           <SelectLabel>Experience Level</SelectLabel>
           {options.map((option) => (
@@ -348,7 +348,7 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
               key={option.value}
               value={option.value}
               className={`px-4 py-2 cursor-pointer ${value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
-                } hover:bg-gray-100`}
+                } hover:bg-accent`}
             >
               {option.label}
               <span className="mt-1 block text-xs text-muted-foreground" data-desc>
@@ -365,7 +365,7 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
 const LocationSelect = memo(function LocationSelect({ onChange, value }) {
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative text-muted-foreground ps-4 rounded-lg border border bg-background shadow-sm">
+      <SelectTrigger className="relative text-muted-foreground ps-4 rounded-lg border border hover:bg-accent bg-background shadow-sm">
         <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
         </div>
         {value ? (

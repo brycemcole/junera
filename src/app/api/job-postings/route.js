@@ -4,6 +4,7 @@ import { query } from "@/lib/pgdb"; // Import the query method from db.js
 import { headers } from "next/headers";
 import { performance } from 'perf_hooks';
 const he = require('he');
+import { getCached, setCached } from '@/lib/cache'; // Add this import
 
 // Utility function to scan keywords
 function scanKeywords(text) {
@@ -166,6 +167,9 @@ export async function GET(req) {
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 20;
 
+  // Create a more reliable cache key
+  const cacheKey = `jobPostings:${searchParams.toString()}`;
+
   if (page < 1 || limit < 1) {
     return Response.json({ error: "Invalid page or limit" }, { status: 400 });
   }
@@ -269,6 +273,17 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
+    // Try to get cached data first
+    const cachedData = await getCached(cacheKey);
+    if (cachedData) {
+      const parsedData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
+      return Response.json({ 
+        jobPostings: parsedData.jobPostings, 
+        timings: { ...parsedData.timings, fromCache: true },
+        ok: true 
+      }, { status: 200 });
+    }
+
     const params = [];
     let paramIndex = 1;
 
@@ -340,9 +355,13 @@ export async function GET(req) {
 
     // Process results
     const jobPostings = processJobPostings(result.rows);
+    const responseData = { jobPostings, timings };
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
+
+    // Cache the results for 5 minutes
+    await setCached(cacheKey, JSON.stringify(responseData), 300);
 
     return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
   } catch (error) {
@@ -388,6 +407,9 @@ export async function PUT(req) {
         { status: 404 }
       );
     }
+
+    // Clear any cached job posting data since we've updated something
+    await clearCache('jobPostings:*');
 
     return new Response(
       JSON.stringify({
