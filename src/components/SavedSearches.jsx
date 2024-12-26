@@ -60,7 +60,7 @@ export default function SavedSearches({ data, loading, error }) {
                 const recentJobCount = recentJobCounts[search.id] || '...';
 
                 return (
-                            <Badge
+                <Badge
       variant="outline"
       className="gap-1.5 cursor-pointer hover:bg-accent"
       onClick={() => router.push(`/job-postings/saved-searches/${search.id}`)}
