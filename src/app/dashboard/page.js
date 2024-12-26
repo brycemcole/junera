@@ -144,10 +144,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto py-10 p-4 max-w-4xl">
+    <div className="container mx-auto py-0 p-4 max-w-4xl">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Suspense fallback={<Skeleton />}>
+          <Card className="py-2 border-none shadow-none bg-transparent relative col-span-2 md:col-span-3">
+            <CardTitle className="mb-4 w-full flex">
+              Saved Searches
+              {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
+              {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
+            </CardTitle>
+            <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
+            <Button variant="ghost" size="sm" className="absolute right-0 font-mono decoration-dotted underline underline-offset-4 top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
+
+          </Card>
+        </Suspense>
         <Suspense fallback={<Skeleton />}>
           <Card className="border-none shadow-none col-span-2 relative">
             <CardTitle className="mb-4">
@@ -163,21 +175,9 @@ export default function DashboardPage() {
             </CardDescription>
           </Card>
         </Suspense>
-        <Suspense fallback={<Skeleton />}>
-          <Card className="py-2 border-none shadow-none bg-transparent relative col-span-2 md:col-span-1">
-            <CardTitle className="mb-4 w-full flex">
-              Saved Searches
-              {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
-              {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-            </CardTitle>
-            <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
-            <Button variant="ghost" size="sm" className="absolute right-0 font-mono decoration-dotted underline underline-offset-4 top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
-
-          </Card>
-        </Suspense>
 
         <Suspense fallback={<Skeleton />}>
-          <Card className="border-transparent shadow-none col-span-2 relative">
+          <Card className="border-transparent shadow-none col-span-1 relative">
             <CardTitle className="mb-4">
               Bookmarked Jobs
               {loadingBookmarkedJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}

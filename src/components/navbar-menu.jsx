@@ -74,12 +74,11 @@ export function NavbarMenu() {
       <NavigationMenuList>
         <NavigationMenuItem>
           <NavigationMenuTrigger className="bg-transparent">Home</NavigationMenuTrigger>
-          <NavigationMenuContent>
+          <NavigationMenuContent className="z-[60]">
             <ul className="grid gap-3 p-6 z-100 opacity-100 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
-                  <Link href="/" 
-                                      className="flex h-full w-full select-none flex-col justify-end rounded-md bg-lime-50 dark:bg-lime-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
+                  <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-emerald-50 dark:bg-emerald-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
                     <div className="mb-2 mt-4 text-lg font-medium">
                       🌳 junera
                     </div>
@@ -131,9 +130,9 @@ export function NavbarMenu() {
         </NavigationMenuItem>
         {user && !loading ? (
             <>
-        <NavigationMenuItem>
+        <NavigationMenuItem className="bg-transparent">
           <Link href="/dashboard" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+            <NavigationMenuLink className={`bg-transparent ${navigationMenuTriggerStyle()}`}>
               Dashboard
             </NavigationMenuLink>
           </Link>
@@ -144,7 +143,7 @@ export function NavbarMenu() {
             <ul className="grid gap-3 p-6 z-100 opacity-100 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
-                  <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-lime-50 dark:bg-lime-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
+                  <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-emerald-50 dark:bg-emerald-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
                     <div className="mb-2 mt-4 text-lg font-medium">
                       {user.username}
                     </div>
@@ -198,7 +197,7 @@ const ListItem = (({ className, title, children, ...props }, ref) => {
         <Link
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-lime-50/60 dark:hover:bg-lime-900/30 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-emerald-50/60 dark:hover:bg-emerald-900/30 hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
             className
           )}
           {...props}

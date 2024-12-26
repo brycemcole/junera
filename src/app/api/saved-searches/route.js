@@ -95,6 +95,11 @@ export async function PUT(request) {
     const userId = decoded.id;
     const { id, searchName, searchCriteria, notify } = await request.json();
 
+    // Ensure searchCriteria is properly stringified for database storage
+    const searchCriteriaString = typeof searchCriteria === 'string' 
+      ? searchCriteria 
+      : JSON.stringify(searchCriteria);
+
     const result = await query(
       `UPDATE saved_searches 
        SET search_name = $1, 
@@ -103,7 +108,7 @@ export async function PUT(request) {
            updated_at = NOW()
        WHERE id = $4 AND user_id = $5
        RETURNING *`,
-      [searchName, searchCriteria, notify, id, userId]
+      [searchName, searchCriteriaString, notify, id, userId]
     );
 
     if (result.rowCount === 0) {

@@ -26,12 +26,12 @@ function AppliedJobs({ jobs }) {
                 <AvatarImage src={job.companyLogo} alt={job.company} />
                 <AvatarFallback>{job.company?.[0]}</AvatarFallback>
               </Avatar>
-              <span className="text-sm text-muted-foreground">{job.company}</span>
+              <span className="text-sm text-foreground">{job.company}</span>
             </div>
 
             <div className="mt-1">
               <h3 className="text-foreground font-medium group-hover:underline">
-                <span className="text-lime-600">{job.title}</span>
+                <span className="">{job.title}</span>
                 {job.location && <span className="text-muted-foreground text-sm"> in {job.location}</span>}
               </h3>
             </div>
@@ -109,15 +109,6 @@ export default function AppliedJobsPage() {
 
   return (
     <div className="container mx-auto py-10 p-4 max-w-4xl">
-      <Breadcrumb className="mb-4">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbPage>Applied</BreadcrumbPage>
-        </BreadcrumbList>
-      </Breadcrumb>
       <h1 className="text-2xl font-bold mb-4">Applied Jobs</h1>
       <div className="flex flex-col">
         <AppliedJobs jobs={appliedJobs?.appliedJobs} />

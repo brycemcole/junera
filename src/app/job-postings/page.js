@@ -819,7 +819,13 @@ export default function JobPostingsPage() {
         try {
           setPageLoading(true); // Set loading state
           const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user?.token}`,
+              },
+            }
           );
           fetchControllers.push(result.controller); // Use fetchControllers here
           const dataResult = await result.promise;
@@ -1060,7 +1066,13 @@ Please provide relevant career advice and job search assistance based on their p
     const isFirstRender = useRef(true);
 
     const handleInputChange = (e) => {
-      setSearchValue(e.target.value);
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+
+      // If the search value is empty, trigger the search immediately
+      if (newValue === "") {
+        onSearch("");
+      }
     };
 
     useEffect(() => {
@@ -1146,7 +1158,7 @@ Please provide relevant career advice and job search assistance based on their p
   }, [user]);
 
   return (
-    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full">      <Suspense fallback={<div>Loading search parameters...</div>}>
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">      <Suspense fallback={<div>Loading search parameters...</div>}>
       <SearchParamsHandler
         setTitle={setTitle}
         setExperienceLevel={setExperienceLevel}

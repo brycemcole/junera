@@ -84,7 +84,7 @@ export default function MatchingJobs({ loading, error }) {
   }
 
   return (
-    <ScrollArea className="h-64">
+    <ScrollArea className="">
       <div className="space-y-4">
         {jobs.map((job) => (
           <div key={job.id || Math.random()} className="group relative">
@@ -98,7 +98,7 @@ export default function MatchingJobs({ loading, error }) {
             
             <Link href={`/job-postings/${job.id}`} className="block group-hover:underline">
               <h3 className="text-foreground font-medium mt-1">
-                <span className="text-lime-600">{job.title}</span>
+                <span className="">{job.title}</span>
                 {job.location && <span className="text-foreground"> in {job.location}</span>}
               </h3>
             </Link>

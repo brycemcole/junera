@@ -1,4 +1,5 @@
 import { query } from "@/lib/pgdb";
+import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 
 export async function GET(req) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req) {
     const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
     const location = searchParams.get("location")?.trim() || "";
     const company = searchParams.get("company")?.trim() || "";
+
+    // Get the entire group of related titles if a title search is provided
+    const titleGroup = title ? findJobTitleGroup(title) : [];
 
     // Prepare query parameters
     const params = [];
@@ -21,11 +25,15 @@ export async function GET(req) {
       WHERE 1 = 1
     `;
 
-    // Full-text search on title_vector
+    // Full-text search on title_vector using title group
     if (title) {
-      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
-      params.push(title.trim().replace(/\s+/g, ' & '));
-      paramIndex++;
+      const titleConditions = titleGroup.map((t, i) => {
+        const idx = paramIndex + i;
+        return `title_vector @@ to_tsquery('english', $${idx})`;
+      });
+      queryText += ` AND (${titleConditions.join(' OR ')})`;
+      params.push(...titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')));
+      paramIndex += titleGroup.length;
     }
 
     // Experience level filter using LOWER

@@ -21,7 +21,7 @@ export default function RecentlyAppliedJobs({ jobs, loading, error, router }) {
           key={job.id}
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
-          <p className="text-lime-500 hover:underline">{job.company}</p>
+          <p className="hover:underline">{job.company}</p>
           <p className="text-foreground font-medium">{job.title}</p>
           <p className="text-muted-foreground text-xs font-medium">
             {formatDistanceToNow(new Date(job.appliedAt), { addSuffix: true })}
