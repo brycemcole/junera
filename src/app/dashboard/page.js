@@ -177,7 +177,7 @@ export default function DashboardPage() {
         </Suspense>
 
         <Suspense fallback={<Skeleton />}>
-          <Card className="border-transparent shadow-none col-span-1 relative">
+          <Card className="border-transparent shadow-none col-span-2 md:col-span-1 relative">
             <CardTitle className="mb-4">
               Bookmarked Jobs
               {loadingBookmarkedJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
