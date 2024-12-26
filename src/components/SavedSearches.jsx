@@ -64,6 +64,7 @@ export default function SavedSearches({ data, loading, error }) {
       variant="outline"
       className="gap-1.5 cursor-pointer hover:bg-accent"
       onClick={() => router.push(`/job-postings/saved-searches/${search.id}`)}
+      key={search.id}
     >
       <span
         className={`size-1.5 rounded-full bg-blue-500`}
