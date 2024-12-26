@@ -33,11 +33,18 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const [theme, setTheme] = useState('');
+
+  useEffect(() => {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(prefersDark ? 'dark' : 'light');
+  }, [])
+  
   return (
     <html lang="en">
 
       <link rel="manifest" href="/manifest.json" />
-      <meta name="theme-color" content="#000000" />
+   <meta name="theme-color" content={theme === 'dark' ? '#000000' : '#ffffff'} />
       <meta name="description" content="Your App Description" />
       <link rel="apple-touch-icon" href="/icon-192x192.png" />
       <body
