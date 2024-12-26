@@ -467,7 +467,7 @@ export default function Navbar() {
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
         </div>
-        <div className="md:hidden items-center flex gap-2">
+        <div className="md:hidden items-center flex gap-4">
           {user ? (
         <DropdownMenuDemo2 />
       ) : (

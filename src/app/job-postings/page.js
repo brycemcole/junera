@@ -67,6 +67,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+import { useSearchParams, usePathname } from 'next/navigation';
 const states = {
   "null": "Any",
   "remote": "Remote",
@@ -434,35 +435,6 @@ const JobCount = memo(function JobCount({ count, className }) {
   );
 });
 
-const SaveSearchButton = memo(function SaveSearchButton({
-  title,
-  experienceLevel,
-  location,
-  savedSearches,
-  onSave,
-  className
-}) {
-  const isAlreadySaved = savedSearches?.some(search => {
-    const params = JSON.parse(search.search_params);
-    return params.jobTitle === title &&
-      params.explevel === experienceLevel &&
-      params.location === location;
-  });
-
-  if (isAlreadySaved) return null;
-  if (!title && !experienceLevel && !location) return null;
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onSave}
-      className={className}
-    >
-      <Bookmark className="h-3 w-3" />
-    </Button>
-  );
-});
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData }) {
   return (
@@ -498,6 +470,8 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const enabled = false;
 
   const [data, setData] = useState([]);
@@ -506,6 +480,7 @@ export default function JobPostingsPage() {
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
   const [strictSearch, setStrictSearch] = useState(true);
+  const [applyJobPrefs, setApplyJobPrefs] = useState(true); // Add this line
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -760,6 +735,7 @@ export default function JobPostingsPage() {
       location,
       strictSearch,
       company,
+      applyJobPrefs: applyJobPrefs.toString(), // Add this
       page: pageNumber.toString()
     };
     const newParams = new URLSearchParams(params);
@@ -768,7 +744,7 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}`;
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`; // Update cache key
       const cachedData = sessionStorage.getItem(cacheKey);
       const cacheExpiry = 3 * 60 * 1000;
       const now = Date.now();
@@ -819,7 +795,7 @@ export default function JobPostingsPage() {
         try {
           setPageLoading(true); // Set loading state
           const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`,
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`, // Add applyJobPrefs parameter
             {
               headers: {
                 'Content-Type': 'application/json',
@@ -841,12 +817,18 @@ export default function JobPostingsPage() {
         }
       }
 
+      // Update the fetchJobCount function to include applyJobPrefs parameter
       async function fetchJobCount() {
         try {
           const result = fetchWithCancel(
-            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`
+            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${user?.token}`,
+              },
+            }
           );
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const countResult = await result.promise;
           setCount(countResult.totalJobs || 0);
         } catch (error) {
@@ -882,7 +864,7 @@ export default function JobPostingsPage() {
       };
     }
 
-  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, strictSearch, fetchWithCancel]);
+  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, strictSearch, applyJobPrefs, fetchWithCancel]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -931,6 +913,7 @@ export default function JobPostingsPage() {
           location,
           company,
           strict: strictSearch,
+          applyJobPrefs: applyJobPrefs.toString(), // Add this
           page: '1'
         };
         const newParams = new URLSearchParams(params);
@@ -940,7 +923,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title, strictSearch]
+    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs] // Add applyJobPrefs to deps
   );
 
   const handleSaveSearch = async () => {
@@ -1117,6 +1100,21 @@ Please provide relevant career advice and job search assistance based on their p
             value={searchValue}
             onChange={handleInputChange}
           />
+          {user && (
+            <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleTogglePrefs}
+                className={cn(
+                  "relative h-8 w-8 rounded-lg",
+                  applyJobPrefs && "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
+                )}
+              >
+                <SparkleIcon size={14} className="" />
+              </Button>
+            </div>
+          )}
           <Suspense fallback={<div>Loading...</div>}>
             <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
@@ -1157,6 +1155,30 @@ Please provide relevant career advice and job search assistance based on their p
     fetchUserProfile();
   }, [user]);
 
+  useEffect(() => {
+    const applyPrefs = searchParams.get('applyJobPrefs');
+    if (applyPrefs !== null) {
+      setApplyJobPrefs(applyPrefs === 'true');
+    }
+  }, [searchParams]);
+
+  const handleTogglePrefs = useCallback(() => {
+    const newValue = !applyJobPrefs;
+    setApplyJobPrefs(newValue);
+
+    // Create new URLSearchParams object from current params
+    const params = new URLSearchParams(searchParams);
+
+    // Update or add the applyJobPrefs parameter
+    params.set('applyJobPrefs', newValue.toString());
+
+    // Create the new URL 
+    const newUrl = `${pathname}?${params.toString()}`;
+
+    // Push the new URL
+    router.push(newUrl);
+  }, [applyJobPrefs, router, pathname, searchParams]);
+
   return (
     <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">      <Suspense fallback={<div>Loading search parameters...</div>}>
       <SearchParamsHandler
@@ -1165,6 +1187,7 @@ Please provide relevant career advice and job search assistance based on their p
         setLocation={setLocation}
         setCompany={setCompany}
         setCurrentPage={setCurrentPage}
+        setApplyJobPrefs={setApplyJobPrefs} // Add this line
       />
     </Suspense>
       <div className="z-0">

@@ -202,7 +202,6 @@ export async function GET(req) {
   if (limit > 50) {
     return Response.json({ error: "Limit exceeds maximum value" }, { status: 400 });
   }
-
   if (signal.aborted) {
     return Response.json({ error: 'Request was aborted' }, { status: 499 });
   }
@@ -211,13 +210,56 @@ export async function GET(req) {
   const offset = (page - 1) * limit;
 
   // Extract query params
-  const title = (searchParams.get("title") || "").trim();
-  const location = (searchParams.get("location") || "").trim().toLowerCase();
+  let title = (searchParams.get("title") || "").trim();
+  let location = (searchParams.get("location") || "").trim().toLowerCase();
   const company = (searchParams.get("company") || "").trim();
   const experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
 
-  // Group of related job titles if applicable
-  const titleGroup = title ? findJobTitleGroup(title) : [];
+  // Decide whether to apply user preferences as defaults
+  const applyPrefsParam = searchParams.get('applyJobPrefs');
+  let applyJobPrefs = false;
+  if (user && (applyPrefsParam === 'true' || applyPrefsParam === null)) {
+    applyJobPrefs = true;
+  }
+
+  // If we are applying user preferences and no explicit title/location is given, use them
+  if (applyJobPrefs) {
+    if (!title && userPreferredTitles.length > 0) {
+      title = userPreferredTitles[0];
+    }
+    if (!location && userPreferredLocations.length > 0) {
+      location = userPreferredLocations[0].toLowerCase();
+    }
+  } else {
+    // Clear these if we’re NOT applying prefs
+    userPreferredTitles = [];
+    userPreferredLocations = [];
+  }
+
+  // ---------------------------
+  // Build a combined TitleGroup
+  // ---------------------------
+  // This ensures we include synonyms (or "similar" job titles) for BOTH the typed title
+  // *and* for the user’s preferred title(s).
+  let allTitles = new Set();
+
+  // If there’s a typed title, add it + its synonyms:
+  if (title) {
+    const typedTitleGroup = findJobTitleGroup(title);
+    typedTitleGroup.forEach((t) => allTitles.add(t));
+  }
+
+  // Also, if user has preferred titles, add each plus synonyms:
+  if (userPreferredTitles.length > 0) {
+    userPreferredTitles.forEach((prefTitle) => {
+      const prefGroup = findJobTitleGroup(prefTitle);
+      prefGroup.forEach((t) => allTitles.add(t));
+    });
+  }
+
+  // Convert set -> array
+  const titleGroup = [...allTitles];
+  // (If everything is empty, titleGroup will just be [])
 
   // State name -> abbreviation
   const stateMap = {
@@ -296,8 +338,7 @@ export async function GET(req) {
   }
 
   // Prepare caching
-  const cacheKey = `jobPostings:${searchParams.toString()}`;
-
+  const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}`;
   const timings = {};
   const overallStart = performance.now();
 
@@ -327,7 +368,7 @@ export async function GET(req) {
     let relevanceParams = []; // for TSQuery-based relevance
     let filterParams = [];    // for strict or non-strict filtering
 
-    const hasSearchCriteria = !!(title || location || company || experienceLevel);
+    const hasSearchCriteria = !!(titleGroup.length || location || company || experienceLevel);
 
     // === Build SELECT + Relevance
     let queryText = `
@@ -342,50 +383,54 @@ export async function GET(req) {
     `;
 
     //
-    // Always build a relevance column, because we want
-    // user preferences to matter for both strict AND non-strict.
-    //
-    // We'll do a single big calculation that weighs:
-    // - typed "title" vs. userPreferredTitles
-    // - typed "location" vs. userPreferredLocations
-    // - typed "experienceLevel"
-    // - typed "company"
-    //
-    // Weighted example:
-    // - typed title => +2
-    // - userPreferredTitle => +1
-    // - typed location => +2
-    // - userPreferredLocation => +1
-    // - typed experience => +1
-    // - typed company => +1
+    // Always build a relevance column to weigh:
+    //  - typed title => +2
+    //  - preferred title => +1
+    //  - typed location => +2
+    //  - preferred location => +1
+    //  - typed experience => +1
+    //  - typed company => +1
     //
     {
       let relevanceCalculation = '(';
 
       // 1) Title Relevance
+      //
+      // Now that we've combined typed + user-preferred into titleGroup,
+      // we can weigh the first item as typed with +2, and subsequent ones with +1 if you like.
+      // Or keep it simpler and treat them all uniformly. 
+      //
+      // For demonstration, we’ll do:
+      // - If there's an original typed `title`, give +2 for that exact text.
+      // - For all the other titles in titleGroup (which might be synonyms or user prefs),
+      //   assign +1. 
+      //
       if (title) {
-        // If user typed a title, +2
+        // typed input => +2
         relevanceCalculation += ` (CASE WHEN title_vector @@ to_tsquery('english', $${paramIndex}) THEN 2 ELSE 0 END) +`;
         relevanceParams.push(title.trim().replace(/\s+/g, ' & '));
         paramIndex++;
 
-        // Also factor in userPreferredTitles for an additional +1
-        if (userPreferredTitles?.length > 0) {
-          const preferredTitlesQuery = userPreferredTitles
-            .map((t) => t.trim().replace(/\s+/g, ' & '))
+        // The rest of the group are synonyms or user prefs
+        let groupSynonyms = titleGroup.filter((g) => g !== title);
+        if (groupSynonyms.length > 0) {
+          const synonymsQuery = groupSynonyms
+            .map((syn) => syn.trim().replace(/\s+/g, ' & '))
             .join(' | ');
           relevanceCalculation += ` (CASE WHEN title_vector @@ to_tsquery('english', $${paramIndex}) THEN 1 ELSE 0 END) +`;
-          relevanceParams.push(preferredTitlesQuery);
+          relevanceParams.push(synonymsQuery);
           paramIndex++;
+        } else {
+          relevanceCalculation += ` 0 +`;
         }
       } else {
-        // No typed title, so only userPreferredTitles (if any)
-        if (userPreferredTitles?.length > 0) {
-          const preferredTitlesQuery = userPreferredTitles
-            .map((t) => t.trim().replace(/\s+/g, ' & '))
+        // No typed title => everything in titleGroup is a "preferred" or synonyms
+        if (titleGroup.length > 0) {
+          const synonymsQuery = titleGroup
+            .map((syn) => syn.trim().replace(/\s+/g, ' & '))
             .join(' | ');
           relevanceCalculation += ` (CASE WHEN title_vector @@ to_tsquery('english', $${paramIndex}) THEN 1 ELSE 0 END) +`;
-          relevanceParams.push(preferredTitlesQuery);
+          relevanceParams.push(synonymsQuery);
           paramIndex++;
         } else {
           relevanceCalculation += ` 0 +`;
@@ -426,6 +471,8 @@ export async function GET(req) {
           relevanceCalculation += ` (CASE WHEN location_vector @@ to_tsquery('simple', $${paramIndex}) THEN 1 ELSE 0 END) +`;
           relevanceParams.push(preferredLocationsQuery);
           paramIndex++;
+        } else {
+          relevanceCalculation += ` 0 +`;
         }
       } else {
         // no typed location => only userPreferredLocations
@@ -468,13 +515,18 @@ export async function GET(req) {
     //
     // Strict vs. Non-Strict Filtering
     //
+    // The difference is whether we chain conditions by AND or by OR.
+    //
     if (strict) {
       // Strict mode: all typed conditions must match
-      //
-      // 1) Title
-      if (title) {
-        // We build OR conditions for all items in titleGroup
-        // but then AND that group with the rest
+      //  1) Title
+      //  2) Experience
+      //  3) Location
+      //  4) Company
+
+      // For the Title:
+      // We build OR conditions for each item in titleGroup, then wrap them in parentheses
+      if (titleGroup.length > 0) {
         const titleConditions = titleGroup.map((t, i) => {
           const idx = paramIndex + i;
           return `title_vector @@ to_tsquery('english', $${idx})`;
@@ -515,21 +567,18 @@ export async function GET(req) {
         paramIndex++;
       }
 
-      // In strict mode, we STILL have the relevance column.
-      // So let's order by that first (descending),
-      // then created_at (descending).
+      // order by relevance desc, then created_at desc
       queryText += `
         ORDER BY 
           relevance DESC,
           created_at DESC
       `;
-
     } else {
-      // Non-strict mode: ANY condition can match (OR)
+      // Non-strict mode: ANY typed condition can match (OR).
       const conditions = [];
 
       // 1) Title
-      if (title) {
+      if (titleGroup.length > 0) {
         const titleConditions = titleGroup.map((t, i) => {
           const idx = paramIndex + i;
           return `title_vector @@ to_tsquery('english', $${idx})`;
@@ -570,12 +619,12 @@ export async function GET(req) {
         paramIndex++;
       }
 
-      // If there are any typed conditions, add them as OR
+      // If we have typed conditions, combine them into a single OR block
       if (conditions.length > 0) {
         queryText += ` AND (${conditions.join(' OR ')})`;
       }
 
-      // Then order by relevance
+      // Then order by relevance + created_at
       queryText += `
         ORDER BY
           relevance DESC,
@@ -596,7 +645,6 @@ export async function GET(req) {
 
     const queryExecEnd = performance.now();
     timings.queryExecution = queryExecEnd - queryExecStart;
-
     const queryPrepEnd = performance.now();
     timings.queryPreparation = queryPrepEnd - queryPrepStart;
 
@@ -630,6 +678,8 @@ export async function GET(req) {
     );
   }
 }
+
+
 
 
 
