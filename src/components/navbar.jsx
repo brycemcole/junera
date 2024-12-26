@@ -354,11 +354,11 @@ function DropdownMenuDemo() {
             />
             <path
               d="M4 12H20"
-              className={`origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] ${open ? 'rotate-45' : ''}`}
+              className={`origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] ${open ? 'rotate-45 ' : ''}`}
             />
             <path
               d="M4 12H20"
-              className={`origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${open ? '-translate-y-0 rotate-[135deg]' : ''}`}
+              className={`origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${open ? 'hidden rotate-[45deg]' : ''}`}
             />
           </svg>
         </Button>
