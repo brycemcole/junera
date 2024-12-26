@@ -1120,14 +1120,15 @@ Please provide relevant career advice and job search assistance based on their p
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
             </span>
           </Suspense>
-
-          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-            {loading ? (
-              <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
-            ) : (
-              <Search size={16} strokeWidth={2} />
-            )}
-          </div>
+          <Suspense fallback={<div>Loading...</div>}>
+            <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+              {loading ? (
+                <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <Search size={16} strokeWidth={2} />
+              )}
+            </div>
+          </Suspense>
         </div>
       </div>
     );
