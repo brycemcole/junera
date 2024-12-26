@@ -179,7 +179,7 @@ export const jobTitleGroups = [
     // Legal Group
     [
         'legal counsel',
-        'legal',
+        'legal intern',
         'corporate lawyer',
         'intellectual property lawyer',
         'contract manager',
