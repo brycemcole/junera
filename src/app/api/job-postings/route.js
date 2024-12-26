@@ -175,12 +175,14 @@ export async function GET(req) {
   if (authHeader) {
     token = authHeader.split(' ')[1];
     if (token) {
-      const decoded = jwt.verify(token, SECRET_KEY);
-      user = decoded;
-      userPreferredTitles = user.jobPrefsTitle || [];
-      userPreferredLocations = user.jobPrefsLocation || [];
-      console.log("User preferred locations:", userPreferredLocations);
-      console.log("User preferred titles:", userPreferredTitles);
+      try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        user = decoded;
+        userPreferredTitles = user.jobPrefsTitle || [];
+        userPreferredLocations = user.jobPrefsLocation || [];
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
     }
   }
 
