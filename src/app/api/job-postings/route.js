@@ -276,7 +276,7 @@ export async function GET(req) {
     }
 
     // Try to get cached data first
-    /*
+
     const cachedData = await getCached(cacheKey);
     if (cachedData) {
       const parsedData = typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
@@ -285,7 +285,7 @@ export async function GET(req) {
         timings: { ...parsedData.timings, fromCache: true },
         ok: true
       }, { status: 200 });
-    }*/
+    }
 
     const params = [];
     let paramIndex = 1;
@@ -470,13 +470,20 @@ export async function GET(req) {
 
     // Process results
     const jobPostings = processJobPostings(result.rows);
+
+    // Only cache if the result set is not too large
     const responseData = { jobPostings, timings };
+    if (jobPostings.length <= 50) {  // Adjust this threshold as needed
+      try {
+        await setCached(cacheKey, JSON.stringify(responseData), 300);
+      } catch (cacheError) {
+        console.warn('Failed to cache results:', cacheError);
+        // Continue without caching
+      }
+    }
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
-
-    // Cache the results for 5 minutes
-    await setCached(cacheKey, JSON.stringify(responseData), 300);
 
     return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
   } catch (error) {

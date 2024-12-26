@@ -681,12 +681,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   return (
     <>
-      <StickyNavbar
-        title={jobPosting.title}
-        companyName={jobPosting.company}
-        companyLogo={''}
-        companyId={1}
-      />
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
           <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
@@ -696,7 +690,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
                 <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
                 <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              {jobPosting.company}
+              <div className="flex flex-col">
+                <p className="text-sm text-foreground truncate">{jobPosting.company}</p>
+                <div className="text-xs text-muted-foreground">
+                  {companyJobCount === 1 ? "1 job posting" : `${companyJobCount} job postings`}
+                </div>
+              </div>
             </Link>
           </h3>
         </div>
@@ -798,9 +797,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
               <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
                 Apply
               </Button>
-            </Link>
-            <Link href={`/job-postings?company=${jobPosting.company}`}>
-              <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
             </Link>
             <Button24 jobId={id} />
             <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
