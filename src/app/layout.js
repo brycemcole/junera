@@ -14,6 +14,7 @@ import { ToastViewport } from "@/components/ui/toast";
 import Footer from "./footer";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Head } from 'next/head';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,6 +35,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+
+      <link rel="manifest" href="/manifest.json" />
+      <meta name="theme-color" content="#000000" />
+      <meta name="description" content="Your App Description" />
+      <link rel="apple-touch-icon" href="/icon-192x192.png" />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-w-full root`}
       >
@@ -46,7 +52,7 @@ export default function RootLayout({ children }) {
               disableTransitionOnChange
             >
               <Navbar />
-              <main className="mt-24">  
+              <main className="mt-24">
                 {children}
               </main>
               <ToastViewport />
