@@ -7,6 +7,9 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { buttonVariants } from "@/components/ui/button";
+
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetClose,
@@ -19,7 +22,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2 } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -64,9 +67,71 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+const states = {
+  "null": "Any",
+  "remote": "Remote",
+  "new york": "New York",
+  "california": "California",
+  "texas": "Texas",
+  "florida": "Florida",
+  "illinois": "Illinois",
+  "pennsylvania": "Pennsylvania",
+  "ohio": "Ohio",
+  "georgia": "Georgia",
+  "north carolina": "North Carolina",
+  "michigan": "Michigan",
+  "washington": "Washington",
+  "arizona": "Arizona",
+  "massachusetts": "Massachusetts",
+  "tennessee": "Tennessee",
+  "indiana": "Indiana",
+  "missouri": "Missouri",
+  "maryland": "Maryland",
+  "wisconsin": "Wisconsin",
+  "colorado": "Colorado",
+  "minnesota": "Minnesota",
+  "south carolina": "South Carolina",
+  "alabama": "Alabama",
+  "louisiana": "Louisiana",
+  "kentucky": "Kentucky",
+  "oregon": "Oregon",
+  "oklahoma": "Oklahoma",
+  "connecticut": "Connecticut",
+  "iowa": "Iowa",
+  "utah": "Utah",
+  "nevada": "Nevada",
+  "arkansas": "Arkansas",
+  "mississippi": "Mississippi",
+  "kansas": "Kansas",
+  "new mexico": "New Mexico",
+  "nebraska": "Nebraska",
+  "west virginia": "West Virginia",
+  "idaho": "Idaho",
+  "hawaii": "Hawaii",
+  "new hampshire": "New Hampshire",
+  "maine": "Maine",
+  "montana": "Montana",
+  "rhode island": "Rhode Island",
+  "delaware": "Delaware",
+  "south dakota": "South Dakota",
+  "north dakota": "North Dakota",
+  "alaska": "Alaska",
+  "vermont": "Vermont",
+  "wyoming": "Wyoming",
+};
+
 
 function SavedSearchButton({ name, title, experienceLevel, location }) {
   const router = useRouter();
+
+  // Function to get badge color based on search type
+  const getBadgeColor = () => {
+    if (title) return "bg-blue-500";
+    if (experienceLevel) return "bg-emerald-500";
+    if (location) return "bg-purple-500";
+    return "bg-gray-500";
+  };
+
   const redirectToSearch = () => {
     const params = {
       title: title || "",
@@ -81,24 +146,17 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
   };
 
   return (
-    <Button
-      className="group h-auto gap-4 py-3 bg-background text-left shadow-sm hover:shadow-md transition-shadow duration-300"
+    <Badge
       variant="outline"
+      className="gap-1.5 cursor-pointer hover:bg-accent"
       onClick={redirectToSearch}
     >
-      <div className="space-y-1 w-[200px]">
-        <p className="text-sm">{name}</p>
-        <p className="text-muted-foreground text-wrap truncate line-clamp-2 text-xs">
-          <strong className="text-foreground">{title || 'Any'}</strong> jobs in <strong className="text-foreground">{location || 'Any location'}</strong> requiring <strong className="text-foreground">{experienceLevel || 'Any'}</strong> experience level.
-        </p>
-      </div>
-      <ChevronRight
-        className="opacity-60 transition-transform group-hover:translate-x-0.5"
-        size={16}
-        strokeWidth={2}
+      <span
+        className={`size-1.5 rounded-full ${getBadgeColor()}`}
         aria-hidden="true"
       />
-    </Button>
+      {name}
+    </Badge>
   );
 }
 
@@ -136,7 +194,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-xs rounded-lg border border shadow-sm"
+            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent"
           >
             {value ? (
               <span className="flex min-w-0 items-center gap-2">
@@ -144,11 +202,13 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                   <AvatarImage src={companies.find((c) => c.name === value)?.logo} />
                   <AvatarFallback>{value.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span className="truncate font-semibold">{value}</span>
+                <span className="truncate font-semibold text-foreground">
+                  {value}
+                </span>
               </span>
             ) : (
-              <span className="flex min-w-0 text-foreground items-center gap-2">
-                <span className="truncate text-xs">Company</span>
+              <span className="flex min-w-0 text-muted-foreground items-center gap-2">
+                <span className="truncate">Company</span>
               </span>
             )}
             <ChevronDown
@@ -160,7 +220,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0"
+          className="w-full min-w-[var(--radix-popper-anchor-width)] border-input p-0 bg-white rounded-lg shadow-lg"
           align="start"
         >
           <Command>
@@ -168,6 +228,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
               placeholder="Search companies..."
               value={searchTerm}
               onValueChange={(value) => setSearchTerm(value)}
+              className="border-b px-4 py-2"
             />
             <CommandList>
               <CommandEmpty>No company found.</CommandEmpty>
@@ -180,8 +241,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                 >
                   {({ index, style }) => {
                     const company = filteredCompanies[index];
+                    const isSelected = value === company.name;
                     return (
-                      <div style={style}>
+                      <div style={style} key={company.id}>
                         <CommandItem
                           value={company.name}
                           onSelect={(currentValue) => {
@@ -189,6 +251,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                             setValue(currentValue);
                             setOpen(false);
                           }}
+                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${
+                            isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
+                          } hover:bg-gray-100`}
                         >
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={company.logo} loading="lazy" />
@@ -196,9 +261,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                               {company.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          {company.name}
-                          {value === company.name && (
-                            <Check size={16} strokeWidth={2} className="ml-auto" />
+                          <span className="truncate">{company.name}</span>
+                          {isSelected && (
+                            <Check size={16} strokeWidth={2} className="ml-auto text-green-500" />
                           )}
                         </CommandItem>
                       </div>
@@ -211,6 +276,122 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
         </PopoverContent>
       </Popover>
     </div>
+  );
+});
+
+const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
+  const options = [
+    {
+      value: "any",
+      label: "Any",
+      description: "All experience levels welcome"
+    },
+    {
+      value: "internship",
+      label: "Internship",
+      description: "Perfect for students and those seeking hands-on learning opportunities"
+    },
+    {
+      value: "entry",
+      label: "Entry Level / Associate",
+      description: "0-2 years of experience, ideal for recent graduates"
+    },
+    {
+      value: "junior",
+      label: "Junior",
+      description: "2-4 years of experience with proven skills"
+    },
+    {
+      value: "senior",
+      label: "Senior Level",
+      description: "5+ years of experience with deep expertise"
+    },
+    {
+      value: "lead",
+      label: "Lead",
+      description: "Technical leadership role guiding project direction"
+    },
+    {
+      value: "manager",
+      label: "Manager",
+      description: "People management responsibilities with team oversight"
+    },
+    {
+      value: "director",
+      label: "Director",
+      description: "Department-level leadership and strategic planning"
+    },
+    {
+      value: "vp",
+      label: "Vice President",
+      description: "Executive leadership with organizational impact"
+    },
+    {
+      value: "executive",
+      label: "Executive",
+      description: "C-level positions with company-wide influence"
+    },
+  ];
+
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent [&_[data-desc]]:hidden">
+        {value ? (
+          <span className="text-foreground truncate">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue className="text-muted-foreground truncate" placeholder="Level" />
+        )}
+      </SelectTrigger>
+      <SelectContent className="bg-background w-[250px] rounded-lg shadow-lg [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
+        <SelectGroup>
+          <SelectLabel>Experience Level</SelectLabel>
+          {options.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className={`px-4 py-2 cursor-pointer ${
+                value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
+              } hover:bg-accent`}
+            >
+              {option.label}
+              <span className="mt-1 block text-xs text-muted-foreground" data-desc>
+                {option.description}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+});
+
+const LocationSelect = memo(function LocationSelect({ onChange, value }) {
+  return (
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="relative text-muted-foreground ps-4 rounded-lg border border hover:bg-accent bg-background shadow-sm">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
+        </div>
+        {value ? (
+          <span className="text-foreground truncate">
+            <SelectValue placeholder={value} />
+          </span>
+        ) : (
+          <SelectValue placeholder="Location" />
+        )}
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel>State</SelectLabel>
+          {Object.entries(states).map(([stateValue, stateName]) => (
+            <SelectItem key={stateValue} value={stateValue}>
+              {stateName}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 });
 
@@ -243,121 +424,6 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
   );
 });
 
-
-const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, value }) {
-  return (
-    <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative ps-4 h-7 md:h-9 text-xs rounded-lg border border bg-background shadow-sm">
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 group-has-[[disabled]]:opacity-50">
-        </div>
-        {value ? (
-          <span className="text-foreground truncate text-xs font-medium">
-            <SelectValue placeholder={value} />
-          </span>
-        ) : (
-          <SelectValue className="text-foreground truncate text-xs font-medium" placeholder="Level" />
-        )}
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Experience Level</SelectLabel>
-          <SelectItem value="any">Any</SelectItem> {/* Changed from "" to "any" */}
-          <SelectItem value="internship">Internship</SelectItem>
-          <SelectItem value="entry">Entry Level / Associate</SelectItem>
-          <SelectItem value="junior">Junior</SelectItem>
-          <SelectItem value="senior">Senior Level</SelectItem>
-          <SelectItem value="lead">Lead</SelectItem>
-          <SelectItem value="manager">Manager</SelectItem>
-          <SelectItem value="director">Director</SelectItem>
-          <SelectItem value="vp">Vice President</SelectItem>
-          <SelectItem value="executive">Executive</SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-});
-
-const LocationSelect = memo(function LocationSelect({ onChange, value }) {
-  const states = {
-    "null": "Any",
-    "remote": "Remote",
-    "new york": "New York",
-    "california": "California",
-    "texas": "Texas",
-    "florida": "Florida",
-    "illinois": "Illinois",
-    "pennsylvania": "Pennsylvania",
-    "ohio": "Ohio",
-    "georgia": "Georgia",
-    "north carolina": "North Carolina",
-    "michigan": "Michigan",
-    "washington": "Washington",
-    "arizona": "Arizona",
-    "massachusetts": "Massachusetts",
-    "tennessee": "Tennessee",
-    "indiana": "Indiana",
-    "missouri": "Missouri",
-    "maryland": "Maryland",
-    "wisconsin": "Wisconsin",
-    "colorado": "Colorado",
-    "minnesota": "Minnesota",
-    "south carolina": "South Carolina",
-    "alabama": "Alabama",
-    "louisiana": "Louisiana",
-    "kentucky": "Kentucky",
-    "oregon": "Oregon",
-    "oklahoma": "Oklahoma",
-    "connecticut": "Connecticut",
-    "iowa": "Iowa",
-    "utah": "Utah",
-    "nevada": "Nevada",
-    "arkansas": "Arkansas",
-    "mississippi": "Mississippi",
-    "kansas": "Kansas",
-    "new mexico": "New Mexico",
-    "nebraska": "Nebraska",
-    "west virginia": "West Virginia",
-    "idaho": "Idaho",
-    "hawaii": "Hawaii",
-    "new hampshire": "New Hampshire",
-    "maine": "Maine",
-    "montana": "Montana",
-    "rhode island": "Rhode Island",
-    "delaware": "Delaware",
-    "south dakota": "South Dakota",
-    "north dakota": "North Dakota",
-    "alaska": "Alaska",
-    "vermont": "Vermont",
-    "wyoming": "Wyoming",
-  };
-
-  return (
-    <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative text-muted-foreground ps-4 h-7 md:h-9 text-md md:text-sm rounded-lg border border bg-background shadow-sm">
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 group-has-[[disabled]]:opacity-50">
-        </div>
-        {value ? (
-          <span className="text-foreground text-xs truncate font-medium">
-            <SelectValue placeholder={value} />
-          </span>
-        ) : (
-          <SelectValue placeholder="Location" />
-        )}
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>State</SelectLabel>
-          {Object.entries(states).map(([stateValue, stateName]) => (
-            <SelectItem key={stateValue} value={stateValue}>
-              {stateName}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-});
-
 const JobCount = memo(function JobCount({ count, className }) {
   return (
     <span className={className}>
@@ -365,102 +431,6 @@ const JobCount = memo(function JobCount({ count, className }) {
         <span>{count} jobs</span>
       </div>
     </span>
-  );
-});
-
-function Input26({ onSearch, value, count }) {
-  const [searchValue, setSearchValue] = useState(value || "");
-  const [loading, setLoading] = useState(false);
-  const isFirstRender = useRef(true);
-
-  const handleInputChange = (e) => {
-    setSearchValue(e.target.value);
-  };
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    if (searchValue.trim() === "") {
-      return;
-    }
-
-    setLoading(true);
-
-    const handler = setTimeout(async () => {
-      try {
-        await onSearch(searchValue);
-      } catch (error) {
-        console.error("Search failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [searchValue, onSearch]);
-
-  useEffect(() => {
-    setSearchValue(value || "");
-  }, [value]);
-
-  return (
-    <div className="space-y-2 mb-4">
-      <div className="relative">
-        <Input
-          id="input-26"
-          className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
-          placeholder="Search..."
-          type="search"
-          value={searchValue}
-          onChange={handleInputChange}
-        />
-        <JobCount count={count} className="absolute top-0 right-0 mr-4" />
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-          {loading ? (
-            <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Search size={16} strokeWidth={2} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const MemoizedInput26 = memo(Input26);
-
-const SaveSearchButton = memo(function SaveSearchButton({
-  title,
-  experienceLevel,
-  location,
-  savedSearches,
-  onSave,
-  className
-}) {
-  const isAlreadySaved = savedSearches?.some(search => {
-    const params = JSON.parse(search.search_params);
-    return params.jobTitle === title &&
-      params.explevel === experienceLevel &&
-      params.location === location;
-  });
-
-  if (isAlreadySaved) return null;
-  if (!title && !experienceLevel && !location) return null;
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onSave}
-      className={className}
-    >
-      <Bookmark className="h-3 w-3" />
-    </Button>
   );
 });
 
@@ -495,7 +465,6 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
-
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
@@ -506,6 +475,8 @@ export default function JobPostingsPage() {
   const [experienceLevel, setExperienceLevel] = useState("");
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
+  const [strictSearch, setStrictSearch] = useState(true);
+  const [applyJobPrefs, setApplyJobPrefs] = useState(true); 
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -517,6 +488,7 @@ export default function JobPostingsPage() {
   const [llmResponse, setLlmResponse] = useState("");
   const [companies, setCompanies] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -539,9 +511,15 @@ export default function JobPostingsPage() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className={`${experienceLevel || location || company ? 'bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-800/30' : ' '}`}>
-            <Filter size={14} className="mr-2" />
-            Filter
+          <Button
+            variant="ghost"
+            className={`h-8 w-8 ${
+              experienceLevel || location || company
+                ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
+                : 'hover:bg-background/90 dark:hover:bg-muted/30'
+            }`}
+          >
+            <Filter size={14} />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
@@ -551,19 +529,25 @@ export default function JobPostingsPage() {
               <p className="text-xs text-muted-foreground">
                 Filter through over {count} job postings!
               </p>
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Company</span>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Company</span>
+                  <p className="text-xs text-muted-foreground">Filter by specific company names</p>
+                </div>
                 <Suspense fallback={<div>Loading...</div>}>
                   <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
                 </Suspense>
               </div>
 
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Experience Level</span>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Experience Level</span>
+                  <p className="text-xs text-muted-foreground">Select required years of experience</p>
+                </div>
                 <Suspense fallback={<div>Loading...</div>}>
                   <ExperienceLevelSelect
                     onChange={(value) => {
-                      const newExp = value === "any" ? "" : value; // Ensure empty string for 'Any'
+                      const newExp = value === "any" ? "" : value;
                       if (newExp !== experienceLevel) {
                         const params = {
                           title,
@@ -583,8 +567,12 @@ export default function JobPostingsPage() {
                   />
                 </Suspense>
               </div>
-              <div className="grid grid-cols-2 items-center gap-2">
-                <span className="text-foreground text-xs">Location</span>
+
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Location</span>
+                  <p className="text-xs text-muted-foreground">Choose job location or remote work</p>
+                </div>
                 <LocationSelect
                   onChange={(value) => {
                     const newLoc = value === "null" ? "" : value;
@@ -614,7 +602,6 @@ export default function JobPostingsPage() {
                   setExperienceLevel("");
                   setLocation("");
                   setCurrentPage(1);
-                  // This is a user action; pushing once should be okay
                   router.push(`/job-postings`);
                 }}>
                   Clear
@@ -640,16 +627,13 @@ export default function JobPostingsPage() {
     };
 
     const promise = fetchData();
-    // Remove shared currentControllerRef
     return { promise, controller };
   }, []);
-
 
   const resetCompanyData = () => {
     setCompanyData([]);
     setCompany("");
     setCurrentPage(1);
-    // user action again, one-time push is okay
     router.push(`/job-postings`);
   };
 
@@ -672,12 +656,81 @@ export default function JobPostingsPage() {
     }
   };
 
+  function JobPostingsPagination({ currentPage, count, limit }) {
+    const totalPages = Math.ceil(count / limit);
+
+    const handlePageChange = (pageNumber) => {
+      if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
+        setPageLoading(true);
+        router.push(buildHref(pageNumber));
+      }
+    };
+
+    return (
+      <Pagination>
+        <PaginationContent className="w-full justify-between">
+          <PaginationItem>
+            <PaginationLink
+              className={cn(
+                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+                buttonVariants({
+                  variant: "outline",
+                }),
+              )}
+              href={buildHref(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage - 1);
+              }}
+              aria-label="Go to previous page"
+              aria-disabled={currentPage === 1}
+              role={currentPage === 1 ? "link" : undefined}
+            >
+              <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+            </PaginationLink>
+          </PaginationItem>
+
+          <PaginationItem>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              Page <span className="text-foreground">{currentPage}</span> of{" "}
+              <span className="text-foreground">{totalPages}</span>
+            </p>
+          </PaginationItem>
+
+          <PaginationItem>
+            <PaginationLink
+              className={cn(
+                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+                buttonVariants({
+                  variant: "outline",
+                }),
+              )}
+              href={buildHref(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePageChange(currentPage + 1);
+              }}
+              aria-label="Go to next page"
+              aria-disabled={currentPage === totalPages}
+              role={currentPage === totalPages ? "link" : undefined}
+            >
+              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+            </PaginationLink>
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  }
+
   function buildHref(pageNumber) {
     const params = {
       title,
       explevel: experienceLevel,
       location,
+      strictSearch,
       company,
+      // We still include applyJobPrefs in the URL for consistency across pagination:
+      applyJobPrefs: applyJobPrefs.toString(),
       page: pageNumber.toString()
     };
     const newParams = new URLSearchParams(params);
@@ -686,21 +739,20 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}`;
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`;
       const cachedData = sessionStorage.getItem(cacheKey);
       const cacheExpiry = 3 * 60 * 1000;
       const now = Date.now();
 
-      // Define fetchControllers and cancelFetches within this useEffect
-      const fetchControllers = []; // Add this line
-      const cancelFetches = () => { // Add this block
+      const fetchControllers = [];
+      const cancelFetches = () => {
         fetchControllers.forEach(controller => controller.abort());
       };
 
       async function fetchCompanies() {
         try {
           const result = fetchWithCancel(`/api/companies`);
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const companiesResult = await result.promise;
           setCompanies(companiesResult || []);
         } catch (error) {
@@ -715,7 +767,7 @@ export default function JobPostingsPage() {
       async function fetchCompanyData() {
         try {
           const result = fetchWithCancel(`/api/companies/${company}`);
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const companyDataResult = await result.promise;
           setCompanyData(companyDataResult);
         } catch (error) {
@@ -735,10 +787,17 @@ export default function JobPostingsPage() {
 
       async function fetchData() {
         try {
+          setPageLoading(true);
           const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user?.token}`,
+              },
+            }
           );
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const dataResult = await result.promise;
           setData(dataResult.jobPostings || []);
           sessionStorage.setItem(cacheKey, JSON.stringify(dataResult.jobPostings));
@@ -747,15 +806,22 @@ export default function JobPostingsPage() {
           if (error.name !== 'AbortError') {
             console.error("Error fetching job postings:", error);
           }
+        } finally {
+          setPageLoading(false);
         }
       }
 
       async function fetchJobCount() {
         try {
           const result = fetchWithCancel(
-            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}`
+            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${user?.token}`,
+              },
+            }
           );
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const countResult = await result.promise;
           setCount(countResult.totalJobs || 0);
         } catch (error) {
@@ -765,32 +831,39 @@ export default function JobPostingsPage() {
         }
       }
 
-      const resetCache = () => {
-        sessionStorage.removeItem(cacheKey);
-        sessionStorage.removeItem(`${cacheKey}_timestamp`);
-      };
-
       if (isCacheValid(cacheKey) && cachedData) {
         try {
-          setData(JSON.parse(cachedData));
+          const parsedData = JSON.parse(cachedData);
+          setData(parsedData);
+          setPageLoading(false);
           fetchJobCount();
         } catch (error) {
-          resetCache();
+          console.error("Error parsing cached job postings:", error);
           fetchData();
           fetchJobCount();
-          console.error("Error parsing cached job postings:", error);
         }
       } else {
         fetchData();
         fetchJobCount();
       }
 
-      return () => { // Add this block
+      return () => {
         cancelFetches();
       };
     }
-
-  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, fetchWithCancel]);
+  }, [
+    user,
+    authLoading,
+    dataLoading,
+    currentPage,
+    title,
+    experienceLevel,
+    location,
+    company,
+    strictSearch,
+    applyJobPrefs,
+    fetchWithCancel
+  ]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -838,6 +911,8 @@ export default function JobPostingsPage() {
           explevel: experienceLevel,
           location,
           company,
+          strict: strictSearch,
+          applyJobPrefs: applyJobPrefs.toString(),
           page: '1'
         };
         const newParams = new URLSearchParams(params);
@@ -847,7 +922,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title]
+    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs]
   );
 
   const handleSaveSearch = async () => {
@@ -902,22 +977,26 @@ Here is their profile:
 ${userProfile.user.professionalSummary || 'No summary available.'}
 
 ### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+${
+  userProfile.experience && userProfile.experience.length > 0
+    ? userProfile.experience.map(exp =>
+      `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
 - **Location**: ${exp.location || 'Not specified'}
 - **Description**: ${exp.description || 'No description available'}
 - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'}
+    : 'No work experience available.'
+}
 
 ### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+${
+  userProfile.education && userProfile.education.length > 0
+    ? userProfile.education.map(edu =>
+      `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
 - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
 - **Grade**: ${edu.grade || 'Not specified'}
 - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'}
+    : 'No education details available.'
+}
 
 ### Skills
 - **Technical Skills**: ${technicalSkills}
@@ -963,9 +1042,123 @@ Please provide relevant career advice and job search assistance based on their p
   };
 
   const userSavedSearches = () => {
-    // user action - one-time push
     router.push('/job-postings/saved-searches');
   };
+
+  function Input26({ onSearch, value, count }) {
+    const [searchValue, setSearchValue] = useState(value || "");
+    const [loading, setLoading] = useState(false);
+    const isFirstRender = useRef(true);
+
+    const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+
+      // If the search value is empty, trigger the search immediately
+      if (newValue === "") {
+        onSearch("");
+      }
+    };
+
+    useEffect(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
+
+      if (searchValue.trim() === "") {
+        return;
+      }
+
+      setLoading(true);
+
+      const handler = setTimeout(async () => {
+        try {
+          await onSearch(searchValue);
+        } catch (error) {
+          console.error("Search failed:", error);
+        } finally {
+          setLoading(false);
+        }
+      }, 500);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [searchValue, onSearch]);
+
+    useEffect(() => {
+      setSearchValue(value || "");
+    }, [value]);
+
+    return (
+      <div className="space-y-2 mb-2">
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
+            placeholder="Search..."
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+          />
+          <Suspense fallback={<div>Loading...</div>}>
+            {user && (
+              <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // Toggle job prefs and push new URL, same style as title/experience
+                    const newValue = !applyJobPrefs;
+                    setApplyJobPrefs(newValue);
+                    setCurrentPage(1);
+                    const params = {
+                      title,
+                      explevel: experienceLevel,
+                      location,
+                      company,
+                      strict: strictSearch,
+                      applyJobPrefs: newValue.toString(),
+                      page: '1'
+                    };
+                    const newParams = new URLSearchParams(params);
+                    const newUrl = `/job-postings?${newParams.toString()}`;
+                    if (newUrl !== router.asPath) {
+                      router.push(newUrl);
+                    }
+                  }}
+                  className={cn(
+                    "relative h-8 w-8 rounded-lg",
+                    applyJobPrefs &&
+                      "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
+                  )}
+                >
+                  <SparkleIcon size={14} className="" />
+                </Button>
+              </div>
+            )}
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
+              <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
+            </span>
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+              {loading ? (
+                <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <Search size={16} strokeWidth={2} />
+              )}
+            </div>
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
+
+  const MemoizedInput26 = memo(Input26);
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -988,7 +1181,7 @@ Please provide relevant career advice and job search assistance based on their p
   }, [user]);
 
   return (
-    <div className="container mx-auto py-10 px-4 max-w-4xl md:px-0">
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
       <Suspense fallback={<div>Loading search parameters...</div>}>
         <SearchParamsHandler
           setTitle={setTitle}
@@ -996,13 +1189,16 @@ Please provide relevant career advice and job search assistance based on their p
           setLocation={setLocation}
           setCompany={setCompany}
           setCurrentPage={setCurrentPage}
+          setApplyJobPrefs={setApplyJobPrefs}
         />
       </Suspense>
       <div className="z-0">
-        <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+        <Suspense fallback={<div>Loading...</div>}>
+          <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+        </Suspense>
         <Suspense fallback={<div>Loading...</div>}>
           {user && (
-            <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
+            <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
               <h3 className="text-sm text-muted-foreground font-medium">
                 Saved Searches
               </h3>
@@ -1012,24 +1208,26 @@ Please provide relevant career advice and job search assistance based on their p
             </div>
           )}
         </Suspense>
-        <Suspense fallback={<div>Loading...</div>}>
-          <ScrollArea>
-            <div className="flex flex-row items-center gap-4 mb-6">
-              {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
-                savedSearches.map((search) => (
-                  <SavedSearchButton
-                    key={search.id}
-                    name={search.search_name}
-                    title={search.search_criteria.title}
-                    experienceLevel={search.search_criteria.experienceLevel}
-                    location={search.search_criteria.location}
-                  />
-                ))
-              )}
-            </div>
-            <ScrollBar className="w-full" />
-          </ScrollArea>
-        </Suspense>
+        {user && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <ScrollArea>
+              <div className="flex flex-row items-center gap-4 mb-3">
+                {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
+                  savedSearches.map((search) => (
+                    <SavedSearchButton
+                      key={search.id}
+                      name={search.search_name}
+                      title={search.search_criteria.title}
+                      experienceLevel={search.search_criteria.experienceLevel}
+                      location={search.search_criteria.location}
+                    />
+                  ))
+                )}
+              </div>
+              <ScrollBar className="w-full" />
+            </ScrollArea>
+          </Suspense>
+        )}
       </div>
 
       <Suspense fallback={<div>Loading...</div>}>
@@ -1060,12 +1258,18 @@ Please provide relevant career advice and job search assistance based on their p
         )}
 
         <div>
-          {data && data.length > 0 ? (
+          {pageLoading ? (
+            <div className="space-y-4">
+              {[...Array(limit)].map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg animate-pulse">
+                  <div className="h-6 bg-accent rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-accent rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : data && data.length > 0 ? (
             <div key="job-postings">
-              <div className="mb-4 items-center flex gap-4">
-                <Suspense fallback={<div>Loading...</div>}>
-                  <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
-                </Suspense>
+              <div className="items-center flex gap-4">
                 <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
                   <div className="flex flex-col space-y-1">
                     {title && <span>Job Title: {title}</span>}
@@ -1074,7 +1278,7 @@ Please provide relevant career advice and job search assistance based on their p
                   </div>
                 </span>
               </div>
-              <JobList data={data} />
+              <JobList data={data} loading={pageLoading} error={null} />
             </div>
           ) : (
             <p>No job postings found. Adjust your search criteria.</p>
@@ -1083,76 +1287,11 @@ Please provide relevant career advice and job search assistance based on their p
 
         <div className="flex justify-between mt-4">
           <Suspense fallback={<div>Loading...</div>}>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) {
-                        router.push(buildHref(currentPage - 1));
-                      }
-                    }}
-                    href={currentPage > 1 ? buildHref(currentPage - 1) : undefined}
-                    disabled={currentPage === 1}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink
-                    href={buildHref(1)}
-                    isActive={currentPage === 1}
-                  >
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-
-                {currentPage > 2 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-
-                {currentPage > 1 && (
-                  <PaginationItem>
-                    <PaginationLink
-                      href={buildHref(currentPage)}
-                      isActive
-                    >
-                      {currentPage}
-                    </PaginationLink>
-                  </PaginationItem>
-                )}
-
-                {data && data.length === limit && (
-                  <PaginationItem>
-                    <PaginationLink
-                      href={buildHref(currentPage + 1)}
-                    >
-                      {currentPage + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                )}
-
-                {data && data.length === limit && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (data && data.length === limit) {
-                        router.push(buildHref(currentPage + 1));
-                      }
-                    }}
-                    href={data && data.length === limit ? buildHref(currentPage + 1) : undefined}
-                    disabled={data && data.length < limit}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <JobPostingsPagination
+              currentPage={currentPage}
+              count={count}
+              limit={limit}
+            />
           </Suspense>
         </div>
       </Suspense>

@@ -7,7 +7,7 @@ const SECRET_KEY = process.env.SESSION_SECRET;
 
 async function loginUser(email, password) {
   const result = await query(`
-    SELECT id, password, username, full_name, avatar
+    SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location
     FROM users
     WHERE email = $1;
   `, [email]);
@@ -23,7 +23,7 @@ async function loginUser(email, password) {
     return { error: "Invalid password" };
   }
 
-  return { userId: user.id, username: user.username, fullName: user.full_name, avatar: user.avatar || '/default.png' };
+  return { userId: user.id, email: user.email, username: user.username, fullName: user.full_name, avatar: user.avatar || '/default.png', jobPrefsTitle: user.job_prefs_title, jobPrefsLocation: user.job_prefs_location };
 }
 
 export async function GET(req) {
@@ -36,10 +36,8 @@ export async function GET(req) {
     if (result.error) {
       return new Response(JSON.stringify({ error: result.error }), { status: 400 });
     }
-    console.log('result: ', result);
-    console.log('User ID:', result.userId);
 
-    const token = jwt.sign({ id: result.userId, username: result.username, avatar: result.avatar, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 }, SECRET_KEY);
+    const token = jwt.sign({ id: result.userId, email: result.email, fullName: result.fullName, username: result.username, avatar: result.avatar, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, jobPrefsTitle: result.jobPrefsTitle, jobPrefsLocation: result.jobPrefsLocation }, SECRET_KEY);
 
     return new Response(JSON.stringify({ token }), { status: 200 });
   }

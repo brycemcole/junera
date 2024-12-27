@@ -1,13 +1,32 @@
-import NodeCache from 'node-cache';
+const memoryCache = new Map();
 
-const cache = new NodeCache({ stdTTL: 300 });
+const getCached = async (key, userId) => {
+  const fullKey = `${key}:${userId}`;
+  return memoryCache.get(fullKey) || null;
+};
 
-export function getCached(route, key) {
-  return cache.get(`${route}:${key}`);
-}
+const setCached = async (key, userId, value) => {
+  if (!value) {
+    console.warn('Attempted to cache null/undefined value');
+    return;
+  }
 
-export function setCached(route, key, value) {
-  cache.set(`${route}:${key}`, value);
-}
+  const fullKey = `${key}:${userId}`;
+  memoryCache.set(fullKey, value);
+};
 
-export default cache;
+const clearCache = async (key, userId) => {
+  const fullKey = `${key}:${userId}`;
+  memoryCache.delete(fullKey);
+};
+
+const clearAllCache = async () => {
+  memoryCache.clear();
+};
+
+module.exports = {
+  getCached,
+  setCached,
+  clearCache,
+  clearAllCache,
+};

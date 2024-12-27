@@ -541,7 +541,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="container mx-auto py-10 px-4 max-w-4xl">
+        <div className="container mx-auto py-0 px-4 max-w-4xl">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Profile</h1>
                 <EditProfileDialog
@@ -604,7 +604,7 @@ export default function ProfilePage() {
                                                 <p className="text-sm">
                                                     {formatStartDate(exp.start_date)},  Present
                                                 </p>
-                                                
+
                                             </>
                                         ) : (
                                             <p className="text-sm">
@@ -626,7 +626,7 @@ export default function ProfilePage() {
                     <EditProfileDialog
                         fields={educationFields}
                         onSubmit={handleEducationAdd}
-                        title="Add Education"
+                        title={<PlusCircle size={14} />}
                         description="Add new education"
                     />
                 </CardHeader>

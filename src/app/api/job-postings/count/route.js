@@ -1,118 +1,97 @@
-// /pages/api/jobPostingsCount.js (or your appropriate file)
-import { query } from "@/lib/pgdb"; // Import the query method from pgdb
-import { getCached, setCached } from '@/lib/cache'; // ...existing code...
+import { query } from "@/lib/pgdb";
+import { findJobTitleGroup } from '@/lib/jobTitleMappings';
+import jwt from 'jsonwebtoken';
 
-function formatForFullTextSearch(text) {
-  // Escape double quotes for SQL
-  return `"${text.replace(/"/g, '""')}"`;
-}
+const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-
-  // Extract and sanitize search filters
-  const title = searchParams.get("title")?.trim() || "";
-  const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
-  const location = searchParams.get("location")?.trim() || "";
-  const company = searchParams.get("company")?.trim() || "";
-
-  // 1. Define state name to abbreviation mapping
-  const stateMap = {
-    'remote': 'N/A',
-    'alabama': 'AL',
-    'alaska': 'AK',
-    'arizona': 'AZ',
-    'arkansas': 'AR',
-    'california': 'CA',
-    'colorado': 'CO',
-    'connecticut': 'CT',
-    'delaware': 'DE',
-    'florida': 'FL',
-    'georgia': 'GA',
-    'hawaii': 'HI',
-    'idaho': 'ID',
-    'illinois': 'IL',
-    'indiana': 'IN',
-    'iowa': 'IA',
-    'kansas': 'KS',
-    'kentucky': 'KY',
-    'louisiana': 'LA',
-    'maine': 'ME',
-    'maryland': 'MD',
-    'massachusetts': 'MA',
-    'michigan': 'MI',
-    'minnesota': 'MN',
-    'mississippi': 'MS',
-    'missouri': 'MO',
-    'montana': 'MT',
-    'nebraska': 'NE',
-    'nevada': 'NV',
-    'new hampshire': 'NH',
-    'new jersey': 'NJ',
-    'new mexico': 'NM',
-    'new york': 'NY',
-    'north carolina': 'NC',
-    'north dakota': 'ND',
-    'ohio': 'OH',
-    'oklahoma': 'OK',
-    'oregon': 'OR',
-    'pennsylvania': 'PA',
-    'rhode island': 'RI',
-    'south carolina': 'SC',
-    'south dakota': 'SD',
-    'tennessee': 'TN',
-    'texas': 'TX',
-    'utah': 'UT',
-    'vermont': 'VT',
-    'virginia': 'VA',
-    'washington': 'WA',
-    'west virginia': 'WV',
-    'wisconsin': 'WI',
-    'wyoming': 'WY'
-  };
-
-  // 2. Create reverse mapping: abbreviation to full state name
-  const abbrMap = {};
-  for (const [name, abbr] of Object.entries(stateMap)) {
-    abbrMap[abbr.toLowerCase()] = name;
-  }
-
-  // 3. Generate search terms based on the input location
-  let locationSearchTerms = [location];
-
-  if (stateMap[location.toLowerCase()]) {
-    locationSearchTerms.push(stateMap[location.toLowerCase()]);
-  } else if (abbrMap[location.toLowerCase()]) {
-    locationSearchTerms.push(abbrMap[location.toLowerCase()]);
-  }
-
   try {
+    // Get auth header and validate user
+    const authHeader = req.headers.get('Authorization');
+    let token = '';
+    let user = null;
+    let userPreferredTitles = [];
+    let userPreferredLocations = [];
+
+    if (authHeader) {
+      token = authHeader.split(' ')[1];
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, SECRET_KEY);
+          user = decoded;
+          userPreferredTitles = user.jobPrefsTitle || [];
+          userPreferredLocations = user.jobPrefsLocation || [];
+        } catch (error) {
+          console.error('Error decoding token:', error);
+        }
+      }
+    }
+
+    const { searchParams } = new URL(req.url);
+
+    // Extract and sanitize search filters
+    let title = searchParams.get("title")?.trim() || "";
+    let location = (searchParams.get("location")?.trim() || "").toLowerCase();
+    const company = searchParams.get("company")?.trim() || "";
+    const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
+
+    // Handle job preferences
+    const applyPrefsParam = searchParams.get('applyJobPrefs');
+    let applyJobPrefs = false;
+
+    if (user && (applyPrefsParam === 'true' || applyPrefsParam === null)) {
+      applyJobPrefs = true;
+    }
+
+    // Apply preferences if enabled
+    if (applyJobPrefs) {
+      if (!title && userPreferredTitles.length > 0) {
+        title = userPreferredTitles[0];
+      }
+      if (!location && userPreferredLocations.length > 0) {
+        location = userPreferredLocations[0].toLowerCase();
+      }
+    }
+
+    // Clear these if we're not applying preferences
+    if (!applyJobPrefs) {
+      userPreferredTitles = [];
+      userPreferredLocations = [];
+    }
+
+    // Get the entire group of related titles if a title search is provided
+    const titleGroup = title ? findJobTitleGroup(title) : [];
+
     // Prepare query parameters
     const params = [];
     let paramIndex = 1;
 
-    // Build the count query
+    // Build the count query with relevance calculation for better consistency
     let queryText = `
       SELECT COUNT(*) AS totalJobs
       FROM jobPostings
       WHERE 1 = 1
     `;
 
-    // Full-text search on title
+    // Title search using title group
     if (title) {
-      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
-      params.push(title.trim().replace(/\s+/g, ' & '));
-      paramIndex++;
+      const titleConditions = titleGroup.map((t, i) => {
+        const idx = paramIndex + i;
+        return `title_vector @@ to_tsquery('english', $${idx})`;
+      });
+      queryText += ` AND (${titleConditions.join(' OR ')})`;
+      params.push(...titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')));
+      paramIndex += titleGroup.length;
     }
 
-    // Experience level filter using LOWER
+    // Experience level filter
     if (experienceLevel) {
       queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
       params.push(experienceLevel);
       paramIndex++;
     }
 
-    // Location filter using full-text search with 'simple' configuration
+    // Location filter
     if (location) {
       queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
       params.push(location);
@@ -126,14 +105,13 @@ export async function GET(req) {
       paramIndex++;
     }
 
+    // Execute the query
     const result = await query(queryText, params);
     const totalJobs = result.rows[0]?.totaljobs || 0;
 
-    setCached('job-postings-count', { title, experienceLevel, location, company }, totalJobs);
-
-    return new Response(JSON.stringify({ totalJobs }), { status: 200 });
+    return Response.json({ totalJobs }, { status: 200 });
   } catch (error) {
     console.error("Error fetching total jobs:", error);
-    return new Response(JSON.stringify({ error: "Error fetching total jobs" }), { status: 500 });
+    return Response.json({ error: "Error fetching total jobs" }, { status: 500 });
   }
 }

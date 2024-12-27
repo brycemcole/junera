@@ -6,6 +6,8 @@ import { formatDistanceToNow, set } from "date-fns";
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import DOMPurify from 'dompurify';
+import { JobList } from "@/components/JobPostings";
 import {
   Accordion,
   AccordionContent,
@@ -36,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bolt, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, Layers2, Loader2, Loader2Icon } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, PanelsTopLeft } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -53,7 +55,7 @@ import { JobCard } from "../../../components/job-posting";
 import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
 const stripHTML = (str) => {
-  const allowedTags = ['b', 'i', 'strong', 'br', 'em', 'u'];
+  const allowedTags = ['b', 'i', 'strong', 'em', 'p', 'ul', 'li', 'ol', 'h1', 'u'];
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
 
@@ -122,6 +124,7 @@ function MagicButton({ handleSummarizationQuery }) {
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSimilarJobs = async () => {
@@ -142,17 +145,14 @@ const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   if (loading) return <div>Loading similar jobs...</div>;
 
   return (
-    <CollapsibleJobs
-      title="Similar Job Postings"
-      open={true}
-      jobPostings={similarJobs}
-    />
+    <JobList data={similarJobs} loading={loading} error={error} />
   );
 };
 
 const CompanySimilarJobs = ({ company }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSimilarJobs = async () => {
@@ -173,11 +173,8 @@ const CompanySimilarJobs = ({ company }) => {
   if (loading) return <div>Loading similar jobs...</div>;
 
   return (
-    <CollapsibleJobs
-      title={`More Jobs at ${company}`}
-      open={true}
-      jobPostings={similarJobs}
-    />
+    <JobList data={similarJobs} loading={loading} error={error} />
+
   );
 };
 
@@ -205,115 +202,6 @@ function InsightsButton({ onClick }) {
  * @param {string} text - The text to extract salary from.
  * @returns {string} - The extracted salary string or an empty string if not found.
  */
-function extractSalary(text) {
-  if (!text) return "";
-
-  // Step 1: Decode HTML entities
-  // Create a temporary DOM element to leverage the browser's HTML parser
-  const decodedString = he.decode(text);
-
-  // Step 2: Remove HTML tags
-  const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
-
-  // Step 3: Normalize HTML entities and special characters
-  const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
-    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
-    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
-    .trim();
-
-  // Define regex patterns
-  const patterns = [
-    // 1. Salary ranges with dashes (e.g., "$128,000—$152,000 USD")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 2. Salary ranges with 'to' wording (e.g., "$35,000 to $45,000 per year")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 3. k-based salary ranges (e.g., "$100k—$120k")
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 4. Hourly ranges (e.g., "55/hr - 65/hr")
-    /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
-
-    // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
-    /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
-
-    // 6. Single salary mentions (e.g., "$85,000")
-    /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
-  ];
-
-  let matchesWithDollar = [];
-  let matchesWithoutDollar = [];
-
-  // Iterate through each pattern and collect matches
-  for (const pattern of patterns) {
-    const matches = Array.from(normalizedText.matchAll(pattern));
-    for (const match of matches) {
-      if (pattern.source.includes('\\$')) {
-        // Patterns that require '$' are stored in matchesWithDollar
-        matchesWithDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      } else {
-        // Patterns that do NOT require '$' are stored in matchesWithoutDollar
-        matchesWithoutDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      }
-    }
-  }
-
-  // Function to find the match with the highest index
-  const getLastMatch = (matches) => {
-    return matches.reduce((prev, current) => {
-      return (prev.index > current.index) ? prev : current;
-    }, matches[0]);
-  };
-
-  // Prioritize matches with '$'
-  if (matchesWithDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithDollar);
-    return lastMatch.text;
-  }
-  // If no matches with '$', consider matches without '$'
-  else if (matchesWithoutDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithoutDollar);
-    return lastMatch.text;
-  }
-
-  // Return empty string if no matches found
-  return "";
-}
-
-function BellButton({ count }) {
-
-  const handleClick = () => {
-    setCount(0);
-  };
-
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      className="relative"
-      onClick={handleClick}
-      aria-label="Notifications"
-    >
-      <Bell size={16} strokeWidth={2} aria-hidden="true" />
-      {count > 0 && (
-        <Badge className="absolute -top-2 left-full min-w-5 -translate-x-1/2 px-1">
-          {count}
-        </Badge>
-      )}
-    </Button>
-  );
-}
 
 
 function Summarization({ title, message, loading, error }) {
@@ -392,41 +280,6 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-function TabDemo() {
-  return (
-    <Tabs defaultValue="tab-1">
-      <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
-        <TabsTrigger
-          value="tab-1"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 1
-        </TabsTrigger>
-        <TabsTrigger
-          value="tab-2"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 2
-        </TabsTrigger>
-        <TabsTrigger
-          value="tab-3"
-          className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-        >
-          Tab 3
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="tab-1">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 1</p>
-      </TabsContent>
-      <TabsContent value="tab-2">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 2</p>
-      </TabsContent>
-      <TabsContent value="tab-3">
-        <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
-      </TabsContent>
-    </Tabs>
-  );
-}
 
 
 
@@ -828,41 +681,25 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   return (
     <>
-      <StickyNavbar
-        title={jobPosting.title}
-        companyName={jobPosting.company}
-        companyLogo={''}
-        companyId={1}
-      />
-      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
-        <Breadcrumb className="mb-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href={`/job-postings?company=${jobPosting.company}`}>{jobPosting.company}</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{jobPosting.job_id}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
-          <h3 className="text-md mb-2 font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
+          <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
 
             <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
               <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
                 <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
                 <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              {jobPosting.company}
+              <div className="flex flex-col">
+                <p className="text-sm text-foreground truncate">{jobPosting.company}</p>
+                <div className="text-xs text-muted-foreground">
+                  {companyJobCount === 1 ? "1 job posting" : `${companyJobCount} job postings`}
+                </div>
+              </div>
             </Link>
           </h3>
         </div>
-        <h1 data-scroll-title className="text-2xl mb-4 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
+        <h1 data-scroll-title className="text-2xl mb-2 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
         {keywords && keywords.length > 0 && (
           <div className="mb-8">
             <ul className="flex flex-wrap gap-4 gap-y-3">
@@ -894,10 +731,9 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </ul>
           </div>
         )}
-        <div className="mb-4 flex flex-wrap gap-4 gap-y-3 text-md font-medium text-muted-foreground items-start">
+        <div className="mb-4 flex flex-wrap gap-2 gap-y-1 text-md font-medium text-muted-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-3 w-3 text-muted-foreground" />
               <span>
                 {jobPosting.salary}
               </span>
@@ -910,6 +746,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               </span>
             </div>
           ) : null}
+          {/*
           <div className="flex items-center gap-2">
 
             <User
@@ -924,19 +761,25 @@ Please assess the qualifications and provide a brief explanation of whether the 
                 : `${jobPosting.applicants} applicants`}
             </span>
           </div>
+          */}
           <div className="flex items-center gap-2">
-            <MapPin size={16} />
-            <span>{jobPosting.location}</span>
+            <span className={`${jobPosting.location.toLowerCase().includes('remote')
+              ? 'text-green-500 dark:text-green-600'
+              : ''
+              }`}>
+              {jobPosting.location.toLowerCase().includes('remote')
+                ? jobPosting.location
+                : `in ${jobPosting.location}`
+              }
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <Timer size={16} />
-            <span>{formatDistanceToNow(jobPosting.created_at)}</span>
+            <span>posted {formatDistanceToNow(jobPosting.created_at, { addSuffix: true })}</span>
           </div>
 
           {jobPosting?.experienceLevel && (
             <>
               <div className="flex items-center gap-2">
-                <Zap size={16} />
                 <span>{jobPosting.experienceLevel}</span>
               </div>
 
@@ -945,11 +788,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </div>
 
         <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
-          <div>
-            <Link href={`/job-postings?company=${jobPosting.company}`}>
-              <NumberButton text={`More Jobs at ${jobPosting.company}`} count={companyJobCount} variant="outline" />
-            </Link>
-          </div>
           <div className="flex gap-2">
             <Link
               href={`${jobPosting.source_url}`}
@@ -957,13 +795,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               onClick={handleApplyClick} // Add onClick handler
             >
               <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
-                Apply on {new URL(jobPosting.source_url).hostname.split('.').slice(-2, -1)[0]}
-                <ArrowRight
-                  className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
+                Apply
               </Button>
             </Link>
             <Button24 jobId={id} />
@@ -972,95 +804,52 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
 
         </div>
+        {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
+          <Summarization
+            title="Job Posting Summary"
+            message={llmResponse || jobPosting.summary}
+            loading={loadingLLMReponse}
+            error={errorLLMResponse}
+          />
+        )}
+        <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
 
-        <div>
+          <div type="single" className="w-full" defaultValue="item-description">
+            {[
+              { key: 'description', label: 'Job Description' }
 
-          <Tabs defaultValue="tab-1">
-            <TabsList className="h-auto gap-2 rounded-none border-b border-border bg-transparent px-0 py-1 text-foreground">
-              <TabsTrigger
-                value="tab-1"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Job Description
-              </TabsTrigger>
-              <TabsTrigger
-                value="tab-2"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Suggested Jobs
-              </TabsTrigger>
-              <TabsTrigger
-                value="tab-3"
-                className="relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 hover:bg-accent hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent"
-              >
-                Company Info
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="tab-1">
-              {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
-                <Summarization
-                  title="Job Posting Summary"
-                  message={llmResponse || jobPosting.summary}
-                  loading={loadingLLMReponse}
-                  error={errorLLMResponse}
-                />
-              )}
-              <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <p className="leading-loose text-md">
+                  <div
+                    className="space-y-2"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
+                    }}
+                  />
 
-                <div type="single" className="w-full" defaultValue="item-description">
-                  {[
-                    { key: 'description', label: 'Job Description' }
-
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <p className="leading-loose text-sm">
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: stripHTML(decodeHTMLEntities(jobPosting[key])),
-                          }}
-                        />
-
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                </p>
               </div>
-            </TabsContent>
-            <TabsContent value="tab-2">
-
-              <div className="flex flex-col space-y-2 mb-4">
-                <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
-                    See more {jobPosting.experienceLevel} jobs
-                  </Button>
-                </Link>
-
-                <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location.trim())}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
-                    See jobs in {jobPosting.location.trim()}
-                  </Button>
-                </Link>
-                <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.trim())}`}>
-                  <Button variant="link" size="sm" className="text-sm px-0">
-
-                    See more {jobPosting.title.trim()} jobs
-                  </Button>
-                </Link>
-
-              </div>
-              <Suspense fallback={<div>Loading similar jobs...</div>}>
-                <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
-              </Suspense>
-
-              <Suspense fallback={<div>Loading similar jobs...</div>}>
-                <CompanySimilarJobs company={jobPosting.company} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="tab-3">
-              <p className="p-4 text-center text-xs text-muted-foreground">Content for Tab 3</p>
-            </TabsContent>
-          </Tabs>
+            ))}
+          </div>
         </div>
+        <div className="flex flex-col space-y-2 mb-4">
+          <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}&title=${encodeURIComponent(jobPosting.title)}&location=${encodeURIComponent(jobPosting.location)}&strictSearch=false`}>
+            <Button variant="link" size="sm" className="text-sm underline px-0">
+              See more similar jobs
+            </Button>
+          </Link>
+
+        </div>
+        <Suspense fallback={<div>Loading similar jobs...</div>}>
+          <p className="text-md font-semibold mb-3">Similar Jobs</p>
+          <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
+        </Suspense>
+
+        <Suspense fallback={<div>Loading jobs at {jobPosting.company}...</div>}>
+          <p className="text-md font-semibold mb-3">More Jobs at {jobPosting.company}</p>
+          <CompanySimilarJobs company={jobPosting.company} />
+        </Suspense>
 
 
         {user && insightsShown && (

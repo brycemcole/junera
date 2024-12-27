@@ -25,12 +25,19 @@ export default function CollapsibleDemo({ title, savedSearches, open = false, lo
     const [errorJobs, setErrorJobs] = React.useState(null);
 
     React.useEffect(() => {
-        if (savedSearches && savedSearches?.savedSearches) {
+        if (savedSearches && savedSearches?.savedSearches?.length > 0) {
             const fetchJobs = async () => {
                 try {
                     const allJobs = [];
-                    for (const search of savedSearches?.savedSearches) {
+                    for (const search of savedSearches.savedSearches) {
                         const { search_criteria, search_name } = search;
+
+                        // Log the search criteria
+                        console.log('Fetching jobs for search:', {
+                            name: search_name,
+                            criteria: search_criteria
+                        });
+
                         const query = new URLSearchParams({
                             title: search_criteria.title || '',
                             experienceLevel: search_criteria.experienceLevel || '',
@@ -38,30 +45,38 @@ export default function CollapsibleDemo({ title, savedSearches, open = false, lo
                             limit: 5
                         }).toString();
 
-                        const response = await fetch(`/api/job-postings/by-saved-search?${query}`);
-                        if (!response.ok) throw new Error('Failed to fetch matching jobs');
+                        console.log('API query:', `/api/job-postings/by-saved-search?${query}`);
 
-                        const result = await response.json();
-                        const jobsWithSearchInfo = result.jobs.map(job => ({
-                            ...job,
-                            matchedSearch: search_name,
-                            matchingCriteria: {
-                                title: search_criteria.title,
-                                location: search_criteria.location,
-                                experienceLevel: search_criteria.experienceLevel
-                            }
-                        }));
-                        allJobs.push(...jobsWithSearchInfo);
+                        const response = await fetch(`/api/job-postings/by-saved-search?${query}`);
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to fetch matching jobs');
+                        }
+
+                        console.log('API response:', data);
+
+                        if (data.jobs?.length) {
+                            const jobsWithSearchInfo = data.jobs.map(job => ({
+                                ...job,
+                                matchedSearch: search_name,
+                                matchingCriteria: search_criteria
+                            }));
+                            allJobs.push(...jobsWithSearchInfo);
+                        }
                     }
+
                     // Remove duplicates and sort by date
                     const uniqueJobs = Array.from(
                         new Map(allJobs.map(job => [job.id, job])).values()
-                    ).sort((a, b) => new Date(b.posted_at) - new Date(a.posted_at));
+                    ).sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
 
+                    console.log('Final processed jobs:', uniqueJobs);
                     setJobs(uniqueJobs);
+
                 } catch (error) {
-                    setErrorJobs("Error fetching matching jobs");
-                    console.error(error);
+                    console.error('Error in fetchJobs:', error);
+                    setErrorJobs(error.message);
                 } finally {
                     setLoadingJobs(false);
                 }
@@ -69,6 +84,7 @@ export default function CollapsibleDemo({ title, savedSearches, open = false, lo
 
             fetchJobs();
         } else {
+            console.log('No saved searches found:', savedSearches);
             setLoadingJobs(false);
         }
     }, [savedSearches]);

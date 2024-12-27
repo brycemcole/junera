@@ -1,70 +1,24 @@
 "use client"
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-const jobCategories = [
-  {
-    title: 'Popular Jobs',
-    links: [
-      { name: 'Software Engineer', href: '/job-postings?title=Software%20Engineer' },
-      { name: 'Data Scientist', href: '/job-postings?title=Data%20Scientist' },
-      { name: 'Project Manager', href: '/job-postings?title=Project%20Manager' },
-    ],
-  },
-  {
-    title: 'Experience',
-    links: [
-      { name: 'Entry Level', href: '/job-postings?explevel=entry%20level' },
-      { name: 'Mid Level', href: '/job-postings?explevel=mid%20level' },
-      { name: 'Senior Level', href: '/job-postings?explevel=senior' }
-    ],
-  },
-  {
-    title: 'Job Types',
-    links: [
-      { name: 'Remote', href: '/job-postings?location=remote' },
-      { name: 'Other', href: '/job-postings' },
-    ],
-  },
-  {
-    title: 'Contact Us',
-    links: [
-      { name: 'About', href: '/about' }, ,
-    ],
-  },
-]
 
 export default function Footer() {
   return (
-    <footer className="bg-white dark:bg-black">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
-        <div className="flex justify-center">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 justify-center">
-            {jobCategories.map((category) => (
-              <div key={category.title}>
-                <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-300 font-mono tracking-wider uppercase mb-4">
-                  {category.title}
-                </h3>
-                <ul className="space-y-2">
-                  {category.links.map((link) => (
-                    <li key={link.name}>
-                      <Link
-                        href={link.href}
-                      >
-                        <Button variant="link" className="px-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
-                        {link.name}
-                        </Button>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+    <footer className="w-full bg-background  py-3">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col items-center justify-center gap-3 text-sm text-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-foreground">
+            <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>
+            <span className="hidden sm:inline ">•</span>
+            <span className="whitespace-nowrap"><Link href="/job-postings?explevel=internship">Internships</Link></span>
+            <span className="hidden sm:inline">•</span>
+            <span className="whitespace-nowrap"><Link href="/job-postings?location=remote">Remote</Link></span>
+            <span className="hidden sm:inline ">•</span>
+            <span className="whitespace-nowrap"><Link href="/about">About</Link></span>
           </div>
-        </div>
-        <div className="mt-12 pt-8">
-          <p className="text-xs text-center text-gray-400 dark:text-gray-500">
-            {new Date().getFullYear()}.junera
-          </p>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            junera {new Date().getFullYear()}
+          </span>
         </div>
       </div>
     </footer>

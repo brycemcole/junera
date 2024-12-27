@@ -1,6 +1,7 @@
 import { query } from '@/lib/pgdb';
 import { verifyToken } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { getCached, setCached, clearCache } from '@/lib/cache';
 
 export async function GET(req) {
     try {
@@ -13,6 +14,16 @@ export async function GET(req) {
         const decoded = verifyToken(token);
         const userId = decoded.id;
 
+        // Try to get cached profile
+        try {
+            const cacheKey = `user-profile:${userId}`;
+            const cachedProfile = await getCached(cacheKey);
+            if (cachedProfile) {
+                return NextResponse.json(cachedProfile);
+            }
+        } catch (cacheError) {
+            console.error('Cache retrieval error:', cacheError);
+        }
 
         // Combined query using CTEs for fetching user profile data
         const queryText = `
@@ -67,10 +78,7 @@ export async function GET(req) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        console.log(result.rows[0]);
-
         const { userdata, educationdata, certificationdata, experiencedata, projectdata } = result.rows[0];
-        console.log(userdata, educationdata, certificationdata, experiencedata, projectdata);
         const profile = {
             user: userdata || {},
             education: educationdata || [],
@@ -78,6 +86,14 @@ export async function GET(req) {
             experience: experiencedata || [],
             projects: projectdata || []
         };
+
+        // Cache the profile
+        try {
+            const cacheKey = `user-profile:${userId}`;
+            await setCached(cacheKey, profile);
+        } catch (cacheError) {
+            console.error('Cache set error:', cacheError);
+        }
 
         return NextResponse.json(profile);
     } catch (error) {
@@ -140,6 +156,14 @@ export async function PUT(req) {
         ];
 
         await query(updateQuery, params);
+
+        // Clear the cache after successful update
+        try {
+            const cacheKey = `user-profile:${userId}`;
+            await clearCache(cacheKey);
+        } catch (cacheError) {
+            console.error('Cache clear error:', cacheError);
+        }
 
         return NextResponse.json({ message: 'Profile updated successfully.' });
     } catch (error) {

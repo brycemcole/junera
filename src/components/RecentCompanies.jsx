@@ -9,6 +9,13 @@ export default function RecentCompanies({ companies, loading, error }) {
     if (error) return <p className="text-red-600">{error}</p>;
   if (companies.length === 0) return <p>No recently launched companies.</p>;
 
+  if (!Array.isArray(companies)) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No companies found.</p>
+      </div>
+    );
+  }
   return (
     <div>
       {companies.map((company) => (

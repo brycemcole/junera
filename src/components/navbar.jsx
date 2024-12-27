@@ -62,11 +62,6 @@ function AvatarButton({ image, fullname, unreadCount }) {
           {fullname?.split(' ').map(name => name[0]).join('')}
         </AvatarFallback>
       </Avatar>
-      {unreadCount > 0 && (
-      <Badge className="absolute -top-2 left-full min-w-5 -translate-x-3 border-background px-1">
-        {unreadCount > 99 ? "99+" : unreadCount}
-      </Badge>
-      )}
     </div>
   );
 }
@@ -245,7 +240,7 @@ function DropdownMenuDemo2() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group"
+          className="group h-7 w-7"
           variant="ghost"
           size="icon"
           onClick={() => setOpen((prevState) => !prevState)}
@@ -256,9 +251,17 @@ function DropdownMenuDemo2() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 mr-4 mt-4">
-        <DropdownMenuGroup>
+       
+         <DropdownMenuGroup>
           {user && (
             <>
+            <DropdownMenuLabel className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium text-foreground">{user.fullName}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">
+            {user.email}
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <User />
                   <span>Profile</span>
@@ -315,8 +318,8 @@ function DropdownMenuDemo2() {
 }
 function DropdownMenuDemo() {
   const { user, loading, logout } = useAuth();
-  const [open, setOpen] = useState(false);
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -324,20 +327,19 @@ function DropdownMenuDemo() {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           className="group"
           variant="outline"
           size="icon"
-          onClick={() => setOpen((prevState) => !prevState)}
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
         >
           <svg
             className="pointer-events-none"
-            width={16}
-            height={16}
+            width={20}
+            height={20}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -348,22 +350,22 @@ function DropdownMenuDemo() {
           >
             <path
               d="M4 12L20 12"
-              className="origin-center -translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[315deg]"
+              className={`origin-center -translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${open ? 'translate-x-0 translate-y-0 rotate-[315deg]' : ''}`}
             />
             <path
               d="M4 12H20"
-              className="origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] group-aria-expanded:rotate-45"
+              className={`origin-center transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.8)] ${open ? 'rotate-45 ' : ''}`}
             />
             <path
               d="M4 12H20"
-              className="origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-y-0 group-aria-expanded:rotate-[135deg]"
+              className={`origin-center translate-y-[7px] transition-all duration-300 [transition-timing-function:cubic-bezier(.5,.85,.25,1.1)] ${open ? 'hidden rotate-[45deg]' : ''}`}
             />
           </svg>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 mr-4 mt-4">
         <DropdownMenuGroup>
-        <Link href="/">
+          <Link href="/">
             <DropdownMenuItem>
               <Home />
               <span>Home</span>
@@ -381,15 +383,14 @@ function DropdownMenuDemo() {
                   <span>Browse</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                {user && !loading ? (
-            <>
-                            <DropdownMenuItem onClick={() => router.push('/job-postings/applied')}>
-                  <span>Your Jobs</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                </>
-          ) : (
-          <></>)}
+                {user && !loading && (
+                  <>
+                    <DropdownMenuItem onClick={() => router.push('/job-postings/applied')}>
+                      <span>Your Jobs</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => router.push('/job-postings?explevel=internship')}>
                   <span>Internships</span>
                 </DropdownMenuItem>
@@ -415,13 +416,13 @@ function DropdownMenuDemo() {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-        
+
           {user ? (
             <>
-                            <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                <LayoutDashboard />
+                <span>Dashboard</span>
+              </DropdownMenuItem>
             </>
           ) : (
             <>
@@ -434,7 +435,7 @@ function DropdownMenuDemo() {
               <Link href="/register">
                 <DropdownMenuItem>
                   <UserPlus />
-                  <span>Register</span>
+                  <span>Sign Up</span>
                 </DropdownMenuItem>
               </Link>
             </>
@@ -455,7 +456,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-background max-w-4xl mx-4 md:mx-auto shadow-sm z-100 m-4 border rounded-lg mb-0 border-muted-accent">
+    <nav className="backdrop-blur bg-background/50 lg:max-w-[900px] max-w-4xl md:max-w-[750px] mx-4 md:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent fixed top-0 left-0 right-0">
       <div className="flex flex-row justify-between px-4 py-2 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
@@ -466,11 +467,22 @@ export default function Navbar() {
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
         </div>
-        <div className="md:hidden items-center flex gap-3">
+        <div className="md:hidden items-center flex gap-4">
           {user ? (
         <DropdownMenuDemo2 />
       ) : (
-        <></>
+        <>
+        <Button variant="ghost" className="text-customGreen h-7 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
+          <Link href="/register">
+           Sign Up
+          </Link>
+        </Button>
+        <Button className="font-medium rounded-lg px-3 py-1.5 h-7 hover:text-primary hover:bg-accent">
+          <Link href="/login">
+           Login
+          </Link>
+        </Button>
+        </>
       )}
           <DropdownMenuDemo />
         </div>

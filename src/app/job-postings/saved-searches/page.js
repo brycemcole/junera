@@ -232,6 +232,12 @@ export default function SavedSearchPage() {
 
   async function handleEditSubmit(updatedData) {
     try {
+      const searchCriteria = {
+        title: updatedData.jobTitle || '',  // Changed from title to jobTitle to match form
+        location: updatedData.location || '',
+        experienceLevel: updatedData.experienceLevel || ''
+      };
+
       const response = await fetch('/api/saved-searches', {
         method: 'PUT',
         headers: {
@@ -241,11 +247,7 @@ export default function SavedSearchPage() {
         body: JSON.stringify({
           id: editingSearch.id,
           searchName: updatedData.searchName,
-          searchCriteria: JSON.stringify({
-            title: updatedData.title || '',
-            location: updatedData.location || '',
-            experienceLevel: updatedData.experienceLevel || ''
-          }),
+          searchCriteria,  // Send as object, not stringified
           notify: updatedData.notify
         }),
       });
