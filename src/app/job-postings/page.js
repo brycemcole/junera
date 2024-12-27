@@ -67,7 +67,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
-import { useSearchParams, usePathname } from 'next/navigation';
 const states = {
   "null": "Any",
   "remote": "Remote",
@@ -252,8 +251,9 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                             setValue(currentValue);
                             setOpen(false);
                           }}
-                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
-                            } hover:bg-gray-100`}
+                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${
+                            isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
+                          } hover:bg-gray-100`}
                         >
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={company.logo} loading="lazy" />
@@ -351,8 +351,9 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
             <SelectItem
               key={option.value}
               value={option.value}
-              className={`px-4 py-2 cursor-pointer ${value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
-                } hover:bg-accent`}
+              className={`px-4 py-2 cursor-pointer ${
+                value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
+              } hover:bg-accent`}
             >
               {option.label}
               <span className="mt-1 block text-xs text-muted-foreground" data-desc>
@@ -423,8 +424,6 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
   );
 });
 
-
-
 const JobCount = memo(function JobCount({ count, className }) {
   return (
     <span className={className}>
@@ -434,7 +433,6 @@ const JobCount = memo(function JobCount({ count, className }) {
     </span>
   );
 });
-
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData }) {
   return (
@@ -470,8 +468,6 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const enabled = false;
 
   const [data, setData] = useState([]);
@@ -480,7 +476,7 @@ export default function JobPostingsPage() {
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
   const [strictSearch, setStrictSearch] = useState(true);
-  const [applyJobPrefs, setApplyJobPrefs] = useState(true); // Add this line
+  const [applyJobPrefs, setApplyJobPrefs] = useState(true); 
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -517,10 +513,11 @@ export default function JobPostingsPage() {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className={`h-8 w-8 ${experienceLevel || location || company
-              ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
-              : 'hover:bg-background/90 dark:hover:bg-muted/30'
-              }`}
+            className={`h-8 w-8 ${
+              experienceLevel || location || company
+                ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
+                : 'hover:bg-background/90 dark:hover:bg-muted/30'
+            }`}
           >
             <Filter size={14} />
           </Button>
@@ -630,16 +627,13 @@ export default function JobPostingsPage() {
     };
 
     const promise = fetchData();
-    // Remove shared currentControllerRef
     return { promise, controller };
   }, []);
-
 
   const resetCompanyData = () => {
     setCompanyData([]);
     setCompany("");
     setCurrentPage(1);
-    // user action again, one-time push is okay
     router.push(`/job-postings`);
   };
 
@@ -735,7 +729,8 @@ export default function JobPostingsPage() {
       location,
       strictSearch,
       company,
-      applyJobPrefs: applyJobPrefs.toString(), // Add this
+      // We still include applyJobPrefs in the URL for consistency across pagination:
+      applyJobPrefs: applyJobPrefs.toString(),
       page: pageNumber.toString()
     };
     const newParams = new URLSearchParams(params);
@@ -744,21 +739,20 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`; // Update cache key
+      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`;
       const cachedData = sessionStorage.getItem(cacheKey);
       const cacheExpiry = 3 * 60 * 1000;
       const now = Date.now();
 
-      // Define fetchControllers and cancelFetches within this useEffect
-      const fetchControllers = []; // Add this line
-      const cancelFetches = () => { // Add this block
+      const fetchControllers = [];
+      const cancelFetches = () => {
         fetchControllers.forEach(controller => controller.abort());
       };
 
       async function fetchCompanies() {
         try {
           const result = fetchWithCancel(`/api/companies`);
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const companiesResult = await result.promise;
           setCompanies(companiesResult || []);
         } catch (error) {
@@ -773,7 +767,7 @@ export default function JobPostingsPage() {
       async function fetchCompanyData() {
         try {
           const result = fetchWithCancel(`/api/companies/${company}`);
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const companyDataResult = await result.promise;
           setCompanyData(companyDataResult);
         } catch (error) {
@@ -793,9 +787,9 @@ export default function JobPostingsPage() {
 
       async function fetchData() {
         try {
-          setPageLoading(true); // Set loading state
+          setPageLoading(true);
           const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`, // Add applyJobPrefs parameter
+            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
             {
               headers: {
                 'Content-Type': 'application/json',
@@ -803,9 +797,9 @@ export default function JobPostingsPage() {
               },
             }
           );
-          fetchControllers.push(result.controller); // Use fetchControllers here
+          fetchControllers.push(result.controller);
           const dataResult = await result.promise;
-          setData(dataResult.jobPostings || []); // Set the jobs data
+          setData(dataResult.jobPostings || []);
           sessionStorage.setItem(cacheKey, JSON.stringify(dataResult.jobPostings));
           sessionStorage.setItem(`${cacheKey}_timestamp`, now);
         } catch (error) {
@@ -813,11 +807,10 @@ export default function JobPostingsPage() {
             console.error("Error fetching job postings:", error);
           }
         } finally {
-          setPageLoading(false); // Clear loading state
+          setPageLoading(false);
         }
       }
 
-      // Update the fetchJobCount function to include applyJobPrefs parameter
       async function fetchJobCount() {
         try {
           const result = fetchWithCancel(
@@ -838,33 +831,39 @@ export default function JobPostingsPage() {
         }
       }
 
-      const resetCache = () => {
-        sessionStorage.removeItem(cacheKey);
-        sessionStorage.removeItem(`${cacheKey}_timestamp`);
-      };
-
       if (isCacheValid(cacheKey) && cachedData) {
         try {
           const parsedData = JSON.parse(cachedData);
-          setData(parsedData); // Set data from cache immediately
-          setPageLoading(false); // Ensure loading is false when using cache
-          fetchJobCount(); // Still fetch the count
+          setData(parsedData);
+          setPageLoading(false);
+          fetchJobCount();
         } catch (error) {
           console.error("Error parsing cached job postings:", error);
-          fetchData(); // Fallback to fetching if cache parse fails
+          fetchData();
           fetchJobCount();
         }
       } else {
-        fetchData(); // Fetch if no valid cache
+        fetchData();
         fetchJobCount();
       }
 
-      return () => { // Add this block
+      return () => {
         cancelFetches();
       };
     }
-
-  }, [user, authLoading, dataLoading, currentPage, title, experienceLevel, location, company, strictSearch, applyJobPrefs, fetchWithCancel]);
+  }, [
+    user,
+    authLoading,
+    dataLoading,
+    currentPage,
+    title,
+    experienceLevel,
+    location,
+    company,
+    strictSearch,
+    applyJobPrefs,
+    fetchWithCancel
+  ]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -913,7 +912,7 @@ export default function JobPostingsPage() {
           location,
           company,
           strict: strictSearch,
-          applyJobPrefs: applyJobPrefs.toString(), // Add this
+          applyJobPrefs: applyJobPrefs.toString(),
           page: '1'
         };
         const newParams = new URLSearchParams(params);
@@ -923,7 +922,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs] // Add applyJobPrefs to deps
+    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs]
   );
 
   const handleSaveSearch = async () => {
@@ -978,22 +977,26 @@ Here is their profile:
 ${userProfile.user.professionalSummary || 'No summary available.'}
 
 ### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+${
+  userProfile.experience && userProfile.experience.length > 0
+    ? userProfile.experience.map(exp =>
+      `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
 - **Location**: ${exp.location || 'Not specified'}
 - **Description**: ${exp.description || 'No description available'}
 - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'}
+    : 'No work experience available.'
+}
 
 ### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+${
+  userProfile.education && userProfile.education.length > 0
+    ? userProfile.education.map(edu =>
+      `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
 - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
 - **Grade**: ${edu.grade || 'Not specified'}
 - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'}
+    : 'No education details available.'
+}
 
 ### Skills
 - **Technical Skills**: ${technicalSkills}
@@ -1039,7 +1042,6 @@ Please provide relevant career advice and job search assistance based on their p
   };
 
   const userSavedSearches = () => {
-    // user action - one-time push
     router.push('/job-postings/saved-searches');
   };
 
@@ -1101,21 +1103,41 @@ Please provide relevant career advice and job search assistance based on their p
             onChange={handleInputChange}
           />
           <Suspense fallback={<div>Loading...</div>}>
-          {user && (
-            <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleTogglePrefs}
-                className={cn(
-                  "relative h-8 w-8 rounded-lg",
-                  applyJobPrefs && "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
-                )}
-              >
-                <SparkleIcon size={14} className="" />
-              </Button>
-            </div>
-          )}
+            {user && (
+              <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    // Toggle job prefs and push new URL, same style as title/experience
+                    const newValue = !applyJobPrefs;
+                    setApplyJobPrefs(newValue);
+                    setCurrentPage(1);
+                    const params = {
+                      title,
+                      explevel: experienceLevel,
+                      location,
+                      company,
+                      strict: strictSearch,
+                      applyJobPrefs: newValue.toString(),
+                      page: '1'
+                    };
+                    const newParams = new URLSearchParams(params);
+                    const newUrl = `/job-postings?${newParams.toString()}`;
+                    if (newUrl !== router.asPath) {
+                      router.push(newUrl);
+                    }
+                  }}
+                  className={cn(
+                    "relative h-8 w-8 rounded-lg",
+                    applyJobPrefs &&
+                      "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
+                  )}
+                >
+                  <SparkleIcon size={14} className="" />
+                </Button>
+              </div>
+            )}
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
@@ -1158,45 +1180,21 @@ Please provide relevant career advice and job search assistance based on their p
     fetchUserProfile();
   }, [user]);
 
-  useEffect(() => {
-    const applyPrefs = searchParams.get('applyJobPrefs');
-    if (applyPrefs !== null) {
-      setApplyJobPrefs(applyPrefs === 'true');
-    }
-  }, [searchParams]);
-
-  const handleTogglePrefs = useCallback(() => {
-    const newValue = !applyJobPrefs;
-    setApplyJobPrefs(newValue);
-
-    // Create new URLSearchParams object from current params
-    const params = new URLSearchParams(searchParams);
-
-    // Update or add the applyJobPrefs parameter
-    params.set('applyJobPrefs', newValue.toString());
-
-    // Create the new URL 
-    const newUrl = `${pathname}?${params.toString()}`;
-
-    // Push the new URL
-    router.push(newUrl);
-  }, [applyJobPrefs, router, pathname, searchParams]);
-
   return (
-    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">      
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
       <Suspense fallback={<div>Loading search parameters...</div>}>
-      <SearchParamsHandler
-        setTitle={setTitle}
-        setExperienceLevel={setExperienceLevel}
-        setLocation={setLocation}
-        setCompany={setCompany}
-        setCurrentPage={setCurrentPage}
-        setApplyJobPrefs={setApplyJobPrefs} // Add this line
-      />
-    </Suspense>
+        <SearchParamsHandler
+          setTitle={setTitle}
+          setExperienceLevel={setExperienceLevel}
+          setLocation={setLocation}
+          setCompany={setCompany}
+          setCurrentPage={setCurrentPage}
+          setApplyJobPrefs={setApplyJobPrefs}
+        />
+      </Suspense>
       <div className="z-0">
-                <Suspense fallback={<div>Loading...</div>}>
-        <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+        <Suspense fallback={<div>Loading...</div>}>
+          <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
         </Suspense>
         <Suspense fallback={<div>Loading...</div>}>
           {user && (
@@ -1291,8 +1289,8 @@ Please provide relevant career advice and job search assistance based on their p
           <Suspense fallback={<div>Loading...</div>}>
             <JobPostingsPagination
               currentPage={currentPage}
-              count={count} // Total number of jobs
-              limit={limit} // Jobs per page (20 in your case)
+              count={count}
+              limit={limit}
             />
           </Suspense>
         </div>
