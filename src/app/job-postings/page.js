@@ -1183,7 +1183,8 @@ Please provide relevant career advice and job search assistance based on their p
   }, [applyJobPrefs, router, pathname, searchParams]);
 
   return (
-    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">      <Suspense fallback={<div>Loading search parameters...</div>}>
+    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">      
+      <Suspense fallback={<div>Loading search parameters...</div>}>
       <SearchParamsHandler
         setTitle={setTitle}
         setExperienceLevel={setExperienceLevel}
@@ -1194,7 +1195,9 @@ Please provide relevant career advice and job search assistance based on their p
       />
     </Suspense>
       <div className="z-0">
+                <Suspense fallback={<div>Loading...</div>}>
         <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+        </Suspense>
         <Suspense fallback={<div>Loading...</div>}>
           {user && (
             <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
