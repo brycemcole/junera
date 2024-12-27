@@ -1100,6 +1100,7 @@ Please provide relevant career advice and job search assistance based on their p
             value={searchValue}
             onChange={handleInputChange}
           />
+          <Suspense fallback={<div>Loading...</div>}>
           {user && (
             <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
               <Button
@@ -1115,6 +1116,7 @@ Please provide relevant career advice and job search assistance based on their p
               </Button>
             </div>
           )}
+          </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
