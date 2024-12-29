@@ -1232,7 +1232,7 @@ Please provide relevant career advice and job search assistance based on their p
       <meta property="og:type" content="website" />
       <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
       <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
-      <meta property="og:url" content={`https://junera.us/job-postings${window.location.search}`} />
+      <meta property="og:url" content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -1241,7 +1241,7 @@ Please provide relevant career advice and job search assistance based on their p
             "@type": "JobPosting",
             "mainEntityOfPage": {
               "@type": "WebPage",
-              "@id": `https://junera.us/job-postings${window.location.search}`
+              "@id": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
             },
             "name": `${title || 'junera'} ${location ? `in ${location}` : ''} ${company ? `at ${company} | jobs` : ''}`,
             "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`,
@@ -1262,7 +1262,7 @@ Please provide relevant career advice and job search assistance based on their p
             "applicationContact": {
               "@type": "ContactPoint",
               "contactType": "jobs",
-              "url": `https://junera.us/job-postings${window.location.search}`
+              "url": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
             }
           }, null, 2),
         }}
