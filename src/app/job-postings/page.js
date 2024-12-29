@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2 } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -67,6 +67,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+
+
 const states = {
   "null": "Any",
   "remote": "Remote",
@@ -251,9 +253,8 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
                             setValue(currentValue);
                             setOpen(false);
                           }}
-                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${
-                            isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
-                          } hover:bg-gray-100`}
+                          className={`flex items-center gap-2 px-4 py-2 cursor-pointer ${isSelected ? "text-foreground font-semibold" : "text-muted-foreground"
+                            } hover:bg-gray-100`}
                         >
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={company.logo} loading="lazy" />
@@ -351,9 +352,8 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
             <SelectItem
               key={option.value}
               value={option.value}
-              className={`px-4 py-2 cursor-pointer ${
-                value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
-              } hover:bg-accent`}
+              className={`px-4 py-2 cursor-pointer ${value === option.value ? "text-foreground font-semibold" : "text-muted-foreground"
+                } hover:bg-accent`}
             >
               {option.label}
               <span className="mt-1 block text-xs text-muted-foreground" data-desc>
@@ -476,7 +476,7 @@ export default function JobPostingsPage() {
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
   const [strictSearch, setStrictSearch] = useState(true);
-  const [applyJobPrefs, setApplyJobPrefs] = useState(true); 
+  const [applyJobPrefs, setApplyJobPrefs] = useState(true);
   const [count, setCount] = useState(0);
   const limit = 20;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -513,11 +513,10 @@ export default function JobPostingsPage() {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className={`h-8 w-8 ${
-              experienceLevel || location || company
-                ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
-                : 'hover:bg-background/90 dark:hover:bg-muted/30'
-            }`}
+            className={`h-8 w-8 ${experienceLevel || location || company
+              ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
+              : 'hover:bg-background/90 dark:hover:bg-muted/30'
+              }`}
           >
             <Filter size={14} />
           </Button>
@@ -568,32 +567,6 @@ export default function JobPostingsPage() {
                 </Suspense>
               </div>
 
-              <div className="space-y-2">
-                <div>
-                  <span className="text-foreground">Location</span>
-                  <p className="text-xs text-muted-foreground">Choose job location or remote work</p>
-                </div>
-                <LocationSelect
-                  onChange={(value) => {
-                    const newLoc = value === "null" ? "" : value;
-                    if (newLoc !== location) {
-                      const params = {
-                        title,
-                        explevel: experienceLevel,
-                        location: newLoc,
-                        company,
-                        page: "1"
-                      };
-                      const newParams = new URLSearchParams(params);
-                      const newUrl = `/job-postings?${newParams.toString()}`;
-                      if (newUrl !== router.asPath) {
-                        router.push(newUrl);
-                      }
-                    }
-                  }}
-                  value={location}
-                />
-              </div>
               {(title || experienceLevel || location || company) && (
                 <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
                   setCompanyData([]);
@@ -977,26 +950,24 @@ Here is their profile:
 ${userProfile.user.professionalSummary || 'No summary available.'}
 
 ### Work Experience
-${
-  userProfile.experience && userProfile.experience.length > 0
-    ? userProfile.experience.map(exp =>
-      `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
+${userProfile.experience && userProfile.experience.length > 0
+          ? userProfile.experience.map(exp =>
+            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
 - **Location**: ${exp.location || 'Not specified'}
 - **Description**: ${exp.description || 'No description available'}
 - **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-    : 'No work experience available.'
-}
+          : 'No work experience available.'
+        }
 
 ### Education
-${
-  userProfile.education && userProfile.education.length > 0
-    ? userProfile.education.map(edu =>
-      `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
+${userProfile.education && userProfile.education.length > 0
+          ? userProfile.education.map(edu =>
+            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
 - **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
 - **Grade**: ${edu.grade || 'Not specified'}
 - **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-    : 'No education details available.'
-}
+          : 'No education details available.'
+        }
 
 ### Skills
 - **Technical Skills**: ${technicalSkills}
@@ -1045,7 +1016,7 @@ Please provide relevant career advice and job search assistance based on their p
     router.push('/job-postings/saved-searches');
   };
 
-  function Input26({ onSearch, value, count }) {
+  function Input26({ onSearch, value, count, userPreferredTitle = "" }) {
     const [searchValue, setSearchValue] = useState(value || "");
     const [loading, setLoading] = useState(false);
     const isFirstRender = useRef(true);
@@ -1097,7 +1068,7 @@ Please provide relevant career advice and job search assistance based on their p
           <Input
             id="input-26"
             className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
-            placeholder="Search..."
+            placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
@@ -1131,7 +1102,7 @@ Please provide relevant career advice and job search assistance based on their p
                   className={cn(
                     "relative h-8 w-8 rounded-lg",
                     applyJobPrefs &&
-                      "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
+                    "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
                   )}
                 >
                   <SparkleIcon size={14} className="" />
@@ -1158,8 +1129,81 @@ Please provide relevant career advice and job search assistance based on their p
     );
   }
 
-  const MemoizedInput26 = memo(Input26);
+  function LocationSearch({ location, setLocation, userPreferredLocation = "", applyJobPrefs }) {
+    const [searchValue, setSearchValue] = useState(location || "");
+    const [timer, setTimer] = useState(null);
 
+    // if userPreferredLocation is an array, use the first element
+    if (Array.isArray(userPreferredLocation)) {
+      userPreferredLocation = userPreferredLocation[0];
+    }
+
+    console.log(userPreferredLocation);
+
+    const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+
+      // Clear any existing timer
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      // Set a new timer
+      const newTimer = setTimeout(() => {
+        setLocation(newValue);
+      }, 1000); // Increased to 1 second delay
+
+      setTimer(newTimer);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        // Clear existing timer
+        if (timer) {
+          clearTimeout(timer);
+        }
+        // Immediately set location on Enter
+        setLocation(searchValue);
+      }
+    };
+
+    // Update local state when prop changes
+    useEffect(() => {
+      setSearchValue(location || "");
+    }, [location]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+      return () => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      };
+    }, [timer]);
+
+    return (
+      <div className="space-y-2">
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
+            placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+          />
+          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+            <Map size={16} strokeWidth={2} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const MemoizedInput26 = memo(Input26);
+  const MemoizedLocationSearch = memo(LocationSearch);
   useEffect(() => {
     async function fetchUserProfile() {
       if (user) {
@@ -1181,120 +1225,166 @@ Please provide relevant career advice and job search assistance based on their p
   }, [user]);
 
   return (
-    <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl md:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
-      <Suspense fallback={<div>Loading search parameters...</div>}>
-        <SearchParamsHandler
-          setTitle={setTitle}
-          setExperienceLevel={setExperienceLevel}
-          setLocation={setLocation}
-          setCompany={setCompany}
-          setCurrentPage={setCurrentPage}
-          setApplyJobPrefs={setApplyJobPrefs}
-        />
-      </Suspense>
-      <div className="z-0">
-        <Suspense fallback={<div>Loading...</div>}>
-          <MemoizedInput26 onSearch={handleSearch} value={title} count={count} />
+    <>
+      <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`}</title>
+      <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
+      <meta name="robots" content="index, follow" />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
+      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
+      <meta property="og:url" content={`https://junera.us/job-postings${window.location.search}`} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "JobPosting",
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://junera.us/job-postings${window.location.search}`
+            },
+            "name": `${title || 'junera'} ${location ? `in ${location}` : ''} ${company ? `at ${company} | jobs` : ''}`,
+            "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`,
+            "datePosted": new Date().toISOString(),
+            "jobLocation": {
+              "@type": "Place",
+              "address": {
+                "@type": "PostalAddress",
+                "addressRegion": location || "Multiple Locations"
+              }
+            },
+            "hiringOrganization": company ? {
+              "@type": "Organization",
+              "name": company
+            } : undefined,
+            "employmentType": experienceLevel ? experienceLevel.toUpperCase() : "FULL_TIME",
+            "numberOfPositions": count?.toString() || "multiple",
+            "applicationContact": {
+              "@type": "ContactPoint",
+              "contactType": "jobs",
+              "url": `https://junera.us/job-postings${window.location.search}`
+            }
+          }, null, 2),
+        }}
+      />
+      <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl sm:px-8 lg:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
+        <Suspense fallback={<div>Loading search parameters...</div>}>
+          <SearchParamsHandler
+            setTitle={setTitle}
+            setExperienceLevel={setExperienceLevel}
+            setLocation={setLocation}
+            setCompany={setCompany}
+            setCurrentPage={setCurrentPage}
+            setApplyJobPrefs={setApplyJobPrefs}
+          />
         </Suspense>
-        <Suspense fallback={<div>Loading...</div>}>
+        <div className="z-0">
+          <Suspense fallback={<div>Loading...</div>}>
+            <MemoizedInput26 onSearch={handleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} applyJobPrefs={applyJobPrefs} />
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            {user && (
+              <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
+                <h3 className="text-sm text-muted-foreground font-medium">
+                  Saved Searches
+                </h3>
+                <Button variant="ghost" type="button" size="icon" onClick={userSavedSearches}>
+                  <Plus size={16} strokeWidth={1.5} />
+                </Button>
+              </div>
+            )}
+          </Suspense>
           {user && (
-            <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
-              <h3 className="text-sm text-muted-foreground font-medium">
-                Saved Searches
-              </h3>
-              <Button variant="ghost" type="button" size="icon" onClick={userSavedSearches}>
-                <Plus size={16} strokeWidth={1.5} />
-              </Button>
-            </div>
+            <Suspense fallback={<div>Loading...</div>}>
+              <ScrollArea>
+                <div className="flex flex-row items-center gap-4 mb-3">
+                  {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
+                    savedSearches.map((search) => (
+                      <SavedSearchButton
+                        key={search.id}
+                        name={search.search_name}
+                        title={search.search_criteria.title}
+                        experienceLevel={search.search_criteria.experienceLevel}
+                        location={search.search_criteria.location}
+                      />
+                    ))
+                  )}
+                </div>
+                <ScrollBar className="w-full" />
+              </ScrollArea>
+            </Suspense>
           )}
-        </Suspense>
-        {user && (
-          <Suspense fallback={<div>Loading...</div>}>
-            <ScrollArea>
-              <div className="flex flex-row items-center gap-4 mb-3">
-                {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
-                  savedSearches.map((search) => (
-                    <SavedSearchButton
-                      key={search.id}
-                      name={search.search_name}
-                      title={search.search_criteria.title}
-                      experienceLevel={search.search_criteria.experienceLevel}
-                      location={search.search_criteria.location}
-                    />
-                  ))
-                )}
-              </div>
-              <ScrollBar className="w-full" />
-            </ScrollArea>
-          </Suspense>
-        )}
-      </div>
-
-      <Suspense fallback={<div>Loading...</div>}>
-        {user && enabled && (
-          <>
-            <div className="flex flex-row mb-2 gap-4">
-              <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
-                <BriefcaseBusiness size={16} strokeWidth={1.5} />
-                <span>Applied</span>
-              </Button>
-              <SearchInsightsSheet title={title} />
-            </div>
-          </>
-        )}
+        </div>
 
         <Suspense fallback={<div>Loading...</div>}>
-          {companyData && companyData.name &&
-            <CompanyInfo company={companyData} resetCompanyData={resetCompanyData} />
-          }
-        </Suspense>
-
-        {llmResponse && (
-          <Suspense fallback={<div>Loading...</div>}>
-            <div className="mb-6 p-4 border rounded-md bg-gray-100">
-              <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
-            </div>
-          </Suspense>
-        )}
-
-        <div>
-          {pageLoading ? (
-            <div className="space-y-4">
-              {[...Array(limit)].map((_, i) => (
-                <div key={i} className="p-4 border rounded-lg animate-pulse">
-                  <div className="h-6 bg-accent rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-accent rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          ) : data && data.length > 0 ? (
-            <div key="job-postings">
-              <div className="items-center flex gap-4">
-                <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
-                  <div className="flex flex-col space-y-1">
-                    {title && <span>Job Title: {title}</span>}
-                    {experienceLevel && <span>Experience Level: {experienceLevel}</span>}
-                    {location && <span>Location: {location}</span>}
-                  </div>
-                </span>
+          {user && enabled && (
+            <>
+              <div className="flex flex-row mb-2 gap-4">
+                <Button variant="outline" size="sm" onClick={() => router.push('/job-postings/applied')}>
+                  <BriefcaseBusiness size={16} strokeWidth={1.5} />
+                  <span>Applied</span>
+                </Button>
+                <SearchInsightsSheet title={title} />
               </div>
-              <JobList data={data} loading={pageLoading} error={null} />
-            </div>
-          ) : (
-            <p>No job postings found. Adjust your search criteria.</p>
+            </>
           )}
-        </div>
 
-        <div className="flex justify-between mt-4">
           <Suspense fallback={<div>Loading...</div>}>
-            <JobPostingsPagination
-              currentPage={currentPage}
-              count={count}
-              limit={limit}
-            />
+            {companyData && companyData.name &&
+              <CompanyInfo company={companyData} resetCompanyData={resetCompanyData} />
+            }
           </Suspense>
-        </div>
-      </Suspense>
-    </div>
+
+          {llmResponse && (
+            <Suspense fallback={<div>Loading...</div>}>
+              <div className="mb-6 p-4 border rounded-md bg-gray-100">
+                <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
+              </div>
+            </Suspense>
+          )}
+
+          <div>
+            {pageLoading ? (
+              <div className="space-y-4">
+                {[...Array(limit)].map((_, i) => (
+                  <div key={i} className="p-4 border rounded-lg animate-pulse">
+                    <div className="h-6 bg-accent rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-accent rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : data && data.length > 0 ? (
+              <div key="job-postings">
+                <div className="items-center flex gap-4">
+                  <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
+                    <div className="flex flex-col space-y-1">
+                      {title && <span>Job Title: {title}</span>}
+                      {experienceLevel && <span>Experience Level: {experienceLevel}</span>}
+                      {location && <span>Location: {location}</span>}
+                    </div>
+                  </span>
+                </div>
+                <JobList data={data} loading={pageLoading} error={null} />
+              </div>
+            ) : (
+              <p>No job postings found. Adjust your search criteria.</p>
+            )}
+          </div>
+
+          <div className="flex justify-between mt-4">
+            <Suspense fallback={<div>Loading...</div>}>
+              <JobPostingsPagination
+                currentPage={currentPage}
+                count={count}
+                limit={limit}
+              />
+            </Suspense>
+          </div>
+        </Suspense>
+      </div>
+    </>
   );
 }
