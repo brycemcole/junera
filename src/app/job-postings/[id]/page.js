@@ -677,6 +677,54 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   return (
     <>
+      <title>{`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`}</title>
+      <meta name="description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
+      <meta name="robots" content="index, follow" />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content={`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`} />
+      <meta property="og:description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
+      <meta property="og:url" content={`https://junera.ai/job-postings/${id}`} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "JobPosting",
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://junera.us/job-postings/${id}`
+            },
+            "title": jobPosting.title,
+            "description": jobPosting.description,
+            "datePosted": jobPosting.created_at,
+            "validThrough": jobPosting.valid_through || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            "jobLocation": {
+              "@type": "Place",
+              "address": {
+                "@type": "PostalAddress",
+                "addressRegion": jobPosting.location || "Multiple Locations"
+              }
+            },
+            "hiringOrganization": {
+              "@type": "Organization",
+              "name": jobPosting.company
+            },
+            "employmentType": jobPosting.experienceLevel ? jobPosting.experienceLevel.toUpperCase() : "FULL_TIME",
+            "baseSalary": jobPosting.salary_range_str ? {
+              "@type": "MonetaryAmount",
+              "currency": "USD",
+              "value": {
+                "@type": "QuantitativeValue",
+                "value": jobPosting.salary_range_str
+              }
+            } : undefined,
+            "applicantLocationRequirements": jobPosting.location?.toLowerCase().includes('remote') ? {
+              "@type": "Country",
+              "name": "Remote"
+            } : undefined
+          }, null, 2),
+        }}
+      />
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
           <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
