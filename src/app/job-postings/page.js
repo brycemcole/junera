@@ -1183,7 +1183,7 @@ Please provide relevant career advice and job search assistance based on their p
     }, [timer]);
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 mb-4">
         <div className="relative">
           <Input
             id="input-26"
@@ -1363,7 +1363,6 @@ Please provide relevant career advice and job search assistance based on their p
                     <div className="flex flex-col space-y-1">
                       {title && <span>Job Title: {title}</span>}
                       {experienceLevel && <span>Experience Level: {experienceLevel}</span>}
-                      {location && <span>Location: {location}</span>}
                     </div>
                   </span>
                 </div>
