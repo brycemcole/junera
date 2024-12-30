@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
 import { formatDistanceToNow, set } from "date-fns";
 import AlertDemo from "./AlertDemo";
@@ -280,6 +280,7 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
 };
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input26 } from '@/components/input26';
 
 
 
@@ -437,11 +438,14 @@ Please assess the qualifications and provide a brief explanation of whether the 
     setLlmResponse(""); // Initialize as empty string for streaming
     setLoadingLLMResponse(true);
     let fullResponse = ""; // Track complete response
-
     try {
+      if (!process.env.DEEPSEEK_API_KEY) {
+        throw new Error('Missing DEEPSEEK_API_KEY environment variable');
+      }
+
       const openai = new OpenAI({
-        baseURL: 'https://api.deepseek.com/v1', // Updated base URL as per DeepSeek's instructions
-        apiKey: process.env.DEEPSEEK_KEY,
+        baseURL: 'https://api.deepseek.com/v1',
+        apiKey: process.env.DEEPSEEK_API_KEY, // Updated to match .env variable name
       });
 
       const completion = await openai.chat.completions.create(
@@ -665,6 +669,30 @@ Please assess the qualifications and provide a brief explanation of whether the 
       console.error('Error tracking application:', error);
     }
   };
+
+  const handleSearch = useCallback(
+    async (val) => {
+      if (val !== title) {
+        setTitle(val);
+        setCurrentPage(1);
+        const params = {
+          title: val,
+          explevel: experienceLevel,
+          location,
+          company,
+          strict: strictSearch,
+          applyJobPrefs: applyJobPrefs.toString(),
+          page: '1'
+        };
+        const newParams = new URLSearchParams(params);
+        const newUrl = `/job-postings?${newParams.toString()}`;
+        if (newUrl !== router.asPath) {
+          await router.push(newUrl);
+        }
+      }
+    },
+    []
+  );
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
