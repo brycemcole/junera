@@ -1051,7 +1051,7 @@ Please provide relevant career advice and job search assistance based on their p
         } finally {
           setLoading(false);
         }
-      }, 500);
+      }, 5000); // increased to 5 seconds delay
 
       return () => {
         clearTimeout(handler);
@@ -1152,7 +1152,7 @@ Please provide relevant career advice and job search assistance based on their p
       // Set a new timer
       const newTimer = setTimeout(() => {
         setLocation(newValue);
-      }, 1000); // Increased to 1 second delay
+      }, 5000); // Increased to 5 second delay
 
       setTimer(newTimer);
     };
