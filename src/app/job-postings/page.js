@@ -634,6 +634,11 @@ export default function JobPostingsPage() {
 
     const handlePageChange = (pageNumber) => {
       if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
+        //Scroll to the top of the page when a new page is presented
+        window.scrollTo({
+          top:0,
+          behavior: 'smooth',
+        });
         setPageLoading(true);
         router.push(buildHref(pageNumber));
       }
