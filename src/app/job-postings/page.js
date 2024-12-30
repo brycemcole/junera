@@ -1016,10 +1016,24 @@ Please provide relevant career advice and job search assistance based on their p
     router.push('/job-postings/saved-searches');
   };
 
-  function Input26({ onSearch, value, count, userPreferredTitle = "" }) {
+  function Input26({ onSearch, value, userPreferredTitle = "" }) {
     const [searchValue, setSearchValue] = useState(value || "");
     const [loading, setLoading] = useState(false);
+    const [timer, setTimer] = useState(null);
     const isFirstRender = useRef(true);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Clear existing timer
+        if (timer) {
+          clearTimeout(timer);
+        }
+        setLoading(true);
+        // Immediately set location on Enter
+        onSearch(searchValue).finally(() => setLoading(false));
+      }
+    };
 
     const handleInputChange = (e) => {
       const newValue = e.target.value;
@@ -1069,6 +1083,7 @@ Please provide relevant career advice and job search assistance based on their p
             id="input-26"
             className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
             placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
+            onKeyDown={handleKeyDown}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
@@ -1117,11 +1132,7 @@ Please provide relevant career advice and job search assistance based on their p
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-              {loading ? (
-                <Loader2 className="animate-spin" size={16} strokeWidth={2} aria-hidden="true" />
-              ) : (
-                <Search size={16} strokeWidth={2} />
-              )}
+              <Search size={16} strokeWidth={2} />
             </div>
           </Suspense>
         </div>
@@ -1138,33 +1149,37 @@ Please provide relevant career advice and job search assistance based on their p
       userPreferredLocation = userPreferredLocation[0];
     }
 
-    console.log(userPreferredLocation);
-
     const handleInputChange = (e) => {
       const newValue = e.target.value;
       setSearchValue(newValue);
 
       // Clear any existing timer
       if (timer) {
-        clearTimeout(timer);
+      clearTimeout(timer);
       }
 
-      // Set a new timer
+      // If the input is empty, set location to blank immediately
+      if (newValue === "") {
+      setLocation("");
+      return;
+      }
+
+      // Set a new timer for non-empty values
       const newTimer = setTimeout(() => {
-        setLocation(newValue);
-      }, 5000); // Increased to 5 second delay
+      setLocation(newValue);
+      }, 5000);
 
       setTimer(newTimer);
     };
 
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
-        // Clear existing timer
-        if (timer) {
-          clearTimeout(timer);
-        }
-        // Immediately set location on Enter
-        setLocation(searchValue);
+      // Clear existing timer
+      if (timer) {
+        clearTimeout(timer);
+      }
+      // Immediately set location on Enter
+      setLocation(searchValue);
       }
     };
 
@@ -1176,28 +1191,28 @@ Please provide relevant career advice and job search assistance based on their p
     // Cleanup timer on unmount
     useEffect(() => {
       return () => {
-        if (timer) {
-          clearTimeout(timer);
-        }
+      if (timer) {
+        clearTimeout(timer);
+      }
       };
     }, [timer]);
 
     return (
       <div className="space-y-2 mb-4">
-        <div className="relative">
-          <Input
-            id="input-26"
-            className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
-            placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
-            type="search"
-            value={searchValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-          />
-          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-            <Map size={16} strokeWidth={2} />
-          </div>
+      <div className="relative">
+        <Input
+        id="input-26"
+        className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
+        placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
+        type="search"
+        value={searchValue}
+        onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
+        />
+        <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+        <Map size={16} strokeWidth={2} />
         </div>
+      </div>
       </div>
     );
   }
