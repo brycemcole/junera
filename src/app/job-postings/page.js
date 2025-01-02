@@ -636,7 +636,7 @@ export default function JobPostingsPage() {
       if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
         //Scroll to the top of the page when a new page is presented
         window.scrollTo({
-          top:0,
+          top: 0,
           behavior: 'smooth',
         });
         setPageLoading(true);
@@ -1086,7 +1086,7 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="relative">
           <Input
             id="input-26"
-            className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
+            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
             placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
             onKeyDown={handleKeyDown}
             type="search"
@@ -1160,18 +1160,18 @@ Please provide relevant career advice and job search assistance based on their p
 
       // Clear any existing timer
       if (timer) {
-      clearTimeout(timer);
+        clearTimeout(timer);
       }
 
       // If the input is empty, set location to blank immediately
       if (newValue === "") {
-      setLocation("");
-      return;
+        setLocation("");
+        return;
       }
 
       // Set a new timer for non-empty values
       const newTimer = setTimeout(() => {
-      setLocation(newValue);
+        setLocation(newValue);
       }, 5000);
 
       setTimer(newTimer);
@@ -1179,12 +1179,12 @@ Please provide relevant career advice and job search assistance based on their p
 
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
-      // Clear existing timer
-      if (timer) {
-        clearTimeout(timer);
-      }
-      // Immediately set location on Enter
-      setLocation(searchValue);
+        // Clear existing timer
+        if (timer) {
+          clearTimeout(timer);
+        }
+        // Immediately set location on Enter
+        setLocation(searchValue);
       }
     };
 
@@ -1196,28 +1196,28 @@ Please provide relevant career advice and job search assistance based on their p
     // Cleanup timer on unmount
     useEffect(() => {
       return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
+        if (timer) {
+          clearTimeout(timer);
+        }
       };
     }, [timer]);
 
     return (
       <div className="space-y-2 mb-4">
-      <div className="relative">
-        <Input
-        id="input-26"
-        className="peer pr-24 z-1 ps-9 h-12 rounded-xl text-[16px]"
-        placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
-        type="search"
-        value={searchValue}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        />
-        <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-        <Map size={16} strokeWidth={2} />
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
+            placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+          />
+          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+            <Map size={16} strokeWidth={2} />
+          </div>
         </div>
-      </div>
       </div>
     );
   }
