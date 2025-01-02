@@ -434,23 +434,44 @@ const JobCount = memo(function JobCount({ count, className }) {
   );
 });
 
-const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData }) {
+const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, companies }) {
+  console.log(company); // name of selected company
+  console.log(companies); // array of companies {id, name, logo}
+  if (!company) return null;
+  if (!companies) return null;
+  const companyObject = companies.find(c => c.name === company);
+  if (!companyObject) return null;
+  console.log(companyObject); // object of selected company
+
   return (
-    <div className="border rounded-lg shadow-sm px-2 py-2 mt-3 mb-0 md:mb-4 md:mt-0 relative">
+    <div className="z-[100] max-w-[400px] mb-4 rounded-lg border border-border bg-background px-4 py-3 shadow-lg shadow-black/5">
       <div className="flex items-center gap-2">
         <Avatar className="w-8 h-8">
-          <AvatarFallback>{company.name?.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarImage src={companyObject.logo} />
+          <AvatarFallback>{companyObject.name?.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <p className="text-sm text-muted-foreground font-medium">
-          Showing jobs at <Link href={`/companies/${company.id}`}>
-            <strong className="font-semibold text-foreground">{company.name}</strong>
-          </Link>
+        <p className="text-sm font-medium">
+          Showing jobs at <strong className="font-semibold">{companyObject.name}</strong>
         </p>
-        <X size={14} className="ml-auto mr-2 cursor-pointer" onClick={resetCompanyData} />
+
+        <Button
+          variant="ghost"
+          className="group -my-1.5 ml-auto -me-2 size-8 shrink-0 p-0 hover:bg-transparent"
+          aria-label="Close notification"
+        >
+          <X
+            size={16}
+            strokeWidth={2}
+            className="opacity-60 transition-opacity group-hover:opacity-100 "
+            aria-hidden="true"
+          />
+        </Button>
       </div>
-    </div>
+    </div >
   );
 });
+
+
 
 const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms }) {
   if (!title || !synonyms?.length) return null;
@@ -1299,12 +1320,16 @@ Please provide relevant career advice and job search assistance based on their p
           />
         </Suspense>
         <div className="z-0">
+          <Suspense>
+            <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
+          </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <MemoizedInput26 onSearch={handleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} applyJobPrefs={applyJobPrefs} />
           </Suspense>
+
           <Suspense fallback={<div>Loading...</div>}>
             {user && (
               <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">

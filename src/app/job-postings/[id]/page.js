@@ -753,7 +753,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-0 max-w-4xl">
+      <div className="container mx-auto py-0 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
           <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
 

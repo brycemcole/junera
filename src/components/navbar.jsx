@@ -472,12 +472,12 @@ export default function Navbar() {
         <DropdownMenuDemo2 />
       ) : (
         <>
-        <Button variant="ghost" className="text-customGreen h-7 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
+        <Button variant="ghost" className="text-customGreen h-9 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
           <Link href="/register">
            Sign Up
           </Link>
         </Button>
-        <Button className="font-medium rounded-lg px-3 py-1.5 h-7 hover:text-primary hover:bg-accent">
+        <Button className="font-medium rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
           <Link href="/login">
            Login
           </Link>
