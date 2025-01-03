@@ -444,9 +444,9 @@ const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, compa
   console.log(companyObject); // object of selected company
 
   return (
-    <div className="z-[100] max-w-[400px] mb-4 rounded-lg border border-border bg-background px-4 py-3 shadow-lg shadow-black/5">
+    <div className="z-[100] max-w-[400px] mb-4 rounded-xl border border-emerald-700/20 bg-emerald-500/20 px-2 py-2">
       <div className="flex items-center gap-2">
-        <Avatar className="w-8 h-8">
+        <Avatar className="w-6 h-6">
           <AvatarImage src={companyObject.logo} />
           <AvatarFallback>{companyObject.name?.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
@@ -486,6 +486,7 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
+
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
@@ -499,7 +500,7 @@ export default function JobPostingsPage() {
   const [strictSearch, setStrictSearch] = useState(true);
   const [applyJobPrefs, setApplyJobPrefs] = useState(true);
   const [count, setCount] = useState(0);
-  const limit = 20;
+  const limit = 30;
   const [savedSearches, setSavedSearches] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [companyData, setCompanyData] = useState([]);
@@ -1265,9 +1266,22 @@ Please provide relevant career advice and job search assistance based on their p
     fetchUserProfile();
   }, [user]);
 
+  const activeFilters = [
+    { label: 'Title', value: title },
+    { label: 'Experience', value: experienceLevel },
+    { label: 'Location', value: location },
+    { label: 'Company', value: company },
+  ].filter(filter => filter.value);
+
+  // Construct the header title
+  const headerTitle = activeFilters.length
+    ? `Search Results${activeFilters.length > 1 ? '' : ''}`
+    : 'Job Postings';
+
+
   return (
     <>
-      <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`}</title>
+      <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
       <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
       <meta name="robots" content="index, follow" />
       <meta property="og:type" content="website" />
@@ -1308,7 +1322,7 @@ Please provide relevant career advice and job search assistance based on their p
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-5 md:py-10 px-4 max-w-4xl sm:px-8 lg:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
+      <div className="container mx-auto py-0 md:py-10 px-4 max-w-4xl sm:px-8 lg:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
@@ -1320,6 +1334,40 @@ Please provide relevant career advice and job search assistance based on their p
           />
         </Suspense>
         <div className="z-0">
+          <Suspense fallback={<div>Loading...</div>}>
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold mb-4">{headerTitle}</h1>
+
+              {activeFilters.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {activeFilters.filter(filter => filter.label !== 'Company').map(filter => (
+                    <Badge key={filter.label} variant="outline" className="flex items-center space-x-1 rounded-md px-2 py-1">
+                      <span className="font-medium">{filter.label}:</span>
+                      <span>{filter.value}</span>
+                      <button
+                        className="ml-1 inline-flex items-center justify-center rounded-full p-0.5 opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        onClick={() => onRemoveFilter && onRemoveFilter(filter.type)}
+                        aria-label={`Remove ${filter.label} filter`}
+                      >
+                        <X size={14} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Optional: Display default suggestions when no filters are applied */}
+              {!activeFilters.length && (
+                <div className="flex flex-col space-y-2 text-sm text-gray-500">
+                  <div>Explore roles like Software Engineer</div>
+                  <div>Find opportunities at various experience levels</div>
+                  <div>Discover jobs in locations such as New York</div>
+                </div>
+              )}
+            </div>
+          </Suspense>
+
+
           <Suspense>
             <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
           </Suspense>
@@ -1332,13 +1380,13 @@ Please provide relevant career advice and job search assistance based on their p
 
           <Suspense fallback={<div>Loading...</div>}>
             {user && (
-              <div className="flex w-full gap-3 justify-between items-center pb-0 md:pb-0 ">
+              <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
                 <h3 className="text-sm text-muted-foreground font-medium">
                   Saved Searches
                 </h3>
-                <Button variant="ghost" type="button" size="icon" onClick={userSavedSearches}>
-                  <Plus size={16} strokeWidth={1.5} />
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {count} results
+                </p>
               </div>
             )}
           </Suspense>
@@ -1356,6 +1404,11 @@ Please provide relevant career advice and job search assistance based on their p
                         location={search.search_criteria.location}
                       />
                     ))
+                  )}
+                  {user && (
+                    <Button variant="ghost" type="button" size="smicon" onClick={userSavedSearches}>
+                      <Plus size={16} strokeWidth={1.5} />
+                    </Button>
                   )}
                 </div>
                 <ScrollBar className="w-full" />
@@ -1377,11 +1430,6 @@ Please provide relevant career advice and job search assistance based on their p
             </>
           )}
 
-          <Suspense fallback={<div>Loading...</div>}>
-            {companyData && companyData.name &&
-              <CompanyInfo company={companyData} resetCompanyData={resetCompanyData} />
-            }
-          </Suspense>
 
           {llmResponse && (
             <Suspense fallback={<div>Loading...</div>}>
@@ -1403,14 +1451,6 @@ Please provide relevant career advice and job search assistance based on their p
               </div>
             ) : data && data.length > 0 ? (
               <div key="job-postings">
-                <div className="items-center flex gap-4">
-                  <span className="text-xs flex flex-row items-center gap-4 text-muted-foreground">
-                    <div className="flex flex-col space-y-1">
-                      {title && <span>Job Title: {title}</span>}
-                      {experienceLevel && <span>Experience Level: {experienceLevel}</span>}
-                    </div>
-                  </span>
-                </div>
                 <JobList data={data} loading={pageLoading} error={null} />
               </div>
             ) : (

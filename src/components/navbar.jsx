@@ -447,7 +447,7 @@ function DropdownMenuDemo() {
 }
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -468,22 +468,26 @@ export default function Navbar() {
           <NavbarMenu/>
         </div>
         <div className="md:hidden items-center flex gap-4">
-          {user ? (
-        <DropdownMenuDemo2 />
-      ) : (
-        <>
-        <Button variant="ghost" className="text-customGreen h-9 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
-          <Link href="/register">
-           Sign Up
-          </Link>
-        </Button>
-        <Button className="font-medium rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
-          <Link href="/login">
-           Login
-          </Link>
-        </Button>
-        </>
-      )}
+          {!loading && (
+            <>
+              {user ? (
+                <DropdownMenuDemo2 />
+              ) : (
+                <>
+                  <Button variant="ghost" className="text-customGreen h-9 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
+                    <Link href="/register">
+                     Sign Up
+                    </Link>
+                  </Button>
+                  <Button className="font-medium rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
+                    <Link href="/login">
+                     Login
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </>
+          )}
           <DropdownMenuDemo />
         </div>
       </div>

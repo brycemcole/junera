@@ -1,5 +1,5 @@
 'use client';
-
+require('dotenv').config(); // Ensure you have dotenv installed and configured
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
 import { formatDistanceToNow, set } from "date-fns";
@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
+
+
 import {
   Accordion,
   AccordionContent,
@@ -207,18 +209,18 @@ function InsightsButton({ onClick }) {
 
 function Summarization({ title, message, loading, error }) {
   return (
-    <div className="rounded-lg shadow-sm border border-border px-4 py-3">
+    <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3">
       <div className="flex gap-3">
         {loading ? (
           <Loader2Icon
             size={16}
             strokeWidth={2}
-            aria-hidden="true" className="text-green-500 animate-spin" />
+            aria-hidden="true" className="text-blue-500 animate-spin" />
         ) : error ? (
           <CircleAlert className="text-red-500" />
         ) : (
           <Info
-            className="mt-0.5 shrink-0 text-green-500"
+            className="mt-0.5 shrink-0 text-blue-500"
             size={16}
             strokeWidth={2}
             aria-hidden="true"
@@ -415,145 +417,101 @@ Please assess the qualifications and provide a brief explanation of whether the 
   const handleSummarizationQuery = async () => {
     if (!user) return;
     const jobPosting = data.data;
-    console.log("Job posting:", jobPosting);
-
-    const modifiedQuestion = `Please provide a brief summary of the job posting titled "${jobPosting.title}" at ${jobPosting.company}.`;
-
-    console.log("Modified question:", modifiedQuestion);
-    const systemMessage = {
-      role: "system",
-      content: `
-      You are a helpful agent that works for ${jobPosting.company} to provide
-      a short sentence about who the ideal candidate for this job is based on the requirements listed.
-      You should prioritize requirements that a person can know if they have instantly. 
-      EXAMPLE RESPONSE: 'We are seeking a ${jobPosting.title} with 4 years of experience in rust, 2 years in python, and a great attitude.'
-    
-      Here is the full content of the job posting:
-      ${JSON.stringify(jobPosting)}
-    `,
-    };
-
-    const userMessage = { role: "user", content: modifiedQuestion };
-    const newMessages = [systemMessage, userMessage];
     setLlmResponse(""); // Initialize as empty string for streaming
     setLoadingLLMResponse(true);
     let fullResponse = ""; // Track complete response
+
     try {
-      if (!process.env.DEEPSEEK_API_KEY) {
-        throw new Error('Missing DEEPSEEK_API_KEY environment variable');
+      const response = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          jobPosting,
+          jobId: id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
 
-      const openai = new OpenAI({
-        baseURL: 'https://api.deepseek.com/v1',
-        apiKey: process.env.DEEPSEEK_API_KEY, // Updated to match .env variable name
-      });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      const completion = await openai.chat.completions.create(
-        {
-          model: "deepseek-chat", // Updated model name
-          messages: newMessages,
-          temperature: 0.2,
-          max_tokens: 200,
-          stream: true, // Enable streaming
-        },
-        { responseType: 'stream' } // Ensure the response is a stream
-      );
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      // Handle the streaming response
-      completion.on('data', (chunk) => {
-        const decoder = new TextDecoder("utf-8");
-        const decodedChunk = decoder.decode(chunk, { stream: true });
-        console.log("Received chunk:", decodedChunk); // Log the raw chunk
-
-        // Split the chunk into lines
-        const lines = decodedChunk.split("\n").filter(line => line.trim() !== '');
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const jsonString = line.replace("data: ", "").trim();
-            if (jsonString === "[DONE]") {
-              // Streaming complete
-              break;
-            }
-            try {
-              const parsed = JSON.parse(jsonString);
-              console.log("Parsed data:", parsed); // Log parsed JSON
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.replace('data: ', '').trim();
+            if (jsonStr === '[DONE]') break;
 
+            try {
+              const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
               if (content) {
                 fullResponse += content;
-                setLlmResponse((prev) => prev + content);
+                setLlmResponse(prev => prev + content);
               }
             } catch (err) {
-              console.error("Error parsing JSON:", err);
-            }
-          } else {
-            // Handle cases where API does not prefix with "data: "
-            try {
-              const parsed = JSON.parse(line);
-              console.log("Parsed data without 'data: ' prefix:", parsed);
-
-              const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
-              if (content) {
-                fullResponse += content;
-                setLlmResponse((prev) => prev + content);
-              }
-            } catch (err) {
-              console.error("Error parsing JSON without 'data: ' prefix:", err);
+              console.error('Error parsing chunk:', err);
             }
           }
         }
-      });
+      }
 
-      completion.on('end', async () => {
-        // After streaming is complete, update the database
-        if (fullResponse) {
-          try {
-            const updateResponse = await fetch('/api/job-postings', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.token}`
-              },
-              body: JSON.stringify({
-                jobId: id,
-                summary: fullResponse
-              })
-            });
+      // After streaming is complete, update UI
+      if (fullResponse) {
+        // Save summary to database
+        try {
+          const response = await fetch('/api/job-postings', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({
+              jobId: id,
+              summary: fullResponse
+            })
+          });
 
-            if (updateResponse.ok) {
-              toast({
-                title: "Summary saved",
-                description: "The job summary has been updated in the database.",
-                variant: "default"
-              });
-            } else {
-              throw new Error('Failed to update summary in database');
-            }
-          } catch (error) {
-            console.error("Error updating summary in database:", error);
-            toast({
-              title: "Error",
-              description: "Failed to save the summary to the database.",
-              variant: "destructive"
-            });
+          if (!response.ok) {
+            throw new Error('Failed to save summary');
           }
+
+          toast({
+            title: "Summary generated",
+            description: "The job summary has been created successfully.",
+            variant: "default"
+          });
+        } catch (error) {
+          console.error('Error saving summary:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save the summary.",
+            variant: "destructive"
+          });
         }
-        setLoadingLLMResponse(false);
-      });
-
-      completion.on('error', (error) => {
-        console.error("Error fetching LLM response:", error);
-        setLoadingLLMResponse(false);
-        setErrorLLMResponse(error.message);
-        setLlmResponse("Failed to get a response. Please try again.");
-      });
-
+      }
     } catch (error) {
-      console.error("Error initializing OpenAI:", error);
-      setLoadingLLMResponse(false);
+      console.error("Error:", error);
       setErrorLLMResponse(error.message);
       setLlmResponse("Failed to get a response. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to generate the summary.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingLLMResponse(false);
     }
   };
 

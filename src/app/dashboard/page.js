@@ -156,7 +156,7 @@ export default function DashboardPage() {
               {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
             </CardTitle>
             <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
-            <Button variant="ghost" size="sm" className="absolute right-0 font-mono decoration-dotted underline underline-offset-4 top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
+            <Button variant="ghost" size="sm" className="absolute right-0 hover:underline top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
 
           </Card>
         </Suspense>
