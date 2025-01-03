@@ -209,7 +209,7 @@ function InsightsButton({ onClick }) {
 
 function Summarization({ title, message, loading, error }) {
   return (
-    <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3">
+    <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3 mb-4">
       <div className="flex gap-3">
         {loading ? (
           <Loader2Icon
@@ -227,8 +227,8 @@ function Summarization({ title, message, loading, error }) {
           />
         )}
         <div className="grow space-y-1">
-          <p className="text-sm font-medium">{title}</p>
-          <p className="list-inside list-disc text-sm text-muted-foreground">
+          <p className="text-sm text-blue-600 font-medium dark:text-blue-400">{title}</p>
+          <p className="list-inside list-disc text-sm text-blue-500 dark:text-blue-300">
             {loading && !message ? "Loading AI response..." : message || error}
           </p>
         </div>
