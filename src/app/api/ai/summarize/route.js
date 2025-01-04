@@ -47,7 +47,7 @@ export async function POST(request) {
             async start(controller) {
                 try {
                     const completion = await openai.chat.completions.create({
-                        model: "meta/llama-3.1-405b-instruct",
+                        model: "meta/llama-3.3-70b-instruct",
                         messages: [systemMessage, userMessage],
                         temperature: 0.2,
                         max_tokens: 200,

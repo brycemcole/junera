@@ -41,7 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookOpen, Box, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, PanelsTopLeft } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -58,7 +58,7 @@ import { JobCard } from "../../../components/job-posting";
 import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
 const stripHTML = (str) => {
-  const allowedTags = ['b', 'i', 'strong', 'em', 'p', 'ul', 'li', 'ol', 'h1', 'u'];
+  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'u'];
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
 
@@ -209,11 +209,11 @@ function InsightsButton({ onClick }) {
 
 function Summarization({ title, message, loading, error }) {
   return (
-    <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3 mb-4">
+    <div className="rounded-lg  mb-4">
       <div className="flex gap-3">
         <div className="grow space-y-1">
-          <p className="text-md text-blue-600 font-medium dark:text-blue-400">{title}</p>
-          <p className="list-inside list-disc text-mf leading-loose text-blue-500 dark:text-blue-300">
+          <p className="text-sm text-green-600 font-semibold dark:text-green-400">{title}</p>
+          <p className="list-inside list-disc text-sm leading-relaxed text-green-500 dark:text-green-300">
             {loading && !message ? "Loading AI response..." : message || error}
           </p>
         </div>
@@ -696,29 +696,16 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 px-4 sm:px-6 lg:px-0 max-w-4xl">
-        <div>
-          <h3 className="text-md font-semibold flex flex-row justify-between items-center text-muted-foreground hover:text-foreground hover-offset-4">
-
-            <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
-              <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
-                <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-                <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <p className="text-md text-foreground truncate">{jobPosting.company}</p>
-                <div className="text-xs text-muted-foreground">
-                  {companyJobCount === 1 ? "1 job posting" : `${companyJobCount} job postings`}
-                </div>
-              </div>
-            </Link>
-            
-                                        <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
-          </h3>
-        </div>
-        <h1 data-scroll-title className="text-2xl mb-0 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}
-                      <Button24 jobId={id} />
+      <div className="container mx-auto py-0 px-4 sm:px-6  lg:px-0 max-w-4xl">
+        <div className="flex flex-row items-start gap-4">
+          <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-lg">
+            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+            <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <h1 data-scroll-title className="text-xl mb-2 font-semibold decoration-2 leading-normal min-w-0">
+            {jobPosting.title} at {jobPosting.company}
           </h1>
+        </div>
         {keywords && keywords.length > 0 && (
           <div className="mb-8">
             <ul className="flex flex-wrap gap-4 gap-y-3">
@@ -750,16 +737,17 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </ul>
           </div>
         )}
-        <div className="mb-4 flex flex-wrap gap-2 gap-y-1 text-md font-medium text-muted-foreground items-start">
+        <div className="mb-4 flex flex-col gap-2 gap-y-1 text-sm font-medium text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
+              <BriefcaseBusiness className="h-3 w-3 text-foreground" />
               <span>
                 {jobPosting.salary}
               </span>
             </div>
           ) : jobPosting?.salary_range_str ? (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-3 w-3 text-muted-foreground" />
+              <DollarSign className="h-3 w-3 text-foreground" />
               <span>
                 {jobPosting.salary_range_str}
               </span>
@@ -782,28 +770,39 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </div>
           */}
           <div className="flex items-center gap-2">
-            <span className={`${jobPosting.location.toLowerCase().includes('remote')
-              ? 'text-green-500 dark:text-green-600'
-              : ''
-              }`}>
-              {jobPosting.location.toLowerCase().includes('remote')
+            <MapPin className="h-3 w-3 text-foreground" />
+            <span>
+              {jobPosting.location?.toLowerCase().includes('remote')
                 ? jobPosting.location
-                : `in ${jobPosting.location}`
+                : `${jobPosting.location}`
               }
             </span>
           </div>
+          {jobPosting.location?.toLowerCase().includes('remote') && (
+            <div className="flex items-center gap-2">
+              <MapIcon className="h-3 w-3 text-green-500" />
+              <span>Remote Available</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            <span>posted {formatDistanceToNow(jobPosting.created_at, { addSuffix: true })}</span>
+            <Timer className="h-3 w-3 text-foreground" />
+            <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
           </div>
 
           {jobPosting?.experienceLevel && (
             <>
               <div className="flex items-center gap-2">
+                <Briefcase className="h-3 w-3 text-foreground" />
                 <span>{jobPosting.experienceLevel}</span>
               </div>
 
             </>
           )}
+          <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
+            <Link href={`/job-postings?company=${jobPosting.company}`}>
+              {companyJobCount === 1 ? "View 1 job" : `View ${companyJobCount} jobs`} at {jobPosting.company}
+            </Link>
+          </div>
         </div>
 
         <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
@@ -811,13 +810,15 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <Link
               href={`${jobPosting.source_url}`}
               target="_blank"
-              className="w-full"
               onClick={handleApplyClick} // Add onClick handler
             >
-              <Button className="group w-full md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
+              <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
                 Apply
               </Button>
             </Link>
+            <Button24 jobId={id} />
+            <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
+
           </div>
 
 
@@ -838,7 +839,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
             ].map(({ key, label }) => (
               <div key={key}>
-                <p className="leading-loose text-sm">
+                <h2 className="text-sm font-semibold text-foreground mb-2">{label}</h2>
+                <p className="leading-relaxed text-sm font-medium text-foreground">
                   <div
                     className="space-y-2"
                     dangerouslySetInnerHTML={{
