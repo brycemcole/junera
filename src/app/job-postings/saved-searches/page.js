@@ -326,18 +326,7 @@ export default function SavedSearchPage() {
   }
 
   return (
-    <div className="container mx-auto py-10 p-4 max-w-4xl">
-      <Breadcrumb className="mb-4">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbPage>
-            Saved Searches
-          </BreadcrumbPage>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="container mx-auto md:py-10 px-4 max-w-4xl">
       <div className="flex justify-between items-center justify-center  mb-6">
         <h1 className="text-3xl font-bold">Saved Searches</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

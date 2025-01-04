@@ -1,5 +1,5 @@
 'use client';
-
+require('dotenv').config(); // Ensure you have dotenv installed and configured
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
 import { formatDistanceToNow, set } from "date-fns";
@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
+
+
 import {
   Accordion,
   AccordionContent,
@@ -39,7 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookOpen, Box, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, PanelsTopLeft } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -56,7 +58,7 @@ import { JobCard } from "../../../components/job-posting";
 import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
 const stripHTML = (str) => {
-  const allowedTags = ['b', 'i', 'strong', 'em', 'p', 'ul', 'li', 'ol', 'h1', 'u'];
+  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'u'];
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
 
@@ -207,26 +209,11 @@ function InsightsButton({ onClick }) {
 
 function Summarization({ title, message, loading, error }) {
   return (
-    <div className="rounded-lg shadow-sm border border-border px-4 py-3">
+    <div className="rounded-lg  mb-4">
       <div className="flex gap-3">
-        {loading ? (
-          <Loader2Icon
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true" className="text-green-500 animate-spin" />
-        ) : error ? (
-          <CircleAlert className="text-red-500" />
-        ) : (
-          <Info
-            className="mt-0.5 shrink-0 text-green-500"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        )}
         <div className="grow space-y-1">
-          <p className="text-sm font-medium">{title}</p>
-          <p className="list-inside list-disc text-sm text-muted-foreground">
+          <p className="text-sm text-green-700 font-semibold dark:text-green-400">{title}</p>
+          <p className="list-inside list-disc text-sm leading-relaxed text-green-600 dark:text-green-300">
             {loading && !message ? "Loading AI response..." : message || error}
           </p>
         </div>
@@ -256,9 +243,9 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="ghost" size="icon">
           <Ellipsis
-            className="text-muted-foreground"
+            className="text-foreground"
             size={16}
             strokeWidth={2}
             aria-hidden="true"
@@ -415,145 +402,101 @@ Please assess the qualifications and provide a brief explanation of whether the 
   const handleSummarizationQuery = async () => {
     if (!user) return;
     const jobPosting = data.data;
-    console.log("Job posting:", jobPosting);
-
-    const modifiedQuestion = `Please provide a brief summary of the job posting titled "${jobPosting.title}" at ${jobPosting.company}.`;
-
-    console.log("Modified question:", modifiedQuestion);
-    const systemMessage = {
-      role: "system",
-      content: `
-      You are a helpful agent that works for ${jobPosting.company} to provide
-      a short sentence about who the ideal candidate for this job is based on the requirements listed.
-      You should prioritize requirements that a person can know if they have instantly. 
-      EXAMPLE RESPONSE: 'We are seeking a ${jobPosting.title} with 4 years of experience in rust, 2 years in python, and a great attitude.'
-    
-      Here is the full content of the job posting:
-      ${JSON.stringify(jobPosting)}
-    `,
-    };
-
-    const userMessage = { role: "user", content: modifiedQuestion };
-    const newMessages = [systemMessage, userMessage];
     setLlmResponse(""); // Initialize as empty string for streaming
     setLoadingLLMResponse(true);
     let fullResponse = ""; // Track complete response
+
     try {
-      if (!process.env.DEEPSEEK_API_KEY) {
-        throw new Error('Missing DEEPSEEK_API_KEY environment variable');
+      const response = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({
+          jobPosting,
+          jobId: id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
 
-      const openai = new OpenAI({
-        baseURL: 'https://api.deepseek.com/v1',
-        apiKey: process.env.DEEPSEEK_API_KEY, // Updated to match .env variable name
-      });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      const completion = await openai.chat.completions.create(
-        {
-          model: "deepseek-chat", // Updated model name
-          messages: newMessages,
-          temperature: 0.2,
-          max_tokens: 200,
-          stream: true, // Enable streaming
-        },
-        { responseType: 'stream' } // Ensure the response is a stream
-      );
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      // Handle the streaming response
-      completion.on('data', (chunk) => {
-        const decoder = new TextDecoder("utf-8");
-        const decodedChunk = decoder.decode(chunk, { stream: true });
-        console.log("Received chunk:", decodedChunk); // Log the raw chunk
-
-        // Split the chunk into lines
-        const lines = decodedChunk.split("\n").filter(line => line.trim() !== '');
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const jsonString = line.replace("data: ", "").trim();
-            if (jsonString === "[DONE]") {
-              // Streaming complete
-              break;
-            }
-            try {
-              const parsed = JSON.parse(jsonString);
-              console.log("Parsed data:", parsed); // Log parsed JSON
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.replace('data: ', '').trim();
+            if (jsonStr === '[DONE]') break;
 
+            try {
+              const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
               if (content) {
                 fullResponse += content;
-                setLlmResponse((prev) => prev + content);
+                setLlmResponse(prev => prev + content);
               }
             } catch (err) {
-              console.error("Error parsing JSON:", err);
-            }
-          } else {
-            // Handle cases where API does not prefix with "data: "
-            try {
-              const parsed = JSON.parse(line);
-              console.log("Parsed data without 'data: ' prefix:", parsed);
-
-              const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
-              if (content) {
-                fullResponse += content;
-                setLlmResponse((prev) => prev + content);
-              }
-            } catch (err) {
-              console.error("Error parsing JSON without 'data: ' prefix:", err);
+              console.error('Error parsing chunk:', err);
             }
           }
         }
-      });
+      }
 
-      completion.on('end', async () => {
-        // After streaming is complete, update the database
-        if (fullResponse) {
-          try {
-            const updateResponse = await fetch('/api/job-postings', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user.token}`
-              },
-              body: JSON.stringify({
-                jobId: id,
-                summary: fullResponse
-              })
-            });
+      // After streaming is complete, update UI
+      if (fullResponse) {
+        // Save summary to database
+        try {
+          const response = await fetch('/api/job-postings', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: JSON.stringify({
+              jobId: id,
+              summary: fullResponse
+            })
+          });
 
-            if (updateResponse.ok) {
-              toast({
-                title: "Summary saved",
-                description: "The job summary has been updated in the database.",
-                variant: "default"
-              });
-            } else {
-              throw new Error('Failed to update summary in database');
-            }
-          } catch (error) {
-            console.error("Error updating summary in database:", error);
-            toast({
-              title: "Error",
-              description: "Failed to save the summary to the database.",
-              variant: "destructive"
-            });
+          if (!response.ok) {
+            throw new Error('Failed to save summary');
           }
+
+          toast({
+            title: "Summary generated",
+            description: "The job summary has been created successfully.",
+            variant: "default"
+          });
+        } catch (error) {
+          console.error('Error saving summary:', error);
+          toast({
+            title: "Error",
+            description: "Failed to save the summary.",
+            variant: "destructive"
+          });
         }
-        setLoadingLLMResponse(false);
-      });
-
-      completion.on('error', (error) => {
-        console.error("Error fetching LLM response:", error);
-        setLoadingLLMResponse(false);
-        setErrorLLMResponse(error.message);
-        setLlmResponse("Failed to get a response. Please try again.");
-      });
-
+      }
     } catch (error) {
-      console.error("Error initializing OpenAI:", error);
-      setLoadingLLMResponse(false);
+      console.error("Error:", error);
       setErrorLLMResponse(error.message);
       setLlmResponse("Failed to get a response. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to generate the summary.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingLLMResponse(false);
     }
   };
 
@@ -753,25 +696,16 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 px-4 sm:px-6 lg:px-0 max-w-4xl">
-        <div>
-          <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
-
-            <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
-              <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
-                <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-                <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <p className="text-sm text-foreground truncate">{jobPosting.company}</p>
-                <div className="text-xs text-muted-foreground">
-                  {companyJobCount === 1 ? "1 job posting" : `${companyJobCount} job postings`}
-                </div>
-              </div>
-            </Link>
-          </h3>
+      <div className="container mx-auto py-0 px-4 sm:px-6  lg:px-0 max-w-4xl">
+        <div className="flex flex-row items-start gap-4">
+          <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-lg">
+            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+            <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <h1 data-scroll-title className="text-xl mb-2 font-semibold decoration-2 leading-normal min-w-0">
+            {jobPosting.title} at {jobPosting.company}
+          </h1>
         </div>
-        <h1 data-scroll-title className="text-2xl mb-2 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
         {keywords && keywords.length > 0 && (
           <div className="mb-8">
             <ul className="flex flex-wrap gap-4 gap-y-3">
@@ -803,16 +737,17 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </ul>
           </div>
         )}
-        <div className="mb-4 flex flex-wrap gap-2 gap-y-1 text-md font-medium text-muted-foreground items-start">
+        <div className="mb-2 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
+              <BriefcaseBusiness className="h-3 w-3 text-foreground" />
               <span>
                 {jobPosting.salary}
               </span>
             </div>
           ) : jobPosting?.salary_range_str ? (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-3 w-3 text-muted-foreground" />
+              <DollarSign className="h-3 w-3 text-foreground" />
               <span>
                 {jobPosting.salary_range_str}
               </span>
@@ -835,31 +770,42 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </div>
           */}
           <div className="flex items-center gap-2">
-            <span className={`${jobPosting.location.toLowerCase().includes('remote')
-              ? 'text-green-500 dark:text-green-600'
-              : ''
-              }`}>
-              {jobPosting.location.toLowerCase().includes('remote')
+            <MapPin className="h-3 w-3 text-foreground" />
+            <span>
+              {jobPosting.location?.toLowerCase().includes('remote')
                 ? jobPosting.location
-                : `in ${jobPosting.location}`
+                : `${jobPosting.location}`
               }
             </span>
           </div>
+          {jobPosting.location?.toLowerCase().includes('remote') && (
+            <div className="flex items-center gap-2">
+              <MapIcon className="h-3 w-3 text-green-500" />
+              <span>Remote Available</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            <span>posted {formatDistanceToNow(jobPosting.created_at, { addSuffix: true })}</span>
+            <Timer className="h-3 w-3 text-foreground" />
+            <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
           </div>
 
           {jobPosting?.experienceLevel && (
             <>
               <div className="flex items-center gap-2">
+                <Briefcase className="h-3 w-3 text-foreground" />
                 <span>{jobPosting.experienceLevel}</span>
               </div>
 
             </>
           )}
+          <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
+            <Link href={`/job-postings?company=${jobPosting.company}`}>
+              {companyJobCount === 1 ? "View 1 job" : `View ${companyJobCount} jobs`} at {jobPosting.company}
+            </Link>
+          </div>
         </div>
 
-        <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
+        <div className="flex flex-wrap flex-col gap-2 mb-4">
           <div className="flex gap-2">
             <Link
               href={`${jobPosting.source_url}`}
@@ -872,13 +818,14 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </Link>
             <Button24 jobId={id} />
             <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
+
           </div>
 
 
         </div>
         {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
           <Summarization
-            title="Job Posting Summary"
+            title="Summary"
             message={llmResponse || jobPosting.summary}
             loading={loadingLLMReponse}
             error={errorLLMResponse}
@@ -892,7 +839,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
             ].map(({ key, label }) => (
               <div key={key}>
-                <p className="leading-loose text-sm">
+                <h2 className="text-sm font-semibold text-foreground mb-2">{label}</h2>
+                <p className="leading-relaxed text-sm font-medium text-foreground">
                   <div
                     className="space-y-2"
                     dangerouslySetInnerHTML={{

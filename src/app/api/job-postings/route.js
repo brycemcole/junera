@@ -213,7 +213,10 @@ export async function GET(req) {
   let title = (searchParams.get("title") || "").trim();
   let location = (searchParams.get("location") || "").trim().toLowerCase();
   const company = (searchParams.get("company") || "").trim();
-  const experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
+  let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
+  if (experienceLevel === 'entry level') {
+    experienceLevel = 'entry';
+  }
 
   // Decide whether to apply user preferences as defaults
   const applyPrefsParam = searchParams.get('applyJobPrefs');
@@ -716,9 +719,6 @@ export async function PUT(req) {
         { status: 404 }
       );
     }
-
-    // Clear any cached job posting data since we've updated something
-    await clearCache('jobPostings:*');
 
     return new Response(
       JSON.stringify({

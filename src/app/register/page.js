@@ -146,8 +146,8 @@ export default function Login() {
   }, [user, router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 sm:p-8">
-      <main className="flex flex-col gap-8 w-full max-w-xs sm:max-w-lg">
+    <div className="flex justify-center p-4 sm:p-8">
+      <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
         <InputForm />
       </main>
     </div>
