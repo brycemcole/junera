@@ -211,21 +211,6 @@ function Summarization({ title, message, loading, error }) {
   return (
     <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3 mb-4">
       <div className="flex gap-3">
-        {loading ? (
-          <Loader2Icon
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true" className="text-blue-500 animate-spin" />
-        ) : error ? (
-          <CircleAlert className="text-red-500" />
-        ) : (
-          <Info
-            className="mt-0.5 shrink-0 text-blue-500"
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        )}
         <div className="grow space-y-1">
           <p className="text-sm text-blue-600 font-medium dark:text-blue-400">{title}</p>
           <p className="list-inside list-disc text-sm text-blue-500 dark:text-blue-300">
@@ -721,7 +706,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
                 <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                <p className="text-sm text-foreground truncate">{jobPosting.company}</p>
+                <p className="text-md text-foreground truncate">{jobPosting.company}</p>
                 <div className="text-xs text-muted-foreground">
                   {companyJobCount === 1 ? "1 job posting" : `${companyJobCount} job postings`}
                 </div>
@@ -729,7 +714,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </Link>
           </h3>
         </div>
-        <h1 data-scroll-title className="text-2xl mb-2 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
+        <h1 data-scroll-title className="text-2xl mb-0 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
         {keywords && keywords.length > 0 && (
           <div className="mb-8">
             <ul className="flex flex-wrap gap-4 gap-y-3">
@@ -829,6 +814,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               </Button>
             </Link>
             <Button24 jobId={id} />
+            <MagicButton />
             <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
           </div>
 
@@ -836,7 +822,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         </div>
         {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
           <Summarization
-            title="Job Posting Summary"
+            title="Summary"
             message={llmResponse || jobPosting.summary}
             loading={loadingLLMReponse}
             error={errorLLMResponse}
