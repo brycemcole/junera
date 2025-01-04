@@ -212,8 +212,8 @@ function Summarization({ title, message, loading, error }) {
     <div className="rounded-lg  mb-4">
       <div className="flex gap-3">
         <div className="grow space-y-1">
-          <p className="text-sm text-green-600 font-semibold dark:text-green-400">{title}</p>
-          <p className="list-inside list-disc text-sm leading-relaxed text-green-500 dark:text-green-300">
+          <p className="text-sm text-green-700 font-semibold dark:text-green-400">{title}</p>
+          <p className="list-inside list-disc text-sm leading-relaxed text-green-600 dark:text-green-300">
             {loading && !message ? "Loading AI response..." : message || error}
           </p>
         </div>
@@ -737,7 +737,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </ul>
           </div>
         )}
-        <div className="mb-4 flex flex-col gap-2 gap-y-1 text-sm font-medium text-foreground items-start">
+        <div className="mb-2 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
               <BriefcaseBusiness className="h-3 w-3 text-foreground" />
@@ -805,7 +805,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </div>
         </div>
 
-        <div className="flex flex-wrap flex-col gap-4 gap-y-3 mt-4 mb-4">
+        <div className="flex flex-wrap flex-col gap-2 mb-4">
           <div className="flex gap-2">
             <Link
               href={`${jobPosting.source_url}`}
