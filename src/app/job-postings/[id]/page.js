@@ -212,8 +212,8 @@ function Summarization({ title, message, loading, error }) {
     <div className="rounded-lg shadow-sm border border-blue-700/20 bg-blue-500/20 px-4 py-3 mb-4">
       <div className="flex gap-3">
         <div className="grow space-y-1">
-          <p className="text-sm text-blue-600 font-medium dark:text-blue-400">{title}</p>
-          <p className="list-inside list-disc text-sm text-blue-500 dark:text-blue-300">
+          <p className="text-md text-blue-600 font-medium dark:text-blue-400">{title}</p>
+          <p className="list-inside list-disc text-mf leading-loose text-blue-500 dark:text-blue-300">
             {loading && !message ? "Loading AI response..." : message || error}
           </p>
         </div>
@@ -712,9 +712,13 @@ Please assess the qualifications and provide a brief explanation of whether the 
                 </div>
               </div>
             </Link>
+            
+                                        <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
           </h3>
         </div>
-        <h1 data-scroll-title className="text-2xl mb-0 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}</h1>
+        <h1 data-scroll-title className="text-2xl mb-0 font-semibold decoration-2 leading-normal min-w-0">{jobPosting.title}
+                      <Button24 jobId={id} />
+          </h1>
         {keywords && keywords.length > 0 && (
           <div className="mb-8">
             <ul className="flex flex-wrap gap-4 gap-y-3">
@@ -807,15 +811,13 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <Link
               href={`${jobPosting.source_url}`}
               target="_blank"
+              className="w-full"
               onClick={handleApplyClick} // Add onClick handler
             >
-              <Button className="group md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
+              <Button className="group w-full md:w-auto text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
                 Apply
               </Button>
             </Link>
-            <Button24 jobId={id} />
-            <MagicButton />
-            <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
           </div>
 
 
