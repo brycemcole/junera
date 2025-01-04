@@ -243,9 +243,9 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="ghost" size="icon">
           <Ellipsis
-            className="text-muted-foreground"
+            className="text-foreground"
             size={16}
             strokeWidth={2}
             aria-hidden="true"
@@ -698,7 +698,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
       />
       <div className="container mx-auto py-0 px-4 sm:px-6 lg:px-0 max-w-4xl">
         <div>
-          <h3 className="text-md font-semibold text-muted-foreground hover:text-foreground hover-offset-4">
+          <h3 className="text-md font-semibold flex flex-row justify-between items-center text-muted-foreground hover:text-foreground hover-offset-4">
 
             <Link className="flex flex-row items-center gap-4" href={`/job-postings?company=${jobPosting.company}`}>
               <Avatar alt={jobPosting.company} className="w-8 h-8 rounded-full">
