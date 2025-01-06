@@ -105,9 +105,6 @@ export default function SharePopover({title}: {title: string}) {
                   aria-label="Share link"
                   readOnly
                 />
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
                       <button
                         onClick={handleCopy}
                         className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-lg border border-transparent text-muted-foreground/80 outline-offset-2 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:cursor-not-allowed"
@@ -136,10 +133,6 @@ export default function SharePopover({title}: {title: string}) {
                           <Copy size={16} strokeWidth={2} aria-hidden="true" />
                         </div>
                       </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="px-2 py-1 text-xs">Copy to clipboard</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </div>
             </div>
           </div>
