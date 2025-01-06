@@ -5,7 +5,12 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { RiCodeFill, RiFacebookFill, RiMailLine, RiTwitterXFill } from "@remixicon/react";
 import { Check, Copy } from "lucide-react";
@@ -55,9 +60,6 @@ export default function SharePopover({title}: {title: string}) {
             <div className="text-sm font-medium">Share job posting</div>
             <div className="text-sm font-medium">{title}</div>
             <div className="flex flex-wrap justify-center gap-2">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button 
                       size="icon" 
                       variant="outline" 
@@ -66,11 +68,6 @@ export default function SharePopover({title}: {title: string}) {
                     >
                       <RiCodeFill size={16} strokeWidth={2} aria-hidden="true" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Copy embed code</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button 
                       size="icon" 
                       variant="outline" 
@@ -79,11 +76,6 @@ export default function SharePopover({title}: {title: string}) {
                     >
                       <RiTwitterXFill size={16} strokeWidth={2} aria-hidden="true" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share on Twitter</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button 
                       size="icon" 
                       variant="outline" 
@@ -92,11 +84,6 @@ export default function SharePopover({title}: {title: string}) {
                     >
                       <RiFacebookFill size={16} strokeWidth={2} aria-hidden="true" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share on Facebook</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <Button 
                       size="icon" 
                       variant="outline" 
@@ -105,10 +92,7 @@ export default function SharePopover({title}: {title: string}) {
                     >
                       <RiMailLine size={16} strokeWidth={2} aria-hidden="true" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share via email</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+
             </div>
             <div className="space-y-2">
               <div className="relative">
