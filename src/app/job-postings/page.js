@@ -150,7 +150,7 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
   return (
     <Badge
       variant="outline"
-      className="gap-1.5 cursor-pointer hover:bg-accent"
+      className="gap-1.5 px-2 cursor-pointer hover:bg-accent"
       onClick={redirectToSearch}
     >
       <span
@@ -1372,7 +1372,7 @@ Please provide relevant career advice and job search assistance based on their p
           <Suspense fallback={<div>Loading...</div>}>
             {user && (
               <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
-                <h3 className="text-sm text-muted-foreground font-medium">
+                <h3 className="text-sm text-muted-foreground mb-2 font-medium">
                   Saved Searches
                 </h3>
                 <p className="text-sm text-muted-foreground">

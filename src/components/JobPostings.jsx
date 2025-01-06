@@ -106,12 +106,12 @@ export const JobList = ({ data, loading, error }) => {
               <div className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
-                  {job?.location || "N/A"}
+                  {job.location || ""}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate">{job?.experienceLevel || "N/A"}</span>
+                <span className="truncate">{job.experienceLevel || ""}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
