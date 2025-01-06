@@ -68,11 +68,11 @@ export const JobList = ({ data, loading, error }) => {
           onClick={() => router.push(`/job-postings/${job.id}`)}
         >
 
-<div className="flex flex-col justify-between">
+<div className="flex flex-col gap-3 justify-between">
 {job.company ? (
-            <Avatar className="w-10 h-10 flex-shrink-0">
+            <Avatar className="w-10 h-10 rounded-lg flex-shrink-0">
               <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-              <AvatarFallback>
+              <AvatarFallback className="rounded-lg">
                 {job.company?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -90,7 +90,7 @@ export const JobList = ({ data, loading, error }) => {
                 <span className="text-sm text-muted-foreground truncate">
                   {job?.company || "No company name available"}
                 </span>
-            <span className="font-semibold group-hover:underline text-md truncate">
+            <span className="font-semibold group-hover:underline text-lg">
               {job?.title || "No job titles available"}
             </span>
             <div className="text-sm line-clamp-3 max-w-full">

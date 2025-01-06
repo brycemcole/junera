@@ -1108,7 +1108,7 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="relative">
           <Input
             id="input-26"
-            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
             placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
             onKeyDown={handleKeyDown}
             type="search"
@@ -1229,7 +1229,7 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="relative">
           <Input
             id="input-26"
-            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
             placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
             type="search"
             value={searchValue}
