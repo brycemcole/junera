@@ -218,7 +218,7 @@ function Summarization({ title, message, loading, error }) {
           <h2 className="text-md text-foreground font-semibold">{title}</h2>
         </span>
 
-        <p className="list-inside list-disc text-md leading-relaxed dark:text-neutral-300">
+        <p className="list-inside list-disc text-md leading-loose dark:text-neutral-300">
           {loading && !message ? <TextShimmer className='text-sm' duration={1}>Generating Summary</TextShimmer> : message || error}
         </p>
         <div className="mt-0">
@@ -711,7 +711,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 px-4 sm:px-6  lg:px-0 max-w-4xl">
+      <div className="container mx-auto py-0 p-4 max-w-4xl">
         <div className="flex flex-row items-center mb-4 gap-4">
           <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-xl">
             <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
@@ -857,7 +857,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
                   <InfoIcon size={16} strokeWidth={2} className="text-foreground" />
                   <h2 className="text-md font-semibold text-foreground">{label}</h2>
                 </span>
-                <p className="leading-relaxed text-md text-foreground dark:text-neutral-300">
+                <p className="leading-loose text-md text-foreground dark:text-neutral-300">
                   <div
                     className="space-y-2"
                     dangerouslySetInnerHTML={{

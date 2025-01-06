@@ -9,6 +9,114 @@ import Button24 from "@/components/button24"
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
 
+  const stateMap = {
+    'remote': 'N/A',
+    'alabama': 'AL',
+    'alaska': 'AK',
+    'arizona': 'AZ',
+    'arkansas': 'AR',
+    'california': 'CA',
+    'colorado': 'CO',
+    'connecticut': 'CT',
+    'delaware': 'DE',
+    'florida': 'FL',
+    'georgia': 'GA',
+    'hawaii': 'HI',
+    'idaho': 'ID',
+    'illinois': 'IL',
+    'indiana': 'IN',
+    'iowa': 'IA',
+    'kansas': 'KS',
+    'kentucky': 'KY',
+    'louisiana': 'LA',
+    'maine': 'ME',
+    'maryland': 'MD',
+    'massachusetts': 'MA',
+    'michigan': 'MI',
+    'minnesota': 'MN',
+    'mississippi': 'MS',
+    'missouri': 'MO',
+    'montana': 'MT',
+    'nebraska': 'NE',
+    'nevada': 'NV',
+    'new hampshire': 'NH',
+    'new jersey': 'NJ',
+    'new mexico': 'NM',
+    'new york': 'NY',
+    'north carolina': 'NC',
+    'north dakota': 'ND',
+    'ohio': 'OH',
+    'oklahoma': 'OK',
+    'oregon': 'OR',
+    'pennsylvania': 'PA',
+    'rhode island': 'RI',
+    'south carolina': 'SC',
+    'south dakota': 'SD',
+    'tennessee': 'TN',
+    'texas': 'TX',
+    'utah': 'UT',
+    'vermont': 'VT',
+    'virginia': 'VA',
+    'washington': 'WA',
+    'west virginia': 'WV',
+    'wisconsin': 'WI',
+    'wyoming': 'WY',
+  };
+
+  const parseUSLocations = (location) => {
+    if (!location) return '';
+
+    // Handle remote locations first
+    if (location.toLowerCase().includes('remote')) {
+      return 'Remote';
+    }
+
+    // Reverse map for getting full state names
+    const stateToFullName = Object.entries(stateMap).reduce((acc, [full, abbr]) => {
+      acc[abbr] = full.replace(/(^|\s)\w/g, letter => letter.toUpperCase());
+      return acc;
+    }, {});
+
+    // Split locations by semicolon
+    const locations = location.split(';');
+    const foundStates = new Set();
+
+    locations.forEach(loc => {
+      // Try to extract state code from "ST - City" format
+      const stateMatch = loc.trim().match(/^([A-Z]{2})\s*-/);
+      if (stateMatch && stateToFullName[stateMatch[1]]) {
+        foundStates.add(stateToFullName[stateMatch[1]]);
+      } else {
+        // Handle city names and state names
+        const parts = loc.toLowerCase().split(/[,\/|&-]+/);
+        parts.forEach(part => {
+          const trimmedPart = part.trim();
+          if (stateMap[trimmedPart]) {
+            foundStates.add(stateToFullName[stateMap[trimmedPart]]);
+          } else {
+            // Check if city name contains state name
+            Object.keys(stateMap).forEach(stateName => {
+              if (trimmedPart.includes(stateName)) {
+                foundStates.add(stateToFullName[stateMap[stateName]]);
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // Convert Set to Array and format output
+    const statesArray = Array.from(foundStates);
+    if (statesArray.length === 0) {
+      return location; // Return original if no states found
+    } else if (statesArray.length === 1) {
+      return statesArray[0];
+    } else {
+      return `Multiple locations: ${statesArray.join(', ')}`;
+    }
+  };
+
+
   const decodeHTMLEntities = (str) => {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = str;
@@ -87,13 +195,13 @@ export const JobList = ({ data, loading, error }) => {
           </div>
           {/* Header Section */}
           <div className="flex flex-col min-w-0">
-                <span className="text-sm text-muted-foreground truncate">
+                <span className="text-md text-muted-foreground truncate">
                   {job?.company || "No company name available"}
                 </span>
             <span className="font-semibold group-hover:underline text-lg">
               {job?.title || "No job titles available"}
             </span>
-            <div className="text-sm line-clamp-3 max-w-full">
+            <div className="text-sm leading-loose line-clamp-3 max-w-full">
               <p
                 className="m-0 text-foreground"
                 dangerouslySetInnerHTML={{
@@ -103,15 +211,19 @@ export const JobList = ({ data, loading, error }) => {
             </div>
 
             <div className="flex md:gap-y-2 gap-x-4 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
+              {job?.location?.trim() ? (
               <div className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
-                  {job.location || ""}
+                  {parseUSLocations(job.location)}
                 </span>
               </div>
+              ) : null}
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate">{job.experienceLevel || ""}</span>
+                <span className="truncate">
+                  {job?.experienceLevel ? job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1).toLowerCase() : ""}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-3 w-3 text-muted-foreground" />

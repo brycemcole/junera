@@ -1345,7 +1345,7 @@ Please provide relevant career advice and job search assistance based on their p
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 md:py-10 px-4 max-w-4xl sm:px-8 lg:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
+      <div className="container mx-auto py-0 p-4 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
