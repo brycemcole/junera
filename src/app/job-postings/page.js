@@ -1355,15 +1355,6 @@ Please provide relevant career advice and job search assistance based on their p
                   ))}
                 </div>
               )}
-
-              {/* Optional: Display default suggestions when no filters are applied */}
-              {!activeFilters.length && (
-                <div className="flex flex-col space-y-2 text-sm text-gray-500">
-                  <div>Explore roles like Software Engineer</div>
-                  <div>Find opportunities at various experience levels</div>
-                  <div>Discover jobs in locations such as New York</div>
-                </div>
-              )}
             </div>
           </Suspense>
 

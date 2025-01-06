@@ -54,12 +54,20 @@ function Dot({ className }) {
 }
 
 function AvatarButton({ image, fullname, unreadCount }) {
+  const getInitials = (name) => {
+    if (!name) return '';
+    const names = name.split(' ');
+    return names.length >= 2 
+      ? `${names[0][0]}${names[names.length-1][0]}`
+      : name[0];
+  };
+
   return (
     <div className="relative">
-      <Avatar className="rounded-lg">
+      <Avatar className="rounded-lg h-9 w-9">
         <AvatarImage src={image} alt={fullname} />
-        <AvatarFallback>
-          {fullname?.split(' ').map(name => name[0]).join('')}
+        <AvatarFallback className="rounded-lg">
+          {getInitials(fullname)}
         </AvatarFallback>
       </Avatar>
     </div>
@@ -265,10 +273,6 @@ function DropdownMenuDemo2() {
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <User />
                   <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/notifications')}>
                   <Bell />

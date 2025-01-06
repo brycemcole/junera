@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
+import SharePopover from "./share-popover";
 
 
 import {
@@ -41,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Text } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -209,14 +210,17 @@ function InsightsButton({ onClick }) {
 
 function Summarization({ title, message, loading, error }) {
   return (
-    <div className="rounded-lg  mb-4">
-      <div className="flex gap-3">
-        <div className="grow space-y-1">
-          <p className="text-sm text-green-700 font-semibold dark:text-green-400">{title}</p>
-          <p className="list-inside list-disc text-sm leading-relaxed text-green-600 dark:text-green-300">
-            {loading && !message ? "Loading AI response..." : message || error}
-          </p>
-        </div>
+
+    <div className="flex gap-3 mb-4">
+      <div className="grow space-y-1">
+        <span className="flex flex-row gap-4 items-center">
+          <Text size={16} strokeWidth={2} className="text-foreground" />
+          <h2 className="text-md text-foreground font-semibold">{title}</h2>
+        </span>
+
+        <p className="list-inside list-disc text-md leading-relaxed dark:text-neutral-300">
+          {loading && !message ? "Loading AI response..." : message || error}
+        </p>
       </div>
     </div>
   );
@@ -243,7 +247,7 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
+        <Button variant="outline" className="ml-auto" size="icon">
           <Ellipsis
             className="text-foreground"
             size={16}
@@ -252,7 +256,7 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
           />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent className="mx-4">
         <DropdownMenuItem onClick={handleCopy}>
           <CopyPlus size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
           Copy Link
@@ -265,12 +269,6 @@ const JobDropdown = ({ handleSummarizationQuery }) => {
     </DropdownMenu>
   );
 };
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input26 } from '@/components/input26';
-
-
-
 
 export default function JobPostingPage({ params }) {
   const { id } = use(params);
@@ -697,12 +695,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
         }}
       />
       <div className="container mx-auto py-0 px-4 sm:px-6  lg:px-0 max-w-4xl">
-        <div className="flex flex-row items-start gap-4">
+        <div className="flex flex-row items-center mb-4 gap-4">
           <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-lg">
             <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
             <AvatarFallback>{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <h1 data-scroll-title className="text-xl mb-2 font-semibold decoration-2 leading-normal min-w-0">
+          <h1 data-scroll-title className="text-2xl font-semibold decoration-2 leading-normal min-w-0">
             {jobPosting.title} at {jobPosting.company}
           </h1>
         </div>
@@ -737,7 +735,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </ul>
           </div>
         )}
-        <div className="mb-2 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
+        <div className="mb-4 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
               <BriefcaseBusiness className="h-3 w-3 text-foreground" />
@@ -805,8 +803,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
           </div>
         </div>
 
-        <div className="flex flex-wrap flex-col gap-2 mb-4">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap flex-col gap-2 mb-6">
+          <div className="flex gap-3">
             <Link
               href={`${jobPosting.source_url}`}
               target="_blank"
@@ -817,6 +815,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               </Button>
             </Link>
             <Button24 jobId={id} />
+            <SharePopover title={`${jobPosting.title} at ${jobPosting.company}`} />
             <JobDropdown handleSummarizationQuery={handleSummarizationQuery} />
 
           </div>
@@ -839,8 +838,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
             ].map(({ key, label }) => (
               <div key={key}>
-                <h2 className="text-sm font-semibold text-foreground mb-2">{label}</h2>
-                <p className="leading-relaxed text-sm font-medium text-foreground">
+                <h2 className="text-md font-semibold text-foreground mb-2">{label}</h2>
+                <p className="leading-relaxed text-md text-foreground dark:text-neutral-300">
                   <div
                     className="space-y-2"
                     dangerouslySetInnerHTML={{
