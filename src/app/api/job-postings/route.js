@@ -145,23 +145,23 @@ function extractSalary(text) {
 // Add shared utility functions at the top of the file
 const processJobPostings = (jobs) => {
   return jobs.map((job) => {
-    const keywords = scanKeywords(job.description);
-    const remoteKeyword = job.location?.toLowerCase().includes('remote') ? 'Remote' : "";
-    const salary = extractSalary(job.description);
+    const keywords = scanKeywords(job.description || "");
+    const remoteKeyword = (job.location || "").toLowerCase().includes('remote') ? 'Remote' : "";
+    const salary = extractSalary(job.description || "");
 
     return {
-      id: job.job_id,
+      id: job.job_id || "",
       title: job.title || "",
       company: job.company || "",
-      companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`,
+      companyLogo: job.company ? `https://logo.clearbit.com/${encodeURIComponent(job.company.replace('.com', ''))}.com` : "",
       experienceLevel: job.experiencelevel || "",
       summary: job.summary || "",
       description: job.description || "",
       location: job.location || "",
-      salary: salary,
+      salary: salary || "",
       postedDate: job.created_at ? job.created_at.toISOString() : "",
-      remoteKeyword: remoteKeyword,
-      keywords: keywords,
+      remoteKeyword: remoteKeyword || "",
+      keywords: keywords || [],
     };
   });
 };

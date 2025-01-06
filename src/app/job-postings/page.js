@@ -67,6 +67,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+import { set } from 'date-fns';
 
 
 const states = {
@@ -524,10 +525,11 @@ export default function JobPostingsPage() {
       experienceLevel,
       location,
       company,
-      currentPage
+      currentPage,
+      applyJobPrefs
     };
     sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
-  }, [title, experienceLevel, location, company, currentPage]);
+  }, [title, experienceLevel, location, company, currentPage, applyJobPrefs]);
 
   const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
@@ -892,7 +894,8 @@ export default function JobPostingsPage() {
       title: newTitle,
       explevel: newExp,
       location: newLoc,
-      page: '1'
+      page: '1',
+      applyJobPrefs: applyJobPrefs.toString()
     };
     const qs = new URLSearchParams(newParams).toString();
     const newUrl = `/job-postings?${qs}`;
@@ -1278,6 +1281,26 @@ Please provide relevant career advice and job search assistance based on their p
     ? `Search Results${activeFilters.length > 1 ? '' : ''}`
     : 'Job Postings';
 
+  const onRemoveFilter = (type) => {
+    console.log(type);
+    switch (type) {
+      case 'Title':
+        setTitle("");
+        break;
+      case 'Experience':
+        setExperienceLevel("");
+        break;
+      case 'Location':
+        setLocation("");
+        break;
+      case 'Company':
+        setCompany("");
+        break;
+      default:
+        break;
+    }
+  }
+
 
   return (
     <>
@@ -1346,7 +1369,7 @@ Please provide relevant career advice and job search assistance based on their p
                       <span>{filter.value}</span>
                       <button
                         className="ml-1 inline-flex items-center justify-center rounded-full p-0.5 opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        onClick={() => onRemoveFilter && onRemoveFilter(filter.type)}
+                        onClick={() => onRemoveFilter(filter.label)}
                         aria-label={`Remove ${filter.label} filter`}
                       >
                         <X size={14} strokeWidth={2} aria-hidden="true" />

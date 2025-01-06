@@ -21,6 +21,7 @@ export default function SearchParamsHandler({
     setLocation,
     setCompany,
     setCurrentPage,
+    setApplyJobPrefs,
 }) {
     const searchParams = useSearchParams();
 
@@ -32,6 +33,7 @@ export default function SearchParamsHandler({
         setLocation(params.location || "");
         setCompany(params.company || "");
         setCurrentPage(parseInt(params.page, 10) || 1);
+        setApplyJobPrefs(params.applyJobPrefs === 'true');
     }, [
         searchParams,
         setTitle,
@@ -39,6 +41,7 @@ export default function SearchParamsHandler({
         setLocation,
         setCompany,
         setCurrentPage,
+        setApplyJobPrefs,
     ]);
 
     return null; // This component doesn't render anything visible
@@ -50,4 +53,5 @@ SearchParamsHandler.propTypes = {
     setLocation: PropTypes.func.isRequired,
     setCompany: PropTypes.func.isRequired,
     setCurrentPage: PropTypes.func.isRequired,
+    setApplyJobPrefs: PropTypes.func.isRequired,
 };
