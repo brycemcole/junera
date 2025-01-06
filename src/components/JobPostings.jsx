@@ -93,11 +93,11 @@ export const JobList = ({ data, loading, error }) => {
             <span className="font-semibold group-hover:underline text-md truncate">
               {job?.title || "No job titles available"}
             </span>
-            <div className="text-sm line-clamp-2 max-w-full">
+            <div className="text-sm line-clamp-3 max-w-full">
               <p
                 className="m-0 text-foreground"
                 dangerouslySetInnerHTML={{
-                  __html: stripHTML(decodeHTMLEntities(job?.description)),
+                  __html: stripHTML(decodeHTMLEntities(job?.summary || "")),
                 }}
               />
             </div>

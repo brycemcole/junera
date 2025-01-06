@@ -155,6 +155,7 @@ const processJobPostings = (jobs) => {
       company: job.company || "",
       companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`,
       experienceLevel: job.experiencelevel || "",
+      summary: job.summary || "",
       description: job.description || "",
       location: job.location || "",
       salary: salary,
@@ -382,7 +383,8 @@ export async function GET(req) {
         location,
         description,
         experiencelevel,
-        created_at
+        created_at,
+        summary
     `;
 
     //
