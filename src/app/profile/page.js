@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
+import Link from 'next/link';
 
 function formatStartDate(date, locale = enUS) {
     try {
@@ -264,6 +265,136 @@ export default function ProfilePage() {
         }
     ];
 
+    const projectFields = [
+        {
+            type: 'text',
+            name: 'project_name',
+            label: 'Project Name',
+            placeholder: 'Enter project name',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'start_date',
+            label: 'Start Date',
+            type: 'date',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'end_date',
+            label: 'End Date',
+            type: 'date'
+        },
+        {
+            type: 'boolean',
+            name: 'is_current',
+            label: 'This is a current project'
+        },
+        {
+            type: 'textarea',
+            name: 'description',
+            label: 'Description',
+            placeholder: 'Describe your project'
+        },
+        {
+            type: 'text',
+            name: 'technologies_used',
+            label: 'Technologies Used',
+            placeholder: 'List technologies used'
+        },
+        {
+            type: 'text',
+            name: 'project_url',
+            label: 'Project URL',
+            placeholder: 'Project website or repository'
+        }
+    ];
+
+    const certificationFields = [
+        {
+            type: 'text',
+            name: 'certification_name',
+            label: 'Certification Name',
+            placeholder: 'Enter certification name',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'issuing_organization',
+            label: 'Issuing Organization',
+            placeholder: 'Enter organization name',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'issue_date',
+            label: 'Issue Date',
+            type: 'date',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'expiration_date',
+            label: 'Expiration Date',
+            type: 'date'
+        },
+        {
+            type: 'text',
+            name: 'credential_id',
+            label: 'Credential ID',
+            placeholder: 'Enter credential ID'
+        },
+        {
+            type: 'text',
+            name: 'credential_url',
+            label: 'Credential URL',
+            placeholder: 'Enter credential URL'
+        }
+    ];
+
+    const awardFields = [
+        {
+            type: 'text',
+            name: 'award_name',
+            label: 'Award Name',
+            placeholder: 'Enter award name',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'award_issuer',
+            label: 'Award Issuer',
+            placeholder: 'Enter issuer name',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'award_date',
+            label: 'Award Date',
+            type: 'date',
+            required: true
+        },
+        {
+            type: 'text',
+            name: 'award_url',
+            label: 'Award URL',
+            placeholder: 'Enter award URL'
+        },
+        {
+            type: 'text',
+            name: 'award_id',
+            label: 'Award ID',
+            placeholder: 'Enter award ID'
+        },
+        {
+            type: 'textarea',
+            name: 'award_description',
+            label: 'Description',
+            placeholder: 'Describe the award'
+        }
+    ];
+
     const handleProfileUpdate = async (formData) => {
         try {
             const response = await fetch('/api/user/profile', {
@@ -444,6 +575,81 @@ export default function ProfilePage() {
         }
     };
 
+    const handleProjectAdd = async (formData) => {
+        try {
+            const response = await fetch('/api/user/projects', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) throw new Error('Failed to add project');
+
+            const newProj = await response.json();
+            setProfile(prev => ({
+                ...prev,
+                projects: [...(prev.projects || []), { ...formData, id: newProj.id }]
+            }));
+            toast({ title: 'Success', description: 'Project added successfully' });
+        } catch (err) {
+            console.error('Error adding project:', err);
+            toast({ title: 'Error', description: 'Failed to add project', variant: 'destructive' });
+        }
+    };
+
+    const handleCertificationAdd = async (formData) => {
+        try {
+            const response = await fetch('/api/user/certifications', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) throw new Error('Failed to add certification');
+
+            const newCert = await response.json();
+            setProfile(prev => ({
+                ...prev,
+                certifications: [...(prev.certifications || []), { ...formData, id: newCert.id }]
+            }));
+            toast({ title: 'Success', description: 'Certification added successfully' });
+        } catch (err) {
+            console.error('Error adding certification:', err);
+            toast({ title: 'Error', description: 'Failed to add certification', variant: 'destructive' });
+        }
+    };
+
+    const handleAwardAdd = async (formData) => {
+        try {
+            const response = await fetch('/api/user/awards', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) throw new Error('Failed to add award');
+
+            const newAward = await response.json();
+            setProfile(prev => ({
+                ...prev,
+                awards: [...(prev.awards || []), { ...formData, id: newAward.id }]
+            }));
+            toast({ title: 'Success', description: 'Award added successfully' });
+        } catch (err) {
+            console.error('Error adding award:', err);
+            toast({ title: 'Error', description: 'Failed to add award', variant: 'destructive' });
+        }
+    };
+
     const sortExperiences = (experiences) => {
         if (!experiences || !Array.isArray(experiences)) return [];
 
@@ -492,6 +698,10 @@ export default function ProfilePage() {
             // Finally by start date
             return new Date(b.start_date) - new Date(a.start_date);
         });
+    };
+
+    const sortByDate = (items) => {
+        return items?.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
     };
 
     useEffect(() => {
@@ -648,6 +858,130 @@ export default function ProfilePage() {
                             <p className="text-sm text-muted-foreground">
                                 {new Date(edu.start_date).toLocaleDateString()} - {edu.is_current ? 'Present' : new Date(edu.end_date).toLocaleDateString()}
                             </p>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+
+            {/* Projects */}
+            <Card className="mb-6">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Projects</CardTitle>
+                    <EditProfileDialog
+                        fields={projectFields}
+                        onSubmit={handleProjectAdd}
+                        title={<PlusCircle size={14} />}
+                        description="Add new project"
+                    />
+                </CardHeader>
+                <CardContent>
+                    {sortByDate(profile.projects)?.map((proj, index) => (
+                        <div key={proj.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
+                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                <EditProfileDialog
+                                    fields={projectFields}
+                                    initialData={proj}
+                                    onSubmit={(formData) => handleProjectEdit(proj.id, formData)}
+                                    title={<Edit2 size={14} />}
+                                    description="Update project information"
+                                />
+                                <CancelDialog experience={proj} onConfirm={() => handleProjectDelete(proj.id)} />
+                            </div>
+                            <h3 className="font-semibold">{proj.project_name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {formatStartDate(proj.start_date)} - {proj.is_current ? 'Present' : formatStartDate(proj.end_date)}
+                            </p>
+                            <p className="mt-2">{proj.description}</p>
+                            {proj.technologies_used && (
+                                <p className="mt-1 text-sm text-muted-foreground">Technologies: {proj.technologies_used}</p>
+                            )}
+                            {proj.project_url && (
+                                <Link href={proj.project_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
+                                    {proj.project_url}
+                                </Link>
+                            )}
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+
+            {/* Certifications */}
+            <Card className="mb-6">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Certifications</CardTitle>
+                    <EditProfileDialog
+                        fields={certificationFields}
+                        onSubmit={handleCertificationAdd}
+                        title={<PlusCircle size={14} />}
+                        description="Add new certification"
+                    />
+                </CardHeader>
+                <CardContent>
+                    {sortByDate(profile.certifications)?.map((cert, index) => (
+                        <div key={cert.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
+                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                <EditProfileDialog
+                                    fields={certificationFields}
+                                    initialData={cert}
+                                    onSubmit={(formData) => handleCertificationEdit(cert.id, formData)}
+                                    title={<Edit2 size={14} />}
+                                    description="Update certification information"
+                                />
+                                <CancelDialog experience={cert} onConfirm={() => handleCertificationDelete(cert.id)} />
+                            </div>
+                            <h3 className="font-semibold">{cert.certification_name}</h3>
+                            <p className="text-sm">{cert.issuing_organization}</p>
+                            <p className="text-sm text-muted-foreground">
+                                Issued: {formatStartDate(cert.issue_date)}
+                                {cert.expiration_date && ` · Expires: ${formatStartDate(cert.expiration_date)}`}
+                            </p>
+                            {cert.credential_url && (
+                                <Link href={cert.credential_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
+                                    View Credential
+                                </Link>
+                            )}
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+
+            {/* Awards */}
+            <Card className="mb-6">
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Awards</CardTitle>
+                    <EditProfileDialog
+                        fields={awardFields}
+                        onSubmit={handleAwardAdd}
+                        title={<PlusCircle size={14} />}
+                        description="Add new award"
+                    />
+                </CardHeader>
+                <CardContent>
+                    {sortByDate(profile.awards)?.map((award, index) => (
+                        <div key={award.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
+                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                <EditProfileDialog
+                                    fields={awardFields}
+                                    initialData={award}
+                                    onSubmit={(formData) => handleAwardEdit(award.id, formData)}
+                                    title={<Edit2 size={14} />}
+                                    description="Update award information"
+                                />
+                                <CancelDialog experience={award} onConfirm={() => handleAwardDelete(award.id)} />
+                            </div>
+                            <h3 className="font-semibold">{award.award_name}</h3>
+                            <p className="text-sm">{award.award_issuer}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {formatStartDate(award.award_date)}
+                            </p>
+                            {award.award_description && (
+                                <p className="mt-2">{award.award_description}</p>
+                            )}
+                            {award.award_url && (
+                                <Link href={award.award_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
+                                    View Award
+                                </Link>
+                            )}
                         </div>
                     ))}
                 </CardContent>

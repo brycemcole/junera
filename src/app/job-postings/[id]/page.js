@@ -814,7 +814,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </>
           )}
           <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
-            <Link href={`/job-postings?company=${jobPosting.company}`}>
+            <Link href={`/companies/${jobPosting.company}`}>
               {loading ? "Loading..." : companyJobCount === 1 ? "View 1 job" : `View ${companyJobCount} jobs`} at {jobPosting.company}
             </Link>
           </div>

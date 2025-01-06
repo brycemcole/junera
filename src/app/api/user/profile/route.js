@@ -63,13 +63,21 @@ export async function GET(req) {
                     description, technologies_used, project_url
                 FROM user_projects
                 WHERE user_id = $1
+            ),
+            Awards AS (
+                SELECT 
+                    id, award_name, award_issuer, award_date, award_url, 
+                    award_id, award_description, user_id
+                FROM user_awards
+                WHERE user_id = $1
             )
             SELECT 
                 (SELECT row_to_json(UserInfo) FROM UserInfo) as userdata,
                 (SELECT json_agg(Education) FROM Education) as educationdata,
                 (SELECT json_agg(Certifications) FROM Certifications) as certificationdata,
                 (SELECT json_agg(WorkExperience) FROM WorkExperience) as experiencedata,
-                (SELECT json_agg(Projects) FROM Projects) as projectdata;
+                (SELECT json_agg(Projects) FROM Projects) as projectdata,
+                (SELECT json_agg(Awards) FROM Awards) as awarddata;
         `;
 
         const result = await query(queryText, [userId]);
@@ -78,13 +86,14 @@ export async function GET(req) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const { userdata, educationdata, certificationdata, experiencedata, projectdata } = result.rows[0];
+        const { userdata, educationdata, certificationdata, experiencedata, projectdata, awarddata } = result.rows[0];
         const profile = {
             user: userdata || {},
             education: educationdata || [],
             certifications: certificationdata || [],
             experience: experiencedata || [],
-            projects: projectdata || []
+            projects: projectdata || [],
+            awards: awarddata || []
         };
 
         // Cache the profile

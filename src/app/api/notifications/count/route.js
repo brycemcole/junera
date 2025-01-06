@@ -25,7 +25,6 @@ export async function GET(request) {
         `;
 
         const result = await query(queryText, [userId]);
-        console.log(result);
         return new Response(JSON.stringify(result.rows), { status: 200 });
     } catch (error) {
         console.error('Authentication error:', error);
