@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
+import { redirect } from "next/navigation";
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
@@ -173,7 +174,7 @@ export const JobList = ({ data, loading, error }) => {
         <div
           key={index}
           className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
-          onClick={() => router.push(`/job-postings/${job.id}`)}
+          onClick={() => redirect(`/job-postings/${job.id}`)}
         >
 
 <div className="flex flex-col gap-3 justify-between">

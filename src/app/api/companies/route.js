@@ -15,24 +15,19 @@ function hashStringToInt(str) {
 export async function GET(req) {
     const { signal } = req;
 
+    console.log('Fetching companies...'); // Debug log  
+
     try {
         if (signal.aborted) {
             throw new Error('Request aborted');
         }
 
-        // Attempt to retrieve companies from cache first
-        const cachedCompanies = await getCached('companies');
-        if (cachedCompanies) {
-            console.log('Serving companies from cache.');
-            return new Response(JSON.stringify(cachedCompanies), { status: 200 });
-        }
-
         // Fetch distinct, non-null companies from the jobPostings table
         const result = await query(`
-            SELECT DISTINCT company 
-            FROM jobPostings 
-            WHERE company IS NOT NULL
-            ORDER BY company ASC
+SELECT company
+FROM unique_companies
+ORDER BY company ASC;
+
         `);
 
         // Log the raw result for debugging
@@ -52,7 +47,7 @@ export async function GET(req) {
 
 
         // Cache the companies data for future requests
-        await setCached('companies', companies);
+        //await setCached('companies', companies);
 
         return new Response(JSON.stringify(companies), { status: 200 });
     } catch (error) {

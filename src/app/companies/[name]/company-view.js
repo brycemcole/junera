@@ -131,7 +131,7 @@ export default function CompanyView({ companyName, page }) {
             const response = await fetch(`/api/companies/${encodeURIComponent(companyName)}/reviews`, {
                 headers
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log('Fetched reviews:', data.reviews); // Debug log

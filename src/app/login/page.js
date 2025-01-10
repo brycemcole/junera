@@ -1,12 +1,11 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
-import { useToast } from '@/hooks/use-toast';
+import { loginAction } from '@/app/actions/auth';
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -18,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { CircleAlert } from "lucide-react";
 
 const FormSchema = z.object({
   email: z.string().email({
@@ -29,8 +29,8 @@ const FormSchema = z.object({
 })
 
 function InputForm() {
-  const { toast } = useToast();
   const { login } = useAuth();
+  const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -39,32 +39,46 @@ function InputForm() {
     },
   })
 
-  function onSubmit(data) {
-    // Send data to the server
-    fetch(`/api/login?${new URLSearchParams(data).toString()}`, {
-      method: "GET",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.token) {
-          localStorage.setItem('token', data.token); // Store token in localStorage
-          login(data.token, data.username, data.userId, data.avatar); // Update user context
-          toast({ title: "Logged in successfully", description: "Welcome back!" });
-        } else {
-          toast({ title: "Failed to log in", description: "Please check your email and password" });
-        }
-      })
-      .catch((error) => {
-        console.error("Error creating account:", error);
-        toast("Failed to create account");
-      });
+  async function onSubmit(data) {
+    setStatusMessage({ text: '', isError: false });
+    const formData = new FormData();
+    formData.append('email', data.email);
+    formData.append('password', data.password);
 
-    form.reset();
+    const result = await loginAction(formData);
+
+    if (result.error) {
+      setStatusMessage({ text: result.error, isError: true });
+      return;
+    }
+
+    if (result.token) {
+      localStorage.setItem('token', result.token);
+      login(result.token, result.username, result.userId, result.avatar);
+      setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
+      form.reset();
+    }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="  space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {statusMessage.text && (
+          <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
+              ? 'border-red-500/50 text-red-600'
+              : 'border-green-500/50 text-green-600'
+            }`}>
+            <p className="text-sm">
+              <CircleAlert
+                className="-mt-0.5 me-3 inline-flex opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              {statusMessage.text}
+            </p>
+          </div>
+        )}
         <FormField
           control={form.control}
           name="email"

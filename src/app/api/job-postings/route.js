@@ -167,22 +167,31 @@ const processJobPostings = (jobs) => {
 };
 
 export async function GET(req) {
+  console.log('Fetching job postings...');
   const authHeader = req.headers.get('Authorization');
   let token = '';
   let user = null;
   let userPreferredTitles = [];
   let userPreferredLocations = [];
 
-  if (authHeader) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
-    if (token) {
+    if (token && token !== 'undefined' && token !== 'null') {
       try {
+        if (!SECRET_KEY) {
+          console.warn('SESSION_SECRET is not configured');
+          return;
+        }
         const decoded = jwt.verify(token, SECRET_KEY);
         user = decoded;
         userPreferredTitles = user.jobPrefsTitle || [];
         userPreferredLocations = user.jobPrefsLocation || [];
       } catch (error) {
-        console.error('Error decoding token:', error);
+        // Token verification failed, but we can continue without user preferences
+        console.debug('Token verification failed:', error.message);
+        user = null;
+        userPreferredTitles = [];
+        userPreferredLocations = [];
       }
     }
   }

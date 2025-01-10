@@ -1,12 +1,11 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-
-import { useToast } from '@/hooks/use-toast';
+import { registerAction } from '@/app/actions/auth';
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -18,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { CircleAlert } from "lucide-react";
 
 const FormSchema = z.object({
   fullname: z.string().min(2, {
@@ -35,7 +35,8 @@ const FormSchema = z.object({
 })
 
 function InputForm() {
-  const { toast } = useToast();
+  const { login } = useAuth();
+  const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -46,30 +47,48 @@ function InputForm() {
     },
   })
 
-  function onSubmit(data) {
-    // Send data to the server
-    fetch(`/api/register?${new URLSearchParams(data).toString()}`, {
-      method: "GET",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.userId) {
-          toast("Account created successfully");
-        } else {
-          toast("Failed to create account");
-        }
-      })
-      .catch((error) => {
-        console.error("Error creating account:", error);
-        toast("Failed to create account");
-      });
+  async function onSubmit(data) {
+    setStatusMessage({ text: '', isError: false });
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
 
-    form.reset();
+    const result = await registerAction(formData);
+
+    if (result.error) {
+      setStatusMessage({ text: result.error, isError: true });
+      return;
+    }
+
+    if (result.token) {
+      localStorage.setItem('token', result.token);
+      login(result.token, result.username, result.userId);
+      setStatusMessage({ text: 'Account created successfully. Welcome to Junera!', isError: false });
+      form.reset();
+    }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="  space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {statusMessage.text && (
+          <div className={`rounded-lg border px-4 py-3 ${
+            statusMessage.isError 
+              ? 'border-red-500/50 text-red-600' 
+              : 'border-green-500/50 text-green-600'
+          }`}>
+            <p className="text-sm">
+              <CircleAlert
+                className="-mt-0.5 me-3 inline-flex opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              {statusMessage.text}
+            </p>
+          </div>
+        )}
         <FormField
           control={form.control}
           name="fullname"

@@ -740,123 +740,58 @@ export default function JobPostingsPage() {
   }
 
   useEffect(() => {
-    if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheExpiry = 3 * 60 * 1000;
-      const now = Date.now();
+    let isActive = true;
+    const abortController = new AbortController();
 
-      const fetchControllers = [];
-      const cancelFetches = () => {
-        fetchControllers.forEach(controller => controller.abort());
-      };
-
-      async function fetchCompanies() {
-        try {
-          const result = fetchWithCancel(`/api/companies`);
-          fetchControllers.push(result.controller);
-          const companiesResult = await result.promise;
-          setCompanies(companiesResult || []);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching companies:", error);
-          }
-        }
-      }
-
-      fetchCompanies();
-
-      async function fetchCompanyData() {
-        try {
-          const result = fetchWithCancel(`/api/companies/${company}`);
-          fetchControllers.push(result.controller);
-          const companyDataResult = await result.promise;
-          setCompanyData(companyDataResult);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching company data:", error);
-          }
-        }
-      }
-      if (company) {
-        fetchCompanyData();
-      }
-
-      const isCacheValid = (key) => {
-        const cacheTimestamp = sessionStorage.getItem(`${key}_timestamp`);
-        return cacheTimestamp && now - parseInt(cacheTimestamp, 10) < cacheExpiry;
-      };
-
-      async function fetchData() {
-        try {
-          setPageLoading(true);
-          const result = fetchWithCancel(
+    async function fetchData() {
+      setDataLoading(true);
+      setPageLoading(true);
+      try {
+        const [jobRes, countRes, compRes] = await Promise.all([
+          fetch(
             `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user?.token}`,
-              },
-            }
-          );
-          fetchControllers.push(result.controller);
-          const dataResult = await result.promise;
-          setData(dataResult.jobPostings || []);
-          sessionStorage.setItem(cacheKey, JSON.stringify(dataResult.jobPostings));
-          sessionStorage.setItem(`${cacheKey}_timestamp`, now);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching job postings:", error);
-          }
-        } finally {
-          setPageLoading(false);
-        }
-      }
-
-      async function fetchJobCount() {
-        try {
-          const result = fetchWithCancel(
+            { signal: abortController.signal }
+          ),
+          fetch(
             `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${user?.token}`,
-              },
-            }
-          );
-          fetchControllers.push(result.controller);
-          const countResult = await result.promise;
-          setCount(countResult.totalJobs || 0);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching job count:", error);
-          }
-        }
-      }
+            { signal: abortController.signal }
+          ),
+          fetch(`/api/companies`, { signal: abortController.signal }),
+        ]);
 
-      if (isCacheValid(cacheKey) && cachedData) {
-        try {
-          const parsedData = JSON.parse(cachedData);
-          setData(parsedData);
+        if (!isActive) return;
+        if (!jobRes.ok || !countRes.ok || !compRes.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const [jobData, countData, companiesData] = await Promise.all([
+          jobRes.json(),
+          countRes.json(),
+          compRes.json(),
+        ]);
+
+        setData(jobData.jobPostings || []);
+        setCount(countData.totalJobs || 0);
+        setCompanies(companiesData || []);
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Error:", err);
+      } finally {
+        if (isActive) {
+          setDataLoading(false);
           setPageLoading(false);
-          fetchJobCount();
-        } catch (error) {
-          console.error("Error parsing cached job postings:", error);
-          fetchData();
-          fetchJobCount();
         }
-      } else {
-        fetchData();
-        fetchJobCount();
       }
-
-      return () => {
-        cancelFetches();
-      };
     }
+
+    fetchData();
+
+    return () => {
+      isActive = false;
+      abortController.abort();
+    };
   }, [
     user,
     authLoading,
-    dataLoading,
     currentPage,
     title,
     experienceLevel,
@@ -864,7 +799,6 @@ export default function JobPostingsPage() {
     company,
     strictSearch,
     applyJobPrefs,
-    fetchWithCancel
   ]);
 
   useEffect(() => {

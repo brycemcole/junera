@@ -718,7 +718,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <h1 data-scroll-title className="text-2xl font-semibold decoration-2 leading-normal min-w-0">
-            {jobPosting.title} at {jobPosting.company}
+            {jobPosting.title} at <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
           </h1>
         </div>
         {keywords && keywords.length > 0 && (
