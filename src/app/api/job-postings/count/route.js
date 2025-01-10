@@ -1,5 +1,6 @@
 import { query } from "@/lib/pgdb";
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
+import { getCached, setCached } from '@/lib/cache';
 import jwt from 'jsonwebtoken';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
@@ -70,6 +71,26 @@ export async function GET(req) {
       userPreferredLocations = [];
     }
 
+    // Create deterministic cache key from search params
+    const cacheKey = JSON.stringify({
+      title: searchParams.get("title")?.trim() || "",
+      location: (searchParams.get("location")?.trim() || "").toLowerCase(),
+      company: searchParams.get("company")?.trim() || "",
+      experienceLevel: experienceLevel,
+      applyJobPrefs: applyPrefsParam,
+      userPrefs: applyJobPrefs ? {
+        titles: userPreferredTitles,
+        locations: userPreferredLocations
+      } : null
+    });
+
+    // Check cache first
+    const cachedCount = await getCached(`jobCount:${cacheKey}`, user?.id);
+    if (cachedCount) {
+      console.log('Cache hit for count:', cacheKey);
+      return Response.json(JSON.parse(cachedCount), { status: 200 });
+    }
+
     // Get the entire group of related titles if a title search is provided
     const titleGroup = title ? findJobTitleGroup(title) : [];
 
@@ -86,18 +107,15 @@ export async function GET(req) {
 
     // Title search using title group
     if (title) {
-      const titleConditions = titleGroup.map((t, i) => {
-        const idx = paramIndex + i;
-        return `title_vector @@ to_tsquery('english', $${idx})`;
-      });
-      queryText += ` AND (${titleConditions.join(' OR ')})`;
-      params.push(...titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')));
-      paramIndex += titleGroup.length;
+      const orQuery = titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')).join(' | ');
+      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
+      params.push(orQuery);
+      paramIndex++;
     }
 
     // Experience level filter
     if (experienceLevel) {
-      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
+      queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
       params.push(experienceLevel);
       paramIndex++;
     }
@@ -115,14 +133,26 @@ export async function GET(req) {
       params.push(company);
       paramIndex++;
     }
-
+    console.log('Total jobs query:', queryText, params);
     // Execute the query
     const result = await query(queryText, params);
     const totalJobs = result.rows[0]?.totaljobs || 0;
 
-    return Response.json({ totalJobs }, { status: 200 });
+    const responseData = { totalJobs };
+
+    // Cache the count for 5 minutes
+    await setCached(
+      `jobCount:${cacheKey}`,
+      user?.id,
+      JSON.stringify(responseData),
+      300
+    );
+
+    return Response.json(responseData, { status: 200 });
   } catch (error) {
     console.error("Error fetching total jobs:", error);
     return Response.json({ error: "Error fetching total jobs" }, { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic';

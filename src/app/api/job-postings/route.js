@@ -360,19 +360,27 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
-    // Check the cache first
-    const cachedData = await getCached(cacheKey);
+    // Create a deterministic cache key from all search parameters
+    const cacheKey = JSON.stringify({
+      page,
+      limit,
+      title,
+      location,
+      company,
+      experienceLevel,
+      strict,
+      applyJobPrefs,
+      userPrefs: applyJobPrefs ? {
+        titles: userPreferredTitles,
+        locations: userPreferredLocations
+      } : null
+    });
+
+    // Check cache with user-specific key if logged in
+    const cachedData = await getCached(cacheKey, user?.id);
     if (cachedData) {
-      const parsedData =
-        typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-      return Response.json(
-        {
-          jobPostings: parsedData.jobPostings,
-          timings: { ...parsedData.timings, fromCache: true },
-          ok: true,
-        },
-        { status: 200 }
-      );
+      console.log('Cache hit for key:', cacheKey);
+      return Response.json(JSON.parse(cachedData), { status: 200 });
     }
 
     // For building query
@@ -390,7 +398,6 @@ export async function GET(req) {
         title,
         company,
         location,
-        description,
         experiencelevel,
         created_at,
         summary
@@ -665,14 +672,21 @@ export async function GET(req) {
     // Process rows if needed
     const jobPostings = processJobPostings(result.rows);
 
-    // Cache only if result set is not too large
-    const responseData = { jobPostings, timings };
-    if (jobPostings.length <= 50) {
-      try {
-        await setCached(cacheKey, JSON.stringify(responseData), 300);
-      } catch (cacheError) {
-        console.warn('Failed to cache results:', cacheError);
-      }
+    // Cache the response with the user-specific key
+    const responseData = {
+      jobPostings,
+      timings: { ...timings, cached: false },
+      ok: true
+    };
+
+    // Only cache if we have results and it's not an empty query
+    if (jobPostings.length > 0 && hasSearchCriteria) {
+      await setCached(
+        cacheKey,
+        user?.id,
+        JSON.stringify(responseData),
+        300 // 5 minute TTL
+      );
     }
 
     const overallEnd = performance.now();
@@ -692,11 +706,6 @@ export async function GET(req) {
     );
   }
 }
-
-
-
-
-
 
 export async function PUT(req) {
   const { signal } = req;
@@ -751,4 +760,5 @@ export async function PUT(req) {
   }
 }
 
+// Force dynamic to ensure we check cache on each request
 export const dynamic = 'force-dynamic';
