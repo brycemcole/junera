@@ -45,10 +45,7 @@ function InputForm() {
     setStatusMessage({ text: '', isError: false });
 
     try {
-      const result = await loginAction({
-        emailOrUsername: data.emailOrUsername,
-        password: data.password
-      });
+      const result = await loginAction(data);
 
       if (result.error) {
         setStatusMessage({ text: result.error, isError: true });
@@ -56,10 +53,8 @@ function InputForm() {
       }
 
       if (result.token) {
-        // Don't manipulate localStorage directly here
-        await login(result.token, result.username); // Pass necessary data to context
+        await login(result.token, result.username);
         setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
-        form.reset();
         router.push('/dashboard');
       }
     } catch (error) {
