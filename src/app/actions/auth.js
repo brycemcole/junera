@@ -18,56 +18,68 @@ const validateInput = (data) => {
   return true;
 };
 
+async function loginUser(emailOrUsername, password) {
+  try {
+    const result = await query(`
+      SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location
+      FROM users
+      WHERE email = $1 OR username = $1;
+    `, [emailOrUsername]);
+
+    if (result.rows.length === 0) {
+      return { error: "User not found" };
+    }
+
+    const user = result.rows[0];
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return { error: "Invalid password" };
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      fullName: user.full_name,
+      avatar: user.avatar || '/default.png',
+      jobPrefsTitle: user.job_prefs_title,
+      jobPrefsLocation: user.job_prefs_location
+    };
+  } catch (error) {
+    console.error('Database error during login:', error);
+    throw new Error('Internal server error');
+  }
+}
+
 export async function loginAction(data) {
   try {
     if (!data.emailOrUsername || !data.password) {
       return { error: 'Email/Username and password are required' };
     }
 
-    const apiUrl = `/api/login`;
+    const user = await loginUser(data.emailOrUsername, data.password);
 
-    console.log('Login attempt:', {
-      url: apiUrl,
-      emailOrUsername: data.emailOrUsername,
-      timestamp: new Date().toISOString()
-    });
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        emailOrUsername: data.emailOrUsername,
-        password: data.password,
-      }),
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Login response error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
-      return { error: errorData.error || 'Login failed' };
+    if (user.error) {
+      return { error: user.error };
     }
 
-    const result = await response.json();
-
-    if (!result.token) {
-      console.error('No token in response:', result);
-      return { error: 'No token received from server' };
-    }
+    const token = jwt.sign({
+      id: user.userId,
+      email: user.email,
+      fullName: user.fullName,
+      username: user.username,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+    }, SECRET_KEY);
 
     return {
-      token: result.token,
-      username: result.username
+      token,
+      username: user.username
     };
 
   } catch (error) {
     console.error('Login action error:', {
+      name: error.name,
       message: error.message,
       stack: error.stack
     });

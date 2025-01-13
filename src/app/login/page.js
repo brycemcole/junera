@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Eye, Lock, User2 } from "lucide-react";
 
 const FormSchema = z.object({
   emailOrUsername: z.string().min(1, {
@@ -89,7 +89,10 @@ function InputForm() {
             <FormItem>
               <FormLabel>Email / Username</FormLabel>
               <FormControl>
-                <Input placeholder="email or username" {...field} />
+                <div className="relative">
+                  <User2 size={12} className="absolute top-1/2 left-3 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input className="pl-9" placeholder="email or username" {...field} />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -102,7 +105,17 @@ function InputForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="password" {...field} />
+                <div className="relative">
+                  <Lock size={12} className="absolute top-1/2 left-3 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input className="pl-9 pr-9" type="password" placeholder="password" {...field} />
+                  <Button variant="ghost" size="smicon" className="absolute top-1/2 right-3 transform -translate-y-1/2" type="button" onClick={() => {
+                    const input = document.querySelector('input[name="password"]');
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                  }
+                  }>
+                    <Eye size={14} className="text-muted-foreground" />
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

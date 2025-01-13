@@ -26,19 +26,43 @@ async function loginUser(emailOrUsername, password) {
   return { userId: user.id, email: user.email, username: user.username, fullName: user.full_name, avatar: user.avatar || '/default.png', jobPrefsTitle: user.job_prefs_title, jobPrefsLocation: user.job_prefs_location };
 }
 
+export const runtime = 'nodejs'; // Force Node.js runtime
+
 export async function POST(req) {
   try {
+    // Add CORS headers
+    const headers = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    };
+
+    // Handle OPTIONS request for CORS
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers });
+    }
+
     if (!SECRET_KEY) {
       console.error("Missing SESSION_SECRET environment variable");
       return new Response(JSON.stringify({ error: "Server configuration error" }), { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
     }
 
-    const body = await req.json();
+    // Ensure request can be parsed as JSON
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("Failed to parse request body:", e);
+      return new Response(JSON.stringify({ error: "Invalid request format" }), {
+        status: 400,
+        headers
+      });
+    }
     
     // Log the received request body (excluding password)
     console.log('Login request received:', {
@@ -51,9 +75,7 @@ export async function POST(req) {
     if (!emailOrUsername || !password) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { 
         status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
     }
 
@@ -62,9 +84,7 @@ export async function POST(req) {
       console.error('Login error:', result.error);
       return new Response(JSON.stringify({ error: result.error }), { 
         status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
     }
 
@@ -82,18 +102,13 @@ export async function POST(req) {
 
       return new Response(JSON.stringify({ token, username: result.username }), {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
+        headers
       });
     } catch (jwtError) {
       console.error("JWT signing error:", jwtError);
       return new Response(JSON.stringify({ error: "Error creating session" }), { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
     }
   } catch (error) {
@@ -101,7 +116,8 @@ export async function POST(req) {
     return new Response(JSON.stringify({ error: "Error logging in user" }), { 
       status: 500,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
       }
     });
   }
