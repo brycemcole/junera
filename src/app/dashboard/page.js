@@ -145,7 +145,10 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-0 p-4 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-medium mb-6">Dashboard</h1>
+      <h2 className="text-md text-gray-500 mb-4">
+        Here's a quick glance at your progress and saved resources.
+      </h2>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Suspense fallback={<Skeleton />}>

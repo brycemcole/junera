@@ -392,12 +392,10 @@ export default function CompanyView({ companyName, page }) {
                 >
                     {isFollowing ? (
                         <>
-                            <Star className="h-4 w-4" />
                             Following
                         </>
                     ) : (
                         <>
-                            <Bell className="h-4 w-4" />
                             Follow
                         </>
                     )}
@@ -406,7 +404,6 @@ export default function CompanyView({ companyName, page }) {
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="outline" className="gap-2">
-                            <Share2 className="h-4 w-4" />
                             Share
                         </Button>
                     </PopoverTrigger>
@@ -438,7 +435,7 @@ export default function CompanyView({ companyName, page }) {
                     </PopoverContent>
                 </Popover>
 
-                {user && (
+                {user && user.isCompany && (
                     <Button
                         variant="outline"
                         className="gap-2"

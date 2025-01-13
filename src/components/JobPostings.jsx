@@ -6,6 +6,7 @@ import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag
 import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
 import { redirect } from "next/navigation";
+import Link from 'next/link';
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
@@ -172,19 +173,20 @@ export const JobList = ({ data, loading, error }) => {
     <div className="md:px-0 border-none md:shadow-none max-w-full">
       {data.map((job, index) => (
         <div
-          key={index}
-          className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
-          onClick={() => redirect(`/job-postings/${job.id}`)}
+        key={index} className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
         >
 
 <div className="flex flex-col gap-3 justify-between">
 {job.company ? (
+                <Link href={{ pathname: `/companies/${job.company}`, query: router.query }}>
+
             <Avatar className="w-9 h-9 rounded-lg flex-shrink-0">
               <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
               <AvatarFallback className="rounded-lg">
                 {job.company?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+            </Link>
           ) : (
             <Avatar className="w-6 h-6 flex-shrink-0">
               <AvatarFallback>
@@ -195,6 +197,8 @@ export const JobList = ({ data, loading, error }) => {
           <Button24 jobId={job.id} />
           </div>
           {/* Header Section */}
+          <Link href={{ pathname: `/job-postings/${job.id}`, query: router.query }}>
+
           <div className="flex flex-col min-w-0 gap-1">
                 <h4 className="text-md text-muted-foreground truncate">
                   {job?.company || "No company name available"}
@@ -252,6 +256,8 @@ export const JobList = ({ data, loading, error }) => {
               </div>
             </div>
           </div>
+          </Link>
+
         </div>
       ))}
     </div>

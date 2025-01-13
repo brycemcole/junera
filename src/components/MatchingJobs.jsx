@@ -10,6 +10,7 @@ import {
     AvatarFallback,
     AvatarImage,
 } from "@/components/ui/avatar"
+import JobList from './JobPostings';
 
 export default function MatchingJobs({ loading, error }) {
   const { user } = useAuth();
@@ -86,26 +87,7 @@ export default function MatchingJobs({ loading, error }) {
   return (
     <ScrollArea className="">
       <div className="space-y-4">
-        {jobs.map((job) => (
-          <div key={job.id || Math.random()} className="group relative">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={job.companyLogo} alt={job.company || ''} />
-                <AvatarFallback>{(job.company || '')[0]}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-foreground">{job.company}</span>
-            </div>
-            
-            <Link href={`/job-postings/${job.id}`} className="block group-hover:underline">
-              <h3 className="text-foreground font-medium mt-1">
-                <span className="">{job.title}</span>
-                {job.location && <span className="text-foreground"> in {job.location}</span>}
-              </h3>
-            </Link>
-
-            {/* Remove the matching criteria section for now */}
-          </div>
-        ))}
+        <JobList data={jobs} />
       </div>
       <ScrollBar />
     </ScrollArea>

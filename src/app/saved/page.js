@@ -30,7 +30,7 @@ export default function SavedPage() {
 
                     if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
                     const data = await response.json();
-                    setBookmarkedJobs(data.bookmarkedJobs);
+                    setBookmarkedJobs(data);
                 } catch (err) {
                     setError(err.message);
                 } finally {
@@ -51,8 +51,8 @@ export default function SavedPage() {
     }
 
     return (
-        <div className="container mx-auto py-10 px-4 max-w-4xl">
-            <h1 className="text-3xl font-bold mb-6">Saved Jobs</h1>
+        <div className="container mx-auto px-4 max-w-4xl">
+            <h1 className="text-2xl font-medium mb-6">Saved Jobs</h1>
             <BookmarkedJobs
                 jobs={bookmarkedJobs}
                 loading={loading}

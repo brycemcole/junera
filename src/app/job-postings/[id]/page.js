@@ -741,11 +741,11 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
             <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <h1 data-scroll-title className="text-2xl font-semibold decoration-2 leading-normal min-w-0">
+          <h1 data-scroll-title className="text-lg sm:text-2xl font-medium decoration-2 leading-normal min-w-0">
             {jobPosting.title} at <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
           </h1>
         </div>
-        <div className="mb-4 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
+        <div className="mb-4 flex flex-col gap-y-2 text-sm text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
               <BriefcaseBusiness className="h-3 w-3 text-foreground" />
@@ -855,7 +855,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             error={errorLLMResponse}
           />
         )}
-        <div className="prose-td code:display-inline-block prose-td code:bg-gray-200 prose-td code:px-2 prose-td code:py-1 prose-td code:rounded-md prose prose-headings:mb-[0.7em] prose-headings:mt-[1.25em] prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-[32px] prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-h5:text-base prose-p:mb-4 prose-p:mt-0 prose-p:leading-relaxed prose-p:before:hidden prose-p:after:hidden prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:text-neutral-500 prose-blockquote:before:hidden prose-blockquote:after:hidden prose-code:my-0 prose-code:inline-block prose-code:rounded-md prose-code:bg-neutral-100 prose-code:px-2 prose-code:text-[85%] prose-code:font-normal prose-code:leading-relaxed prose-code:text-primary prose-code:before:hidden prose-code:after:hidden prose-pre:mb-4 prose-pre:mt-0 prose-pre:whitespace-pre-wrap prose-pre:rounded-lg prose-pre:bg-neutral-100 prose-pre:px-3 prose-pre:py-3 prose-pre:text-base prose-pre:text-primary prose-ol:mb-4 prose-ol:mt-1 prose-ol:pl-8 marker:prose-ol:text-primary prose-ul:mb-4 prose-ul:mt-1 prose-ul:pl-8 marker:prose-ul:text-primary prose-li:mb-0 prose-li:mt-0.5 prose-li:text-primary first:prose-li:mt-0 prose-table:w-full prose-table:table-auto prose-table:border-collapse prose-th:break-words prose-th:text-center prose-th:font-semibold prose-td:break-words prose-td:px-4 prose-td:py-2 prose-td:text-left prose-img:mx-auto prose-img:my-12 prose-video:my-12 max-w-none overflow-auto text-primary">
+        <div>
           <div type="single" className="w-full" defaultValue="item-description">
             {[
               { key: 'description', label: 'Job Description' }

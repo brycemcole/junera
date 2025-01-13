@@ -1292,7 +1292,7 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-4">{headerTitle}</h1>
+              <h1 className="text-2xl font-medium mb-4">{headerTitle}</h1>
 
               {activeFilters.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">

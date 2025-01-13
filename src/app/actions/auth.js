@@ -24,10 +24,7 @@ export async function loginAction(data) {
       return { error: 'Email/Username and password are required' };
     }
 
-    // Get the current hostname
-    const protocol = process.env.NODE_ENV === 'production' ? 'https://' : 'http://';
-    const host = process.env.NEXT_PUBLIC_SITE_URL || 'localhost:3000';
-    const apiUrl = `${protocol}${host}/api/login`;
+    const apiUrl = `/api/login`;
 
     console.log('Login attempt:', {
       url: apiUrl,
