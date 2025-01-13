@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -488,71 +488,8 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
-
-function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
-  const [activeTab, setActiveTab] = useState('all');
-
-  // Determine active tab based on current search params
-  useEffect(() => {
-    if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
-      setActiveTab('all');
-      return;
-    }
-
-    // Check if current params match any saved search
-    const matchingSavedSearch = savedSearches?.find(search => {
-      const criteria = search.search_criteria;
-      return (
-        criteria.title === currentSearchParams.title &&
-        criteria.experienceLevel === currentSearchParams.explevel &&
-        criteria.location === currentSearchParams.location
-      );
-    });
-
-    if (matchingSavedSearch) {
-      setActiveTab(matchingSavedSearch.id);
-    } else {
-      setActiveTab('all');
-    }
-  }, [currentSearchParams, savedSearches]);
-
-  return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="bg-transparent">
-        <TabsTrigger
-          value="all"
-          className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
-        >
-          All Jobs
-        </TabsTrigger>
-        {savedSearches?.map((search) => (
-          <TabsTrigger
-            key={search.id}
-            value={search.id}
-            className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
-            onClick={() => {
-              applySavedSearch(JSON.stringify(search.search_criteria));
-              setActiveTab(search.id);
-            }}
-          >
-            {search.search_name}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <TabsContent value="all">
-        {/* Main job listings content is rendered outside tabs */}
-      </TabsContent>
-      {savedSearches?.map((search) => (
-        <TabsContent key={search.id} value={search.id}>
-          {/* Saved search content is the same as main content, just filtered */}
-        </TabsContent>
-      ))}
-    </Tabs>
-  );
-}
-
 export default function JobPostingsPage() {
-  const { user, authLoading } = useAuth();
+  const { user, loading, authLoading } = useAuth();
   const router = useRouter();
   const enabled = false;
 
@@ -719,10 +656,10 @@ export default function JobPostingsPage() {
 
     return (
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-transparent">
+        <TabsList className="bg-transparent p-0">
           <TabsTrigger
             value="all"
-            className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+            className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
           >
             All Jobs
           </TabsTrigger>
@@ -730,7 +667,7 @@ export default function JobPostingsPage() {
             <TabsTrigger
               key={search.id}
               value={search.id}
-              className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
               onClick={() => {
                 applySavedSearch(JSON.stringify(search.search_criteria));
                 setActiveTab(search.id);
@@ -1457,6 +1394,22 @@ Please provide relevant career advice and job search assistance based on their p
             applySavedSearch={applySavedSearch}
             currentSearchParams={{ title, explevel: experienceLevel, location }}
           />
+
+          {!user && !loading && (
+            <div className="rounded-lg border border-green-600/30 bg-green-500/20 px-4 py-3 mb-6">
+              <p className="text-sm leading-relaxed">
+                <BookmarkIcon
+                  className="-mt-0.5 me-3 inline-flex text-green-500"
+                  size={16}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                Login to save your searches and get notified when new jobs are posted. <Link href="/login" className="text-green-500 hover:underline">
+                  Login here.
+                </Link>
+              </p>
+            </div>
+          )}
 
           <Suspense fallback={<div>Loading...</div>}>
             {user && (

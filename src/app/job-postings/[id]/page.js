@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text } from "lucide-react";
+import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -837,7 +837,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               className="w-full md:w-auto max-w-64"
               onClick={handleApplyClick} // Add onClick handler
             >
-              <Button className="group w-full md:w-48 max-w-64 text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500">
+              <Button className="group w-full md:w-48 max-w-64 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
                 Apply
               </Button>
             </Link>
@@ -856,6 +856,22 @@ Please assess the qualifications and provide a brief explanation of whether the 
           />
         )}
         <div>
+
+          {!user && !loading && (
+            <div className="rounded-lg border border-green-600/30 bg-green-500/20 px-4 py-3 mb-6">
+              <p className="text-sm leading-relaxed">
+                <BookmarkIcon
+                  className="-mt-0.5 me-3 inline-flex text-green-500"
+                  size={16}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                Login to save job postings and get notified when more jobs like this are posted. <Link href="/login" className="text-green-600 hover:underline">
+                  Login here.
+                </Link>
+              </p>
+            </div>
+          )}
           <div type="single" className="w-full" defaultValue="item-description">
             {[
               { key: 'description', label: 'Job Description' }
