@@ -206,6 +206,11 @@ export async function GET(req) {
   const strictParam = searchParams.get("strictSearch");
   const strict = strictParam !== 'false'; // default true
 
+  // New: Sort parameter
+  const sortParam = searchParams.get("sort");
+  const allowedSortValues = ['relevancy', 'recent'];
+  const sort = allowedSortValues.includes(sortParam) ? sortParam : 'relevancy';
+
   if (page < 1 || limit < 1) {
     return Response.json({ error: "Invalid page or limit" }, { status: 400 });
   }
@@ -351,7 +356,7 @@ export async function GET(req) {
   }
 
   // Prepare caching
-  const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}`;
+  const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}:sort-${sort}`;
   const timings = {};
   const overallStart = performance.now();
 
@@ -360,8 +365,8 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
-    // Create a deterministic cache key from all search parameters
-    const cacheKey = JSON.stringify({
+    // Create a deterministic cache key from all search parameters, including sort
+    const cacheKeyObject = {
       page,
       limit,
       title,
@@ -369,17 +374,19 @@ export async function GET(req) {
       company,
       experienceLevel,
       strict,
+      sort, // Include sort in cache key
       applyJobPrefs,
       userPrefs: applyJobPrefs ? {
         titles: userPreferredTitles,
         locations: userPreferredLocations
       } : null
-    });
+    };
+    const cacheKeyString = JSON.stringify(cacheKeyObject);
 
     // Check cache with user-specific key if logged in
-    const cachedData = await getCached(cacheKey, user?.id);
+    const cachedData = await getCached(cacheKeyString, user?.id);
     if (cachedData) {
-      console.log('Cache hit for key:', cacheKey);
+      console.log('Cache hit for key:', cacheKeyString);
       return Response.json(JSON.parse(cachedData), { status: 200 });
     }
 
@@ -397,6 +404,7 @@ export async function GET(req) {
         job_id,
         title,
         company,
+        description,
         location,
         experiencelevel,
         created_at,
@@ -588,12 +596,19 @@ export async function GET(req) {
         paramIndex++;
       }
 
-      // order by relevance desc, then created_at desc
-      queryText += `
-        ORDER BY 
-          relevance DESC,
-          created_at DESC
-      `;
+      // === Adjust ORDER BY based on sort parameter
+      if (sort === 'relevancy') {
+        queryText += `
+          ORDER BY 
+            relevance DESC,
+            created_at DESC
+        `;
+      } else if (sort === 'recent') {
+        queryText += `
+          ORDER BY 
+            created_at DESC
+        `;
+      }
     } else {
       // Non-strict mode: ANY typed condition can match (OR).
       const conditions = [];
@@ -645,12 +660,19 @@ export async function GET(req) {
         queryText += ` AND (${conditions.join(' OR ')})`;
       }
 
-      // Then order by relevance + created_at
-      queryText += `
-        ORDER BY
-          relevance DESC,
-          created_at DESC
-      `;
+      // === Adjust ORDER BY based on sort parameter
+      if (sort === 'relevancy') {
+        queryText += `
+          ORDER BY
+            relevance DESC,
+            created_at DESC
+        `;
+      } else if (sort === 'recent') {
+        queryText += `
+          ORDER BY
+            created_at DESC
+        `;
+      }
     }
 
     // Finally, add LIMIT / OFFSET
@@ -682,7 +704,7 @@ export async function GET(req) {
     // Only cache if we have results and it's not an empty query
     if (jobPostings.length > 0 && hasSearchCriteria) {
       await setCached(
-        cacheKey,
+        cacheKeyString,
         user?.id,
         JSON.stringify(responseData),
         300 // 5 minute TTL
@@ -706,6 +728,7 @@ export async function GET(req) {
     );
   }
 }
+
 
 export async function PUT(req) {
   const { signal } = req;

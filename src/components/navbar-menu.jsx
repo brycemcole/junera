@@ -153,9 +153,11 @@ export function NavbarMenu() {
                     </Link>
                 </NavigationMenuLink>
               </li>
+              {!loading && user && user.username && (
               <ListItem href="/profile" title="Profile">
                 {user.username}&apos;s profile
               </ListItem>
+              )}
               <ListItem href="/notifications" title="Notifications">
                 View your notifications
               </ListItem>

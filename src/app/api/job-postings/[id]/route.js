@@ -144,7 +144,8 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({
       success: true,
-      data: jobPosting
+      data: jobPosting,
+      keywords: scanKeywords(jobPosting.description),
     });
 
   } catch (error) {

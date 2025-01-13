@@ -2,7 +2,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; // Assuming Avatar components are defined/imported
 import { Badge } from "@/components/ui/badge"; 
-import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle } from "lucide-react"; // Assuming you are using react-icons
+import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
 import { redirect } from "next/navigation";
@@ -179,7 +179,7 @@ export const JobList = ({ data, loading, error }) => {
 
 <div className="flex flex-col gap-3 justify-between">
 {job.company ? (
-            <Avatar className="w-10 h-10 rounded-lg flex-shrink-0">
+            <Avatar className="w-9 h-9 rounded-lg flex-shrink-0">
               <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
               <AvatarFallback className="rounded-lg">
                 {job.company?.charAt(0).toUpperCase()}
@@ -195,39 +195,53 @@ export const JobList = ({ data, loading, error }) => {
           <Button24 jobId={job.id} />
           </div>
           {/* Header Section */}
-          <div className="flex flex-col min-w-0">
-                <span className="text-md text-muted-foreground truncate">
+          <div className="flex flex-col min-w-0 gap-1">
+                <h4 className="text-md text-muted-foreground truncate">
                   {job?.company || "No company name available"}
-                </span>
-            <span className="font-semibold group-hover:underline text-lg">
+                </h4>
+            <h3 className="font-semibold group-hover:underline text-lg">
               {job?.title || "No job titles available"}
-            </span>
+            </h3>
             <div className="text-sm leading-loose line-clamp-3 max-w-full">
-              <p
-                className="m-0 text-foreground"
-                dangerouslySetInnerHTML={{
-                  __html: stripHTML(decodeHTMLEntities(job?.summary || "")),
-                }}
-              />
+
+
             </div>
 
-            <div className="flex md:gap-y-2 gap-x-4 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
+            <div className="flex gap-2 gap-x-3 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
+            {job?.salary ? (
+                <div className="flex text-foreground items-center gap-2">
+                  <span className="truncate">{job.salary}</span>
+                </div>
+              ) : job?.salary_range_str ? (
+                <div className="flex items-center gap-2">
+                  <span className="truncate">{job.salary_range_str}</span>
+                </div>
+              ) : null}
+                          {job?.keywords ?
+                          (
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-3 w-3 text-muted-foreground" />
+                            <span className="truncate">{job.keywords.length} tags</span>
+                          </div>
+                          ) : null}
               {job?.location?.trim() ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center truncate gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
-                  {parseUSLocations(job.location)}
+                  {parseUSLocations(job.location).substring(0, 30)}
                 </span>
               </div>
-              ) : null}
+              ) : ""}
+              {job.experienceLevel !== "null" && (
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-muted-foreground" />
                 <span className="truncate">
                   {job?.experienceLevel ? job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1).toLowerCase() : ""}
                 </span>
               </div>
+              )}
               <div className="flex items-center gap-2">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
+                <Clock className="h-3 w-3 text-muted-foreground" />
                 <span className="truncate">
                   {job?.postedDate
                     ? `${formatDistanceToNow(new Date(job.postedDate), {
@@ -236,17 +250,6 @@ export const JobList = ({ data, loading, error }) => {
                     : "N/A"}
                 </span>
               </div>
-              {job?.salary ? (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3 w-3 text-muted-foreground" />
-                  <span className="truncate">{job.salary}</span>
-                </div>
-              ) : job?.salary_range_str ? (
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3 w-3 text-muted-foreground" />
-                  <span className="truncate">{job.salary_range_str}</span>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>

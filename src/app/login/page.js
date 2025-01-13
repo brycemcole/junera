@@ -20,8 +20,8 @@ import { Input } from "@/components/ui/input"
 import { CircleAlert } from "lucide-react";
 
 const FormSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
+  emailOrUsername: z.string().min(1, {
+    message: "Please enter your email or username.",
   }),
   password: z.string().min(6, {
     message: "Password must be at least 6 characters.",
@@ -30,33 +30,42 @@ const FormSchema = z.object({
 
 function InputForm() {
   const { login } = useAuth();
+  const router = useRouter();
   const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      email: "",
+      emailOrUsername: "",
       password: "",
     },
   })
 
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });
-    const formData = new FormData();
-    formData.append('email', data.email);
-    formData.append('password', data.password);
 
-    const result = await loginAction(formData);
+    try {
+      const result = await loginAction({
+        emailOrUsername: data.emailOrUsername,
+        password: data.password
+      });
 
-    if (result.error) {
-      setStatusMessage({ text: result.error, isError: true });
-      return;
-    }
+      if (result.error) {
+        setStatusMessage({ text: result.error, isError: true });
+        return;
+      }
 
-    if (result.token) {
-      localStorage.setItem('token', result.token);
-      login(result.token, result.username, result.userId, result.avatar);
-      setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
-      form.reset();
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        await login(result.token); // Wait for login to complete
+        setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
+        form.reset();
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 500); // Give time for the success message to show
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setStatusMessage({ text: 'An error occurred during login', isError: true });
     }
   }
 
@@ -65,8 +74,8 @@ function InputForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {statusMessage.text && (
           <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
-              ? 'border-red-500/50 text-red-600'
-              : 'border-green-500/50 text-green-600'
+            ? 'border-red-500/50 text-red-600'
+            : 'border-green-500/50 text-green-600'
             }`}>
             <p className="text-sm">
               <CircleAlert
@@ -81,12 +90,12 @@ function InputForm() {
         )}
         <FormField
           control={form.control}
-          name="email"
+          name="emailOrUsername"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email or Username</FormLabel>
               <FormControl>
-                <Input placeholder="email" {...field} />
+                <Input placeholder="Enter email or username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

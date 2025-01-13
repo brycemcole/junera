@@ -764,11 +764,10 @@ export default function JobPostingsPage() {
           throw new Error("Network response was not ok");
         }
 
-        const [jobData, countData, companiesData] = await Promise.all([
-          jobRes.json(),
-          countRes.json(),
-          compRes.json(),
-        ]);
+        const jobData = await jobRes.json();
+        setPageLoading(false);
+        const countData = await countRes.json();
+        const companiesData = await compRes.json();
 
         setData(jobData.jobPostings || []);
         setCount(countData.totalJobs || 0);

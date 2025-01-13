@@ -18,60 +18,38 @@ const validateInput = (data) => {
   return true;
 };
 
-export async function loginAction(formData) {
-  const email = formData.get('email')?.trim();
-  const password = formData.get('password')?.trim();
-  
-  // Get IP from headers or forwarded header
-  const ip = cookies().get('x-real-ip')?.value || 'unknown';
-
+export async function loginAction(data) {
   try {
-    // Check rate limit
-    const allowed = await checkRateLimit('login', ip);
-    if (!allowed) {
-      return { error: "Too many attempts. Please try again later." };
+    if (!data.emailOrUsername || !data.password) {
+      return { error: 'Email/Username and password are required' };
     }
 
-    // Validate inputs
-    if (!validateInput(email) || !validateInput(password)) {
-      return { error: "Invalid input detected" };
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!baseUrl) {
+      throw new Error('NEXT_PUBLIC_APP_URL environment variable is not set');
     }
 
-    // Add a small delay to prevent timing attacks
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
+    const response = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        emailOrUsername: data.emailOrUsername,
+        password: data.password,
+      }),
+    });
 
-    const result = await query(`
-      SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location
-      FROM users
-      WHERE email = $1;
-    `, [email]);
+    const result = await response.json();
 
-    if (result.rows.length === 0) {
-      return { error: "User not found" };
+    if (!response.ok) {
+      return { error: result.error || 'Login failed' };
     }
 
-    const user = result.rows[0];
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch) {
-      return { error: "Invalid password" };
-    }
-
-    const token = jwt.sign({
-      id: user.id,
-      email: user.email,
-      fullName: user.full_name,
-      username: user.username,
-      avatar: user.avatar || '/default.png',
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-      jobPrefsTitle: user.job_prefs_title,
-      jobPrefsLocation: user.job_prefs_location
-    }, SECRET_KEY);
-
-    return { token, username: user.username, userId: user.id, avatar: user.avatar || '/default.png' };
+    return result;
   } catch (error) {
-    console.error("Error logging in user:", error);
-    return { error: "An unexpected error occurred" };
+    console.error('Login error:', error);
+    return { error: 'An error occurred during login' };
   }
 }
 

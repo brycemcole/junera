@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Telescope, Text } from "lucide-react";
+import { Blocks, Bolt, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -234,6 +234,7 @@ function Summarization({ title, message, loading, error }) {
 const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyLogo, location }) => {
   const [copied, setCopied] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
@@ -262,26 +263,34 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="mx-4">
-        <DropdownMenuItem>
-          <InfoIcon size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-          {title}
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <MapPin size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-          {location}
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Building2 size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-          {company}
-        </DropdownMenuItem>
+        {title && (
+          <DropdownMenuItem>
+            <InfoIcon size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+            {title}
+          </DropdownMenuItem>
+        )}
+        {location && (
+          <DropdownMenuItem>
+            <MapPin size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+            {location}
+          </DropdownMenuItem>
+        )}
+        {company && (
+          <DropdownMenuItem>
+            <Building2 size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+            {company}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={handleCopy}>
           <CopyPlus size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
           Copy Link
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleSummarizationQuery}>
-          <Sparkles size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-          Generate Summary
-        </DropdownMenuItem>
+        {user && !loading && (
+          <DropdownMenuItem onClick={handleSummarizationQuery}>
+            <Sparkles size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+            Generate Summary
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -652,7 +661,22 @@ Please assess the qualifications and provide a brief explanation of whether the 
     []
   );
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="container mx-auto py-2 px-4 max-w-4xl">
+    <div className="animate-pulse">
+      <div className="flex flex-row items-center gap-4">
+        <div className="h-14 w-14 bg-gray-200 dark:bg-gray-900 rounded-full w-1/4 mb-4"></div>
+        <div className="h-16 bg-gray-200 dark:bg-gray-900 rounded-xl w-3/4 mb-4"></div>
+
+      </div>
+      <div className="h-6 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
+      <div className="h-6 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-72 bg-gray-200 dark:bg-gray-900 rounded-xl"></div>
+        ))}
+      </div>
+    </div>
+  </div>;
   if (error) return <div>Error: {error}</div>;
   if (!data.success) return <div>Job posting not found.</div>;
 
@@ -721,37 +745,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
             {jobPosting.title} at <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
           </h1>
         </div>
-        {keywords && keywords.length > 0 && (
-          <div className="mb-8">
-            <ul className="flex flex-wrap gap-4 gap-y-3">
-              {keywords.map((keyword, index) => {
-                const colors = [
-                  { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-600/10" },
-                  { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-600/10" },
-                  { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-600/10" },
-                  { bg: "bg-sky-500/10", text: "text-sky-600", border: "border-sky-600/10" },
-                  { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-600/10" },
-                  { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-600/10" },
-                  { bg: "bg-pink-500/10", text: "text-pink-600", border: "border-pink-600/10" },
-                  { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-600/10" },
-                  { bg: "bg-purple-500/10", text: "text-purple-600", border: "border-purple-600/10" },
-                ];
-
-                const color = colors[index % colors.length]; // Rotate colors based on index
-
-                return (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className={`${color.bg} ${color.text} rounded-md text-sm sm:text-[13px] font-medium ${color.border}`}
-                  >
-                    {keyword}
-                  </Badge>
-                );
-              })}
-            </ul>
-          </div>
-        )}
         <div className="mb-4 flex flex-col gap-y-2 text-sm font-medium text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
@@ -784,15 +777,25 @@ Please assess the qualifications and provide a brief explanation of whether the 
             </span>
           </div>
           */}
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3 w-3 text-foreground" />
-            <span>
-              {jobPosting.location?.toLowerCase().includes('remote')
-                ? jobPosting.location
-                : `${jobPosting.location}`
-              }
-            </span>
-          </div>
+          {jobPosting.location && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3 w-3 text-foreground" />
+              <span>
+                {jobPosting.location?.toLowerCase().includes('remote')
+                  ? jobPosting.location
+                  : `${jobPosting.location}`
+                }
+              </span>
+            </div>
+          )}
+
+          {keywords && keywords.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Tag className="h-3 w-3" />
+              <span>{keywords.join(', ')}</span>
+            </div>
+          )}
+
           {jobPosting.location?.toLowerCase().includes('remote') && (
             <div className="flex items-center gap-2">
               <MapIcon className="h-3 w-3 text-green-500" />
@@ -815,7 +818,13 @@ Please assess the qualifications and provide a brief explanation of whether the 
           )}
           <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
             <Link href={`/companies/${jobPosting.company}`}>
-              {loading ? "Loading..." : companyJobCount === 1 ? "View 1 job" : `View ${companyJobCount} jobs`} at {jobPosting.company}
+              {loading ?
+                `View jobs at ${jobPosting.company}`
+                :
+                companyJobCount !== undefined ?
+                  `View ${companyJobCount} jobs`
+                  :
+                  `View jobs`} at {jobPosting.company}
             </Link>
           </div>
         </div>
