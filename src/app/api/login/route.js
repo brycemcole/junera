@@ -28,6 +28,11 @@ async function loginUser(emailOrUsername, password) {
 
 export async function POST(req) {
   try {
+    if (!SECRET_KEY) {
+      console.error("Missing SESSION_SECRET environment variable");
+      return new Response(JSON.stringify({ error: "Server configuration error" }), { status: 500 });
+    }
+
     const body = await req.json();
     const { emailOrUsername, password } = body;
 
@@ -40,21 +45,30 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: result.error }), { status: 400 });
     }
 
-    const token = jwt.sign({ 
-      id: result.userId, 
-      email: result.email, 
-      fullName: result.fullName, 
-      username: result.username, 
-      avatar: result.avatar, 
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, 
-      jobPrefsTitle: result.jobPrefsTitle, 
-      jobPrefsLocation: result.jobPrefsLocation 
-    }, SECRET_KEY);
+    // Add more specific error logging
+    try {
+      const token = jwt.sign({
+        id: result.userId,
+        email: result.email,
+        fullName: result.fullName,
+        username: result.username,
+        avatar: result.avatar,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+        jobPrefsTitle: result.jobPrefsTitle,
+        jobPrefsLocation: result.jobPrefsLocation
+      }, SECRET_KEY);
 
-    return new Response(JSON.stringify({ token }), { 
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+      return new Response(JSON.stringify({ token, username: result.username }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+    } catch (jwtError) {
+      console.error("JWT signing error:", jwtError);
+      return new Response(JSON.stringify({ error: "Error creating session" }), { status: 500 });
+    }
   } catch (error) {
     console.error("Error logging in user:", error);
     return new Response(JSON.stringify({ error: "Error logging in user" }), { status: 500 });

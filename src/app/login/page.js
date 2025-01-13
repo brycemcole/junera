@@ -55,13 +55,11 @@ function InputForm() {
       }
 
       if (result.token) {
-        localStorage.setItem('token', result.token);
-        await login(result.token); // Wait for login to complete
+        // Don't manipulate localStorage directly here
+        await login(result.token, result.username); // Pass necessary data to context
         setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
         form.reset();
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 500); // Give time for the success message to show
+        router.push('/dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);

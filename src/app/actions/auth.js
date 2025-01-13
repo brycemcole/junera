@@ -24,12 +24,14 @@ export async function loginAction(data) {
       return { error: 'Email/Username and password are required' };
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!baseUrl) {
-      throw new Error('NEXT_PUBLIC_APP_URL environment variable is not set');
-    }
+    // Get base URL with fallback for production
 
-    const response = await fetch(`${baseUrl}/api/login`, {
+    // Construct the full URL properly
+    const apiUrl = `/api/login`;
+
+    console.log('Attempting login with URL:', apiUrl); // Debug log
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,17 +40,28 @@ export async function loginAction(data) {
         emailOrUsername: data.emailOrUsername,
         password: data.password,
       }),
+      cache: 'no-store',
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Login failed:', errorData);
+      return { error: errorData.error || 'Login failed' };
+    }
 
     const result = await response.json();
 
-    if (!response.ok) {
-      return { error: result.error || 'Login failed' };
+    if (!result.token) {
+      return { error: 'No token received from server' };
     }
 
-    return result;
+    return {
+      token: result.token,
+      username: result.username
+    };
+
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login action error:', error);
     return { error: 'An error occurred during login' };
   }
 }
@@ -69,8 +82,8 @@ export async function registerAction(formData) {
     }
 
     // Validate all inputs
-    if (!validateInput(fullname) || !validateInput(email) || 
-        !validateInput(username) || !validateInput(password)) {
+    if (!validateInput(fullname) || !validateInput(email) ||
+      !validateInput(username) || !validateInput(password)) {
       return { error: "Invalid input detected" };
     }
 
