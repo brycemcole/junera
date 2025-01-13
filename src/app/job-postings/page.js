@@ -1,6 +1,7 @@
 "use client";
 import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
   Avatar,
@@ -488,6 +489,68 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
 });
 
 
+function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
+  const [activeTab, setActiveTab] = useState('all');
+
+  // Determine active tab based on current search params
+  useEffect(() => {
+    if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
+      setActiveTab('all');
+      return;
+    }
+
+    // Check if current params match any saved search
+    const matchingSavedSearch = savedSearches?.find(search => {
+      const criteria = search.search_criteria;
+      return (
+        criteria.title === currentSearchParams.title &&
+        criteria.experienceLevel === currentSearchParams.explevel &&
+        criteria.location === currentSearchParams.location
+      );
+    });
+
+    if (matchingSavedSearch) {
+      setActiveTab(matchingSavedSearch.id);
+    } else {
+      setActiveTab('all');
+    }
+  }, [currentSearchParams, savedSearches]);
+
+  return (
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <TabsList className="bg-transparent">
+        <TabsTrigger
+          value="all"
+          className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+        >
+          All Jobs
+        </TabsTrigger>
+        {savedSearches?.map((search) => (
+          <TabsTrigger
+            key={search.id}
+            value={search.id}
+            className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+            onClick={() => {
+              applySavedSearch(JSON.stringify(search.search_criteria));
+              setActiveTab(search.id);
+            }}
+          >
+            {search.search_name}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsContent value="all">
+        {/* Main job listings content is rendered outside tabs */}
+      </TabsContent>
+      {savedSearches?.map((search) => (
+        <TabsContent key={search.id} value={search.id}>
+          {/* Saved search content is the same as main content, just filtered */}
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
 export default function JobPostingsPage() {
   const { user, authLoading } = useAuth();
   const router = useRouter();
@@ -627,6 +690,68 @@ export default function JobPostingsPage() {
     return { promise, controller };
   }, []);
 
+  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
+    const [activeTab, setActiveTab] = useState('all');
+
+    // Determine active tab based on current search params
+    useEffect(() => {
+      if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
+        setActiveTab('all');
+        return;
+      }
+
+      // Check if current params match any saved search
+      const matchingSavedSearch = savedSearches?.find(search => {
+        const criteria = search.search_criteria;
+        return (
+          criteria.title === currentSearchParams.title &&
+          criteria.experienceLevel === currentSearchParams.explevel &&
+          criteria.location === currentSearchParams.location
+        );
+      });
+
+      if (matchingSavedSearch) {
+        setActiveTab(matchingSavedSearch.id);
+      } else {
+        setActiveTab('all');
+      }
+    }, [currentSearchParams, savedSearches]);
+
+    return (
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-transparent">
+          <TabsTrigger
+            value="all"
+            className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+          >
+            All Jobs
+          </TabsTrigger>
+          {savedSearches?.map((search) => (
+            <TabsTrigger
+              key={search.id}
+              value={search.id}
+              className="data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              onClick={() => {
+                applySavedSearch(JSON.stringify(search.search_criteria));
+                setActiveTab(search.id);
+              }}
+            >
+              {search.search_name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="all">
+          {/* Main job listings content is rendered outside tabs */}
+        </TabsContent>
+        {savedSearches?.map((search) => (
+          <TabsContent key={search.id} value={search.id}>
+            {/* Saved search content is the same as main content, just filtered */}
+          </TabsContent>
+        ))}
+      </Tabs>
+    );
+  }
+
   const resetCompanyData = () => {
     setCompanyData([]);
     setCompany("");
@@ -746,32 +871,34 @@ export default function JobPostingsPage() {
     async function fetchData() {
       setDataLoading(true);
       setPageLoading(true);
+
       try {
-        const [jobRes, countRes, compRes] = await Promise.all([
-          fetch(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            { signal: abortController.signal }
-          ),
-          fetch(
-            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            { signal: abortController.signal }
-          ),
-          fetch(`/api/companies`, { signal: abortController.signal }),
-        ]);
+        // Fetch jobs first
+        const jobRes = await fetch(
+          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
+          { signal: abortController.signal }
+        );
 
         if (!isActive) return;
-        if (!jobRes.ok || !countRes.ok || !compRes.ok) {
-          throw new Error("Network response was not ok");
-        }
+        if (!jobRes.ok) throw new Error("Network response was not ok");
 
         const jobData = await jobRes.json();
-        setPageLoading(false);
-        const countData = await countRes.json();
-        const companiesData = await compRes.json();
-
         setData(jobData.jobPostings || []);
-        setCount(countData.totalJobs || 0);
-        setCompanies(companiesData || []);
+        setPageLoading(false);
+
+        // Fetch count and companies in parallel after showing initial results
+        Promise.all([
+          fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`),
+          fetch(`/api/companies`)
+        ]).then(([countRes, compRes]) => {
+          if (!isActive) return;
+          return Promise.all([countRes.json(), compRes.json()]);
+        }).then(([countData, companiesData]) => {
+          if (!isActive) return;
+          setCount(countData.totalJobs || 0);
+          setCompanies(companiesData || []);
+        }).catch(console.error);
+
       } catch (err) {
         if (err.name !== "AbortError") console.error("Error:", err);
       } finally {
@@ -1325,6 +1452,12 @@ Please provide relevant career advice and job search assistance based on their p
             <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} applyJobPrefs={applyJobPrefs} />
           </Suspense>
 
+          <TabComponent
+            savedSearches={savedSearches}
+            applySavedSearch={applySavedSearch}
+            currentSearchParams={{ title, explevel: experienceLevel, location }}
+          />
+
           <Suspense fallback={<div>Loading...</div>}>
             {user && (
               <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
@@ -1337,6 +1470,7 @@ Please provide relevant career advice and job search assistance based on their p
               </div>
             )}
           </Suspense>
+
           {user && (
             <Suspense fallback={<div>Loading...</div>}>
               <ScrollArea>
