@@ -334,7 +334,7 @@ function DropdownMenuDemo() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group"
+          className="group shadow-sm"
           variant="outline"
           size="icon"
           aria-expanded={open}
@@ -460,7 +460,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="backdrop-blur bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent fixed top-0 left-0 right-0">
+    <nav className="backdrop-blur shadow-md bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent fixed top-0 left-0 right-0">
       <div className="flex flex-row justify-between px-4 py-2 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
@@ -478,12 +478,7 @@ export default function Navbar() {
                 <DropdownMenuDemo2 />
               ) : (
                 <>
-                  <Button variant="ghost" className="text-customGreen h-9 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
-                    <Link href="/register">
-                     Sign Up
-                    </Link>
-                  </Button>
-                  <Button className="font-medium rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
+                  <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
                     <Link href="/login">
                      Login
                     </Link>

@@ -2,36 +2,32 @@ import { query } from "@/lib/pgdb";
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 import { getCached, setCached } from '@/lib/cache';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function GET(req) {
   try {
-    // Get auth header and validate user
+    // Authenticate User
     const authHeader = req.headers.get('Authorization');
-    let token = '';
     let user = null;
     let userPreferredTitles = [];
     let userPreferredLocations = [];
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
+      const token = authHeader.split(' ')[1];
       if (token && token !== 'undefined' && token !== 'null') {
         try {
           if (!SECRET_KEY) {
             console.warn('SESSION_SECRET is not configured');
-            return;
+            return Response.json({ error: 'Server configuration error' }, { status: 500 });
           }
           const decoded = jwt.verify(token, SECRET_KEY);
           user = decoded;
           userPreferredTitles = user.jobPrefsTitle || [];
           userPreferredLocations = user.jobPrefsLocation || [];
         } catch (error) {
-          // Token verification failed, but we can continue without user preferences
           console.debug('Token verification failed:', error.message);
-          user = null;
-          userPreferredTitles = [];
-          userPreferredLocations = [];
         }
       }
     }
@@ -63,72 +59,54 @@ export async function GET(req) {
       if (!location && userPreferredLocations.length > 0) {
         location = userPreferredLocations[0].toLowerCase();
       }
-    }
-
-    // Clear these if we're not applying preferences
-    if (!applyJobPrefs) {
+    } else {
       userPreferredTitles = [];
       userPreferredLocations = [];
     }
 
-    // Increase cache TTL to 30 minutes for count queries
-    const CACHE_TTL = 1800; // 30 minutes
-
-    // Create deterministic cache key from search params
-    const cacheKey = JSON.stringify({
-      title: searchParams.get("title")?.trim() || "",
-      location: (searchParams.get("location")?.trim() || "").toLowerCase(),
-      company: searchParams.get("company")?.trim() || "",
-      experienceLevel: experienceLevel,
-      applyJobPrefs: applyPrefsParam,
+    // Normalize cache key parameters
+    const normalizedParams = {
+      title: title || "",
+      location: location || "",
+      company: company || "",
+      experienceLevel: experienceLevel || "",
+      applyJobPrefs: applyJobPrefs,
       userPrefs: applyJobPrefs ? {
         titles: userPreferredTitles,
         locations: userPreferredLocations
       } : null
-    });
+    };
 
-    // Check cache first with longer TTL
+    // Create a deterministic cache key using hashing
+    const cacheKey = crypto.createHash('sha256').update(JSON.stringify(normalizedParams)).digest('hex');
+
+    // Attempt to retrieve cached count
     const cachedCount = await getCached(`jobCount:${cacheKey}`, user?.id);
     if (cachedCount) {
       return Response.json(JSON.parse(cachedCount), { status: 200 });
     }
 
-    // Get the entire group of related titles if a title search is provided
-    const titleGroup = title ? findJobTitleGroup(title) : [];
-
-    // Prepare query parameters
+    // Build the count query
     const params = [];
     let paramIndex = 1;
+    let queryText = `SELECT COUNT(id) AS totaljobs FROM jobPostings WHERE 1=1`;
 
-    // Optimize count query using EXPLAIN ANALYZE
-    let queryText = `
-      SELECT 
-        -- Use approximate count for large datasets
-        CASE 
-          WHEN (SELECT reltuples::bigint FROM pg_class WHERE relname = 'jobpostings') > 100000
-          THEN (SELECT reltuples::bigint FROM pg_class WHERE relname = 'jobpostings')
-          ELSE COUNT(*)
-        END AS totaljobs
-      FROM jobPostings
-      WHERE 1=1
-    `;
-
-    // Title search using title group
     if (title) {
-      const orQuery = titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')).join(' | ');
-      queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
-      params.push(orQuery);
-      paramIndex++;
+      const titleGroup = findJobTitleGroup(title);
+      if (titleGroup.length > 0) {
+        const orQuery = titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')).join(' | ');
+        queryText += ` AND title_vector @@ to_tsquery('english', $${paramIndex})`;
+        params.push(orQuery);
+        paramIndex++;
+      }
     }
 
-    // Experience level filter
     if (experienceLevel) {
       queryText += ` AND experiencelevel ILIKE $${paramIndex}`;
       params.push(experienceLevel);
       paramIndex++;
     }
 
-    // Only add location/company filters if they're specific enough
     if (location && location.length > 2) {
       queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
       params.push(location);
@@ -141,30 +119,42 @@ export async function GET(req) {
       paramIndex++;
     }
 
-    // Execute with timeout
+    console.log(queryText);
+    // Execute the count query with a timeout
     const result = await Promise.race([
       query(queryText, params),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Query timeout')), 5000)
+        setTimeout(() => reject(new Error('Query timeout')), 10000)
       )
     ]);
 
-    const totalJobs = result.rows[0]?.totaljobs || 0;
+    const totalJobs = parseInt(result.rows[0]?.totaljobs, 10) || 0;
     const responseData = { totalJobs };
 
-    // Cache with longer TTL
+    // Cache the count result
     await setCached(
       `jobCount:${cacheKey}`,
       user?.id,
       JSON.stringify(responseData),
-      CACHE_TTL
+      1800 // 30 minutes TTL
     );
 
     return Response.json(responseData, { status: 200 });
   } catch (error) {
     console.error("Error fetching total jobs:", error);
-    // Return a fallback count if query times out
-    return Response.json({ totalJobs: 1000 }, { status: 200 });
+    // Fallback to approximate count or a default value
+    try {
+      const approximateCountResult = await query(`
+        SELECT reltuples::BIGINT AS approximate_count
+        FROM pg_class
+        WHERE relname = 'jobPostings'
+      `);
+      const approximateCount = approximateCountResult.rows[0]?.approximate_count || 1000;
+      return Response.json({ totalJobs: approximateCount }, { status: 200 });
+    } catch (approxError) {
+      console.error("Error fetching approximate count:", approxError);
+      return Response.json({ totalJobs: 1000 }, { status: 200 });
+    }
   }
 }
 
