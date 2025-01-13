@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { registerAction } from '@/app/actions/auth';
 import { Button } from "@/components/ui/button"
+import Link from "next/link";
 import {
   Form,
   FormControl,
@@ -73,11 +74,10 @@ function InputForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {statusMessage.text && (
-          <div className={`rounded-lg border px-4 py-3 ${
-            statusMessage.isError 
-              ? 'border-red-500/50 text-red-600' 
-              : 'border-green-500/50 text-green-600'
-          }`}>
+          <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
+            ? 'border-red-500/50 text-red-600'
+            : 'border-green-500/50 text-green-600'
+            }`}>
             <p className="text-sm">
               <CircleAlert
                 className="-mt-0.5 me-3 inline-flex opacity-60"
@@ -147,7 +147,7 @@ function InputForm() {
             </FormItem>
           )}
         />
-        <Button className="w-full font-semibold hover:text-primary hover:bg-accent" type="submit">Create Account</Button>
+        <Button className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30" type="submit">Create Account</Button>
       </form>
     </Form>
   )
@@ -167,6 +167,14 @@ export default function Login() {
   return (
     <div className="flex justify-center p-4 sm:p-8">
       <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-2xl font-medium">Register</h1>
+          <p className="text-muted-foreground text-sm">
+            Already have an account? <Link href="/login" className="text-primary">Login</Link>
+
+          </p>
+        </div>
+
         <InputForm />
       </main>
     </div>

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { loginAction } from '@/app/actions/auth';
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import {
   Form,
   FormControl,
@@ -91,9 +92,9 @@ function InputForm() {
           name="emailOrUsername"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email or Username</FormLabel>
+              <FormLabel>Email / Username</FormLabel>
               <FormControl>
-                <Input placeholder="Enter email or username" {...field} />
+                <Input placeholder="email or username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -112,7 +113,7 @@ function InputForm() {
             </FormItem>
           )}
         />
-        <Button className="w-full font-semibold hover:text-primary hover:bg-accent" type="submit">Login</Button>
+        <Button className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30" type="submit">Login</Button>
       </form>
     </Form>
   )
@@ -132,6 +133,13 @@ export default function Login() {
   return (
     <div className="flex justify-center p-4 sm:p-8">
       <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
+        <div className="flex flex-col gap-4">
+          <h1 className="text-2xl font-medium">Login</h1>
+          <p className="text-muted-foreground text-sm">
+            Don&apos;t have an account? <Link href="/register" className="text-primary">Register</Link>
+
+          </p>
+        </div>
         <InputForm />
       </main>
     </div>
