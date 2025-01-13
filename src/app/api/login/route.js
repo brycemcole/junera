@@ -30,22 +30,44 @@ export async function POST(req) {
   try {
     if (!SECRET_KEY) {
       console.error("Missing SESSION_SECRET environment variable");
-      return new Response(JSON.stringify({ error: "Server configuration error" }), { status: 500 });
+      return new Response(JSON.stringify({ error: "Server configuration error" }), { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     const body = await req.json();
+    
+    // Log the received request body (excluding password)
+    console.log('Login request received:', {
+      emailOrUsername: body.emailOrUsername,
+      timestamp: new Date().toISOString()
+    });
+
     const { emailOrUsername, password } = body;
 
     if (!emailOrUsername || !password) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Missing required fields" }), { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
     const result = await loginUser(emailOrUsername, password);
     if (result.error) {
-      return new Response(JSON.stringify({ error: result.error }), { status: 400 });
+      console.error('Login error:', result.error);
+      return new Response(JSON.stringify({ error: result.error }), { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
 
-    // Add more specific error logging
     try {
       const token = jwt.sign({
         id: result.userId,
@@ -67,10 +89,20 @@ export async function POST(req) {
       });
     } catch (jwtError) {
       console.error("JWT signing error:", jwtError);
-      return new Response(JSON.stringify({ error: "Error creating session" }), { status: 500 });
+      return new Response(JSON.stringify({ error: "Error creating session" }), { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
     }
   } catch (error) {
-    console.error("Error logging in user:", error);
-    return new Response(JSON.stringify({ error: "Error logging in user" }), { status: 500 });
+    console.error("Error in login route:", error);
+    return new Response(JSON.stringify({ error: "Error logging in user" }), { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   }
 }

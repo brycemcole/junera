@@ -24,12 +24,16 @@ export async function loginAction(data) {
       return { error: 'Email/Username and password are required' };
     }
 
-    // Get base URL with fallback for production
+    // Get the current hostname
+    const protocol = process.env.NODE_ENV === 'production' ? 'https://' : 'http://';
+    const host = process.env.NEXT_PUBLIC_SITE_URL || 'localhost:3000';
+    const apiUrl = `${protocol}${host}/api/login`;
 
-    // Construct the full URL properly
-    const apiUrl = `/api/login`;
-
-    console.log('Attempting login with URL:', apiUrl); // Debug log
+    console.log('Login attempt:', {
+      url: apiUrl,
+      emailOrUsername: data.emailOrUsername,
+      timestamp: new Date().toISOString()
+    });
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -40,18 +44,23 @@ export async function loginAction(data) {
         emailOrUsername: data.emailOrUsername,
         password: data.password,
       }),
-      cache: 'no-store',
+      cache: 'no-store'
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Login failed:', errorData);
+      console.error('Login response error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
       return { error: errorData.error || 'Login failed' };
     }
 
     const result = await response.json();
 
     if (!result.token) {
+      console.error('No token in response:', result);
       return { error: 'No token received from server' };
     }
 
@@ -61,7 +70,10 @@ export async function loginAction(data) {
     };
 
   } catch (error) {
-    console.error('Login action error:', error);
+    console.error('Login action error:', {
+      message: error.message,
+      stack: error.stack
+    });
     return { error: 'An error occurred during login' };
   }
 }
