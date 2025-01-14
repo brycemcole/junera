@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; // Assuming Avatar components are defined/imported
 import { Badge } from "@/components/ui/badge"; 
@@ -10,6 +10,11 @@ import Link from 'next/link';
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
+  const [jobData, setJobData] = useState(data);
+
+  useEffect(() => {
+    setJobData(data);
+  }, [data]);
 
   const stateMap = {
     'remote': 'N/A',
@@ -161,8 +166,8 @@ export const JobList = ({ data, loading, error }) => {
     return <p className="text-red-500">{error}</p>;
   }
 
-  if (!Array.isArray(data)) {
-    console.log(data);
+  if (!Array.isArray(jobData)) {
+    console.log(jobData);
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p>No job postings found.</p>
@@ -171,7 +176,7 @@ export const JobList = ({ data, loading, error }) => {
   }
   return (
     <div className="md:px-0 border-none md:shadow-none max-w-full">
-      {data.map((job, index) => (
+      {jobData.map((job, index) => (
         <div
         key={index} className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
         >
