@@ -503,6 +503,7 @@ export default function JobPostingsPage() {
   const [companies, setCompanies] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -799,21 +800,15 @@ export default function JobPostingsPage() {
     const abortController = new AbortController();
 
     async function fetchData() {
-      setDataLoading(true);
-      setPageLoading(true);
+      // Only set loading states on initial load or filter changes
+      if (currentPage === 1) {
+        setInitialLoading(true);
+        setDataLoading(true);
+      }
 
       try {
         if (saved) {
           await fetchBookmarkedJobs();
-          return;
-        }
-
-        // Fetch jobs first
-
-        if (saved) {
-          fetchBookmarkedJobs();
-          setPageLoading(false);
-          setDataLoading(false);
           return;
         }
 
@@ -826,8 +821,13 @@ export default function JobPostingsPage() {
         if (!jobRes.ok) throw new Error("Network response was not ok");
 
         const jobData = await jobRes.json();
-        setData(prevData => [...prevData, ...(jobData.jobPostings || [])]);
-        setPageLoading(false);
+
+        // Update data based on page number
+        setData(prevData =>
+          currentPage === 1
+            ? (jobData.jobPostings || [])
+            : [...prevData, ...(jobData.jobPostings || [])]
+        );
 
         // Fetch count and companies in parallel after showing initial results
         Promise.all([
@@ -846,8 +846,8 @@ export default function JobPostingsPage() {
         if (err.name !== "AbortError") console.error("Error:", err);
       } finally {
         if (isActive) {
+          setInitialLoading(false);
           setDataLoading(false);
-          setPageLoading(false);
         }
       }
     }
@@ -1290,7 +1290,7 @@ Please provide relevant career advice and job search assistance based on their p
   return (
     <>
       <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
-      <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
+      <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through job listings and apply today!`} />
       <meta name="robots" content="index, follow" />
       <meta property="og:type" content="website" />
       <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
@@ -1414,7 +1414,7 @@ Please provide relevant career advice and job search assistance based on their p
           )}
 
           <div>
-            {pageLoading ? (
+            {initialLoading ? (
               <div className="space-y-4">
                 {[...Array(limit)].map((_, i) => (
                   <div key={i} className="p-4 border rounded-lg animate-pulse">
@@ -1425,7 +1425,7 @@ Please provide relevant career advice and job search assistance based on their p
               </div>
             ) : data && data.length > 0 ? (
               <div key="job-postings">
-                <JobList data={data} loading={pageLoading} error={null} />
+                <JobList data={data} loading={dataLoading} error={null} />
               </div>
             ) : (
               <p>No job postings found. Adjust your search criteria.</p>
