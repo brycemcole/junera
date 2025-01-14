@@ -682,7 +682,7 @@ export default function JobPostingsPage() {
         setActiveTab('all');
       } else if (currentSearchParams.location === 'remote') {
         setActiveTab('remote');
-      } else if (user.jobPrefsTitle && user.jobPrefsTitle.includes(currentSearchParams.title) && user.jobPrefsLocation && user.jobPrefsLocation.includes(currentSearchParams.location) && user.jobPrefsLevel && user.jobPrefsLevel.includes(currentSearchParams.explevel)) {
+      } else if (user && (user.jobPrefsTitle && user.jobPrefsTitle.includes(currentSearchParams.title) && user.jobPrefsLocation && user.jobPrefsLocation.includes(currentSearchParams.location) && user.jobPrefsLevel && user.jobPrefsLevel.includes(currentSearchParams.explevel))) {
         setActiveTab('preferences');
       }
       else {
