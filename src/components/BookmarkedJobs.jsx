@@ -1,5 +1,4 @@
-// components/BookmarkedJobs.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -7,6 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import JobList from './JobPostings';
 
 export default function BookmarkedJobs({ jobs, loading, error }) {
+    const [jobData, setJobData] = useState(jobs);
+
+    useEffect(() => {
+        setJobData((prevData) => [...prevData, ...jobs]);
+    }, [jobs]);
+
     if (loading) {
         return (
             <div className="space-y-3">
@@ -16,13 +21,12 @@ export default function BookmarkedJobs({ jobs, loading, error }) {
             </div>
         );
     }
-    
 
     if (error) {
         return <p className="text-red-500">{error}</p>;
     }
 
-    if (!Array.isArray(jobs)) {
+    if (!Array.isArray(jobData)) {
         return (
             <div className="text-center py-8 text-muted-foreground">
                 <p>No bookmarked jobs found.</p>
@@ -30,7 +34,7 @@ export default function BookmarkedJobs({ jobs, loading, error }) {
         );
     }
 
-    if (jobs.length === 0) {
+    if (jobData.length === 0) {
         return (
             <div className="text-center py-8 text-muted-foreground">
                 <p>You haven&apos;t bookmarked any jobs yet.</p>
@@ -40,7 +44,7 @@ export default function BookmarkedJobs({ jobs, loading, error }) {
 
     return (
         <div className="space-y-2 divide-y">
-            <JobList data={jobs} />
+            <JobList data={jobData} />
         </div>
     );
 }

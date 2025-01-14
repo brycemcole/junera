@@ -826,7 +826,7 @@ export default function JobPostingsPage() {
         if (!jobRes.ok) throw new Error("Network response was not ok");
 
         const jobData = await jobRes.json();
-        setData(jobData.jobPostings || []);
+        setData(prevData => [...prevData, ...(jobData.jobPostings || [])]);
         setPageLoading(false);
 
         // Fetch count and companies in parallel after showing initial results
