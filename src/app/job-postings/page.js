@@ -1294,7 +1294,7 @@ Please provide relevant career advice and job search assistance based on their p
       <meta name="robots" content="index, follow" />
       <meta property="og:type" content="website" />
       <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
-      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`} />
+      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through our comprehensive job listings.`} />
       <meta property="og:url" content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`} />
       <script
         type="application/ld+json"
@@ -1307,7 +1307,7 @@ Please provide relevant career advice and job search assistance based on their p
               "@id": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
             },
             "name": `${title || 'junera'} ${location ? `in ${location}` : ''} ${company ? `at ${company} | jobs` : ''}`,
-            "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`,
+            "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through our comprehensive job listings.`,
             "datePosted": new Date().toISOString(),
             "jobLocation": {
               "@type": "Place",
