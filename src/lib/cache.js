@@ -1,34 +1,31 @@
 const memoryCache = new Map();
 const cacheExpiry = new Map();
 
-const getCached = async (key, userId = '') => {
-  const fullKey = `${key}:${userId}`;
-  const expiry = cacheExpiry.get(fullKey);
+const getCached = async (key) => {
+  const expiry = cacheExpiry.get(key);
   
   // Check if cache has expired
   if (expiry && Date.now() > expiry) {
-    memoryCache.delete(fullKey);
-    cacheExpiry.delete(fullKey);
+    memoryCache.delete(key);
+    cacheExpiry.delete(key);
     return null;
   }
   
-  return memoryCache.get(fullKey) || null;
+  return memoryCache.get(key) || null;
 };
 
-const setCached = async (key, userId = '', value, ttlSeconds = 300) => {
+const setCached = async (key, value, ttlSeconds = 300) => {
   if (!value) {
     console.warn('Attempted to cache null/undefined value');
     return;
   }
 
-  const fullKey = `${key}:${userId}`;
-  memoryCache.set(fullKey, value);
-  cacheExpiry.set(fullKey, Date.now() + (ttlSeconds * 1000));
+  memoryCache.set(key, value);
+  cacheExpiry.set(key, Date.now() + (ttlSeconds * 1000));
 };
 
-const clearCache = async (key, userId) => {
-  const fullKey = `${key}:${userId}`;
-  memoryCache.delete(fullKey);
+const clearCache = async (key) => {
+  memoryCache.delete(key);
 };
 
 const clearAllCache = async () => {

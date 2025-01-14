@@ -365,7 +365,7 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
-    // Create a deterministic cache key from all search parameters, including sort
+    // Create cache key based on search parameters
     const cacheKeyObject = {
       page,
       limit,
@@ -374,19 +374,18 @@ export async function GET(req) {
       company,
       experienceLevel,
       strict,
-      sort, // Include sort in cache key
-      applyJobPrefs,
-      userPrefs: applyJobPrefs ? {
-        titles: userPreferredTitles,
-        locations: userPreferredLocations
-      } : null
+      sort,
+      applyJobPrefs: applyJobPrefs ? true : false // don't include actual prefs in key
     };
     const cacheKeyString = JSON.stringify(cacheKeyObject);
 
-    // Check cache with user-specific key if logged in
-    const cachedData = await getCached(cacheKeyString, user?.id);
+    // Only use user-specific caching if we're applying job preferences
+    const cacheKey = applyJobPrefs ? `${cacheKeyString}:user:${user?.id}` : cacheKeyString;
+
+    // Check cache
+    const cachedData = await getCached(cacheKey);
     if (cachedData) {
-      console.log('Cache hit for key:', cacheKeyString);
+      console.log('Cache hit for key:', cacheKey);
       return Response.json(JSON.parse(cachedData), { status: 200 });
     }
 
@@ -694,20 +693,13 @@ export async function GET(req) {
     // Process rows if needed
     const jobPostings = processJobPostings(result.rows);
 
-    // Cache the response with the user-specific key
-    const responseData = {
-      jobPostings,
-      timings: { ...timings, cached: false },
-      ok: true
-    };
-
-    // Only cache if we have results and it's not an empty query
+    // Cache the response - use different TTL based on whether it's user-specific
     if (jobPostings.length > 0 && hasSearchCriteria) {
       await setCached(
-        cacheKeyString,
-        user?.id,
-        JSON.stringify(responseData),
-        300 // 5 minute TTL
+        cacheKey,
+        null, // no need for user ID parameter anymore
+        JSON.stringify({ jobPostings, timings }),
+        applyJobPrefs ? 300 : 1800 // 5 mins for user-specific, 30 mins for general
       );
     }
 

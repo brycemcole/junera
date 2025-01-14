@@ -32,7 +32,7 @@ export async function GET(req) {
                     username, full_name, headline, email, phone_number, profile_links,
                     is_premium, job_prefs_title, job_prefs_location, job_prefs_skills,
                     job_prefs_industry, job_prefs_language, job_prefs_salary, job_prefs_relocatable,
-                    job_prefs_experience_level, avatar
+                    job_prefs_level, avatar
                 FROM users
                 WHERE id = $1
             ),
@@ -143,7 +143,7 @@ export async function PUT(req) {
                 job_prefs_language = $10,
                 job_prefs_salary = $11,
                 job_prefs_relocatable = $12,
-                job_prefs_experience_level = $13
+                job_prefs_level = $13
             WHERE id = $14
         `;
 
@@ -160,7 +160,7 @@ export async function PUT(req) {
             updates.job_prefs_language,
             jobPrefsSalary,
             jobPrefsRelocatable,
-            updates.job_prefs_experience_level,
+            updates.job_prefs_level,
             userId
         ];
 

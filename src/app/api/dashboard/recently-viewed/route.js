@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { query } from '@/lib/pgdb';
 const he = require('he');
+import { getCached, setCached } from '@/lib/cache';
+
 
 export async function GET(request) {
   const authHeader = request.headers.get('Authorization');
@@ -9,7 +11,13 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const token = authHeader.split(' ')[1];
-  
+
+  const cacheKey = `recently-viewed:${token}`;
+  const cachedResult = await getCached(cacheKey);
+  if (cachedResult) {
+    return NextResponse.json(cachedResult, { status: 200 });
+  }
+
   try {
     const decoded = jwt.verify(token, process.env.SESSION_SECRET);
     const userId = decoded.id;
@@ -46,6 +54,9 @@ export async function GET(request) {
       viewedAt: job.viewed_at?.toISOString() || '',
       totalViews: parseInt(job.total_views) || 0
     }));
+
+    // Cache the results for 5 minutes
+    await setCached(cacheKey, recentlyViewed, 300);
 
     return NextResponse.json(recentlyViewed);
 

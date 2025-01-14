@@ -16,6 +16,13 @@ export async function GET(request) {
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const cacheKey = `saved-searches:${token}`;
+
+  // Check cache for saved searches
+  const cachedSearches = await getCached(cacheKey);
+  if (cachedSearches) {
+    return NextResponse.json({ savedSearches: cachedSearches }, { status: 200 });
+  }
 
 
   try {
@@ -27,7 +34,8 @@ export async function GET(request) {
       [userId]
     );
 
-    setCached('saved-searches', token, result.rows);
+    // Cache the result for 5 minutes
+    await setCached(cacheKey, result.rows, 300);
 
     return NextResponse.json({ savedSearches: result.rows }, { status: 200 });
   } catch (error) {
@@ -96,8 +104,8 @@ export async function PUT(request) {
     const { id, searchName, searchCriteria, notify } = await request.json();
 
     // Ensure searchCriteria is properly stringified for database storage
-    const searchCriteriaString = typeof searchCriteria === 'string' 
-      ? searchCriteria 
+    const searchCriteriaString = typeof searchCriteria === 'string'
+      ? searchCriteria
       : JSON.stringify(searchCriteria);
 
     const result = await query(

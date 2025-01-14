@@ -147,7 +147,7 @@ export default function ProfilePage() {
         },
         {
             type: 'select',
-            name: 'job_prefs_experience_level',
+            name: 'job_prefs_level',
             label: 'Experience Level',
             options: [
                 { value: 'internship', label: 'Internships' },
@@ -995,7 +995,7 @@ export default function ProfilePage() {
                 <CardContent>
                     <div className="space-y-2">
                         <p className="text-muted-foreground">
-                            <strong className="text-foreground">{profile.user.job_prefs_title || 'Any'}</strong> jobs {profile.user.job_prefs_relocatable || 'only'} in <strong className="text-foreground">{profile.user.job_prefs_location || 'Any location'}</strong> requiring <strong className="text-foreground">{profile.user.job_prefs_experience_level || 'Any'}</strong> experience level.
+                            <strong className="text-foreground">{profile.user.job_prefs_title || 'Any'}</strong> jobs {profile.user.job_prefs_relocatable || 'only'} in <strong className="text-foreground">{profile.user.job_prefs_location || 'Any location'}</strong> requiring <strong className="text-foreground">{profile.user.job_prefs_level || 'Any'}</strong> experience level.
                             making <strong className="text-foreground">{profile.user.job_prefs_salary || 'Any'}</strong> annually.
                         </p>
                     </div>
