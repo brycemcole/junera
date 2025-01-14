@@ -781,75 +781,91 @@ export default function JobPostingsPage() {
   };
 
   function JobPostingsPagination({ currentPage, count, limit }) {
-    const totalPages = Math.ceil(count / limit);
+  const totalPages = Math.ceil(count / limit);
+  const router = useRouter(); // Assumes useRouter is already imported and used
+  const [pageLoading, setPageLoading] = useState(false); // Manages loading state
 
-    const handlePageChange = (pageNumber) => {
-      if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
-        //Scroll to the top of the page when a new page is presented
+  const buildHref = (pageNumber) => {
+    // Construct the URL based on your routing logic
+    return `/job-postings?page=${pageNumber}`;
+  };
+
+  const handlePageChange = async (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
+      setPageLoading(true); // Optional: Set loading state
+      try {
+        await router.push(buildHref(pageNumber)); // Navigate to the new page
         window.scrollTo({
           top: 0,
           behavior: 'smooth',
-        });
-        setPageLoading(true);
-        router.push(buildHref(pageNumber));
+        }); // Scroll to the top after navigation
+      } catch (error) {
+        console.error('Navigation error:', error);
+      } finally {
+        setPageLoading(false); // Reset loading state
       }
-    };
+    }
+  };
 
-    return (
-      <Pagination>
-        <PaginationContent className="w-full justify-between">
-          <PaginationItem>
-            <PaginationLink
-              className={cn(
-                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
-                buttonVariants({
-                  variant: "outline",
-                }),
-              )}
-              href={buildHref(currentPage - 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(currentPage - 1);
-              }}
-              aria-label="Go to previous page"
-              aria-disabled={currentPage === 1}
-              role={currentPage === 1 ? "link" : undefined}
-            >
-              <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
-            </PaginationLink>
-          </PaginationItem>
+  return (
+    <Pagination>
+      <PaginationContent className="w-full justify-between">
+        {/* Previous Page Button */}
+        <PaginationItem>
+          <PaginationLink
+            className={cn(
+              "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+              buttonVariants({
+                variant: "outline",
+              }),
+            )}
+            href={buildHref(currentPage - 1)}
+            onClick={(e) => {
+              e.preventDefault();
+              handlePageChange(currentPage - 1);
+            }}
+            aria-label="Go to previous page"
+            aria-disabled={currentPage === 1}
+            role={currentPage === 1 ? "link" : undefined}
+          >
+            <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+          </PaginationLink>
+        </PaginationItem>
 
-          <PaginationItem>
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              Page <span className="text-foreground">{currentPage}</span> of{" "}
-              <span className="text-foreground">{totalPages}</span>
-            </p>
-          </PaginationItem>
+        {/* Current Page Indicator */}
+        <PaginationItem>
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Page <span className="text-foreground">{currentPage}</span> of{" "}
+            <span className="text-foreground">{totalPages}</span>
+          </p>
+        </PaginationItem>
 
-          <PaginationItem>
-            <PaginationLink
-              className={cn(
-                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
-                buttonVariants({
-                  variant: "outline",
-                }),
-              )}
-              href={buildHref(currentPage + 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(currentPage + 1);
-              }}
-              aria-label="Go to next page"
-              aria-disabled={currentPage === totalPages}
-              role={currentPage === totalPages ? "link" : undefined}
-            >
-              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-            </PaginationLink>
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  }
+        {/* Next Page Button */}
+        <PaginationItem>
+          <PaginationLink
+            className={cn(
+              "aria-disabled:pointer-events-none aria-disabled:opacity-50",
+              buttonVariants({
+                variant: "outline",
+              }),
+            )}
+            href={buildHref(currentPage + 1)}
+            onClick={(e) => {
+              e.preventDefault();
+              handlePageChange(currentPage + 1);
+            }}
+            aria-label="Go to next page"
+            aria-disabled={currentPage === totalPages}
+            role={currentPage === totalPages ? "link" : undefined}
+          >
+            <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+          </PaginationLink>
+        </PaginationItem>
+      </PaginationContent>
+    </Pagination>
+  );
+}
+
 
   function buildHref(pageNumber) {
     const params = {
