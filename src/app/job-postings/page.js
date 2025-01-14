@@ -496,10 +496,10 @@ export default function JobPostingsPage() {
   const [data, setData] = useState([]);
   const [title, setTitle] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
+  const [saved, setSaved] = useState(false);
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
   const [strictSearch, setStrictSearch] = useState(true);
-  const [applyJobPrefs, setApplyJobPrefs] = useState(true);
   const [count, setCount] = useState(0);
   const limit = 30;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -526,10 +526,9 @@ export default function JobPostingsPage() {
       location,
       company,
       currentPage,
-      applyJobPrefs
     };
     sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
-  }, [title, experienceLevel, location, company, currentPage, applyJobPrefs]);
+  }, [title, experienceLevel, location, company, currentPage]);
 
   const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
@@ -591,12 +590,13 @@ export default function JobPostingsPage() {
                 </Suspense>
               </div>
 
-              {(title || experienceLevel || location || company) && (
+              {(title || experienceLevel || location || company || saved) && (
                 <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
                   setCompanyData([]);
                   setCompany("");
                   setTitle("");
                   setExperienceLevel("");
+                  setSaved(false);
                   setLocation("");
                   setCurrentPage(1);
                   router.push(`/job-postings`);
@@ -627,64 +627,129 @@ export default function JobPostingsPage() {
     return { promise, controller };
   }, []);
 
+
   function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
     const [activeTab, setActiveTab] = useState('all');
+    const router = useRouter();
 
-    // Determine active tab based on current search params
-    useEffect(() => {
-      if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
-        setActiveTab('all');
+    // Memoize the tab click handler
+    const handleTabClick = useCallback((searchId, criteria = null) => {
+      if (searchId === 'saved') {
+        // Handle saved jobs tab
+        setActiveTab('saved');
+        router.push('/job-postings?saved=true');
         return;
       }
 
-      // Check if current params match any saved search
-      const matchingSavedSearch = savedSearches?.find(search => {
-        const criteria = search.search_criteria;
-        return (
-          criteria.title === currentSearchParams.title &&
-          criteria.experienceLevel === currentSearchParams.explevel &&
-          criteria.location === currentSearchParams.location
-        );
-      });
+      if (searchId === 'preferences') {
+        // Handle preferences tab
+        setActiveTab('preferences');
+        console.log(user);
+        const params = new URLSearchParams({
+          title: user.jobPrefsTitle,
+          location: user.jobPrefsLocation,
+          explevel: user.jobPrefsLevel
+        });
+        router.push(`/job-postings?${params.toString()}`);
+        return;
+      }
 
-      if (matchingSavedSearch) {
-        setActiveTab(matchingSavedSearch.id);
-      } else {
+      if (searchId === 'all') {
+        // Handle all jobs tab
         setActiveTab('all');
+        router.push('/job-postings');
+        return;
+      }
+
+      // Handle saved search tab
+      if (criteria) {
+        setActiveTab(searchId);
+        const params = new URLSearchParams({
+          ...(criteria.title && { title: criteria.title }),
+          ...(criteria.experienceLevel && { explevel: criteria.experienceLevel }),
+          ...(criteria.location && { location: criteria.location })
+        });
+        router.push(`/job-postings?${params.toString()}`);
+      }
+    }, [router]);
+
+    // Update active tab based on URL params
+    useEffect(() => {
+      console.log(user);
+      if (currentSearchParams.saved) {
+        setActiveTab('saved');
+      } else if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
+        setActiveTab('all');
+      } else if (currentSearchParams.location === 'remote') {
+        setActiveTab('remote');
+      } else if (user.jobPrefsTitle && user.jobPrefsTitle.includes(currentSearchParams.title) && user.jobPrefsLocation && user.jobPrefsLocation.includes(currentSearchParams.location) && user.jobPrefsLevel && user.jobPrefsLevel.includes(currentSearchParams.explevel)) {
+        setActiveTab('preferences');
+      }
+      else {
+        const matchingSavedSearch = savedSearches?.find(search => {
+          const criteria = search.search_criteria;
+          return (
+            criteria.title === currentSearchParams.title &&
+            criteria.experienceLevel === currentSearchParams.explevel &&
+            criteria.location === currentSearchParams.location
+          );
+        });
+        if (matchingSavedSearch) {
+          setActiveTab(matchingSavedSearch.id);
+        }
       }
     }, [currentSearchParams, savedSearches]);
 
     return (
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-transparent p-0">
+      <Tabs value={activeTab}>
+        <TabsList className="bg-transparent p-0 mb-4">
           <TabsTrigger
             value="all"
+            onClick={() => handleTabClick('all')}
             className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
           >
-            All Jobs
+            All
           </TabsTrigger>
+
+          {!loading && user && (
+            <>
+              <TabsTrigger
+                value="saved"
+                onClick={() => handleTabClick('saved')}
+                className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              >
+                <BookmarkIcon size={16} strokeWidth={2} className="shrink-0" />
+              </TabsTrigger>
+              <TabsTrigger
+                value="preferences"
+                onClick={() => handleTabClick('preferences')}
+                className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              >
+                <SparkleIcon size={16} strokeWidth={2} className="shrink-0" />
+              </TabsTrigger>
+            </>
+          )}
+
+
+          <TabsTrigger
+            value="remote"
+            onClick={() => handleTabClick('remote', { location: 'remote' })}
+            className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+          >
+            Remote
+          </TabsTrigger>
+
           {savedSearches?.map((search) => (
             <TabsTrigger
               key={search.id}
               value={search.id}
+              onClick={() => handleTabClick(search.id, search.search_criteria)}
               className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
-              onClick={() => {
-                applySavedSearch(JSON.stringify(search.search_criteria));
-                setActiveTab(search.id);
-              }}
             >
               {search.search_name}
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="all">
-          {/* Main job listings content is rendered outside tabs */}
-        </TabsContent>
-        {savedSearches?.map((search) => (
-          <TabsContent key={search.id} value={search.id}>
-            {/* Saved search content is the same as main content, just filtered */}
-          </TabsContent>
-        ))}
       </Tabs>
     );
   }
@@ -793,13 +858,34 @@ export default function JobPostingsPage() {
       location,
       strictSearch,
       company,
-      // We still include applyJobPrefs in the URL for consistency across pagination:
-      applyJobPrefs: applyJobPrefs.toString(),
       page: pageNumber.toString()
     };
     const newParams = new URLSearchParams(params);
     return `/job-postings?${newParams.toString()}`;
   }
+
+  const fetchBookmarkedJobs = useCallback(async () => {
+    if (!user) return;
+
+    setDataLoading(true);
+    try {
+      const response = await fetch('/api/dashboard/bookmarked-jobs', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
+      const bookmarkedJobs = await response.json();
+      setData(bookmarkedJobs);
+      setCount(bookmarkedJobs.length);
+    } catch (err) {
+      console.error('Error fetching bookmarked jobs:', err);
+    } finally {
+      setDataLoading(false);
+      setPageLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     let isActive = true;
@@ -810,9 +896,22 @@ export default function JobPostingsPage() {
       setPageLoading(true);
 
       try {
+        if (saved) {
+          await fetchBookmarkedJobs();
+          return;
+        }
+
         // Fetch jobs first
+
+        if (saved) {
+          fetchBookmarkedJobs();
+          setPageLoading(false);
+          setDataLoading(false);
+          return;
+        }
+
         const jobRes = await fetch(
-          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
+          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`,
           { signal: abortController.signal }
         );
 
@@ -825,7 +924,7 @@ export default function JobPostingsPage() {
 
         // Fetch count and companies in parallel after showing initial results
         Promise.all([
-          fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`),
+          fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`),
           fetch(`/api/companies`)
         ]).then(([countRes, compRes]) => {
           if (!isActive) return;
@@ -861,7 +960,8 @@ export default function JobPostingsPage() {
     location,
     company,
     strictSearch,
-    applyJobPrefs,
+    saved,
+    fetchBookmarkedJobs
   ]);
 
   useEffect(() => {
@@ -879,20 +979,29 @@ export default function JobPostingsPage() {
 
   const applySavedSearch = (searchParamsStr) => {
     const params = JSON.parse(searchParamsStr);
-    const newTitle = params.jobTitle || '';
-    const newExp = params.explevel || '';
+    const newTitle = params.jobTitle || params.title || '';
+    const newExp = params.explevel || params.experienceLevel || '';
     const newLoc = params.location || '';
+    const saved = params.saved || false;
+
+    if (saved) {
+      const newUrl = `/job-postings?saved=true`;
+      if (newUrl !== router.asPath) {
+        router.push(newUrl);
+      }
+      return;
+    }
     setTitle(newTitle);
     setExperienceLevel(newExp);
     setLocation(newLoc);
     setCurrentPage(1);
 
     const newParams = {
-      title: newTitle,
-      explevel: newExp,
-      location: newLoc,
+      ...(newTitle && { title: newTitle }),
+      ...(newExp && { explevel: newExp }),
+      ...(newLoc && { location: newLoc }),
       page: '1',
-      applyJobPrefs: applyJobPrefs.toString()
+      saved: false,
     };
     const qs = new URLSearchParams(newParams).toString();
     const newUrl = `/job-postings?${qs}`;
@@ -912,7 +1021,6 @@ export default function JobPostingsPage() {
           location,
           company,
           strict: strictSearch,
-          applyJobPrefs: applyJobPrefs.toString(),
           page: '1'
         };
         const newParams = new URLSearchParams(params);
@@ -922,7 +1030,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs]
+    [experienceLevel, location, company, router, title, strictSearch]
   );
 
   const handleSaveSearch = async () => {
@@ -1109,49 +1217,12 @@ Please provide relevant career advice and job search assistance based on their p
           <Input
             id="input-26"
             className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
-            placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
+            placeholder={"Search for a job title"}
             onKeyDown={handleKeyDown}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
           />
-          <Suspense fallback={<div>Loading...</div>}>
-            {user && (
-              <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // Toggle job prefs and push new URL, same style as title/experience
-                    const newValue = !applyJobPrefs;
-                    setApplyJobPrefs(newValue);
-                    setCurrentPage(1);
-                    const params = {
-                      title,
-                      explevel: experienceLevel,
-                      location,
-                      company,
-                      strict: strictSearch,
-                      applyJobPrefs: newValue.toString(),
-                      page: '1'
-                    };
-                    const newParams = new URLSearchParams(params);
-                    const newUrl = `/job-postings?${newParams.toString()}`;
-                    if (newUrl !== router.asPath) {
-                      router.push(newUrl);
-                    }
-                  }}
-                  className={cn(
-                    "relative h-8 w-8 rounded-lg",
-                    applyJobPrefs &&
-                    "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
-                  )}
-                >
-                  <SparkleIcon size={14} className="" />
-                </Button>
-              </div>
-            )}
-          </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
@@ -1167,7 +1238,7 @@ Please provide relevant career advice and job search assistance based on their p
     );
   }
 
-  function LocationSearch({ location, setLocation, userPreferredLocation = "", applyJobPrefs }) {
+  function LocationSearch({ location, setLocation, userPreferredLocation = "" }) {
     const [searchValue, setSearchValue] = useState(location || "");
     const [timer, setTimer] = useState(null);
 
@@ -1230,7 +1301,7 @@ Please provide relevant career advice and job search assistance based on their p
           <Input
             id="input-26"
             className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
-            placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
+            placeholder={"Search for a location"}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
@@ -1306,7 +1377,7 @@ Please provide relevant career advice and job search assistance based on their p
       <meta name="robots" content="index, follow" />
       <meta property="og:type" content="website" />
       <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
-      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
+      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`} />
       <meta property="og:url" content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`} />
       <script
         type="application/ld+json"
@@ -1349,53 +1420,43 @@ Please provide relevant career advice and job search assistance based on their p
             setExperienceLevel={setExperienceLevel}
             setLocation={setLocation}
             setCompany={setCompany}
+            setSaved={setSaved}
             setCurrentPage={setCurrentPage}
-            setApplyJobPrefs={setApplyJobPrefs}
           />
         </Suspense>
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
               <h1 className="text-2xl font-medium mb-4">{headerTitle}</h1>
+              <p className="text-sm text-muted-foreground">
+                <small className="text-sm text-muted-foreground">
+                  {count} results
+                </small>
+              </p>
 
-              {activeFilters.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {activeFilters.filter(filter => filter.label !== 'Company').map(filter => (
-                    <Badge key={filter.label} variant="outline" className="flex items-center space-x-1 rounded-md px-2 py-1">
-                      <span className="font-medium">{filter.label}:</span>
-                      <span>{filter.value}</span>
-                      <button
-                        className="ml-1 inline-flex items-center justify-center rounded-full p-0.5 opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        onClick={() => onRemoveFilter(filter.label)}
-                        aria-label={`Remove ${filter.label} filter`}
-                      >
-                        <X size={14} strokeWidth={2} aria-hidden="true" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
+
             </div>
           </Suspense>
 
-
-          <Suspense>
-            <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
-          </Suspense>
+          {company && (
+            <Suspense>
+              <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
+            </Suspense>
+          )}
           <Suspense fallback={<div>Loading...</div>}>
             <MemoizedInput26 onSearch={handleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} applyJobPrefs={applyJobPrefs} />
+            <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
 
           <TabComponent
             savedSearches={savedSearches}
             applySavedSearch={applySavedSearch}
-            currentSearchParams={{ title, explevel: experienceLevel, location }}
+            currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
           />
 
-          {!user && !loading && (
+          {!loading && Math.random() > 0.5 && !user && (
             <div className="rounded-lg border border-green-600/30 bg-green-500/20 px-4 py-3 mb-6">
               <p className="text-sm leading-relaxed">
                 <BookmarkIcon
@@ -1411,44 +1472,6 @@ Please provide relevant career advice and job search assistance based on their p
             </div>
           )}
 
-          <Suspense fallback={<div>Loading...</div>}>
-            {user && (
-              <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
-                <h3 className="text-sm text-muted-foreground mb-2 font-medium">
-                  Saved Searches
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {count} results
-                </p>
-              </div>
-            )}
-          </Suspense>
-
-          {user && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <ScrollArea>
-                <div className="flex flex-row items-center gap-4 mb-3">
-                  {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
-                    savedSearches.map((search) => (
-                      <SavedSearchButton
-                        key={search.id}
-                        name={search.search_name}
-                        title={search.search_criteria.title}
-                        experienceLevel={search.search_criteria.experienceLevel}
-                        location={search.search_criteria.location}
-                      />
-                    ))
-                  )}
-                  {user && (
-                    <Button variant="ghost" type="button" size="smicon" onClick={userSavedSearches}>
-                      <Plus size={16} strokeWidth={1.5} />
-                    </Button>
-                  )}
-                </div>
-                <ScrollBar className="w-full" />
-              </ScrollArea>
-            </Suspense>
-          )}
         </div>
 
         <Suspense fallback={<div>Loading...</div>}>

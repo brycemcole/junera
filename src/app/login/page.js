@@ -53,7 +53,7 @@ function InputForm() {
       }
 
       if (result.token) {
-        await login(result.token, result.username);
+        await login(result.token, result.id, result.username, result.fullName, result.avatar, result.jobPrefsTitle, result.jobPrefsLocation, result.jobPrefsLevel);
         setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
         router.push('/dashboard');
       }

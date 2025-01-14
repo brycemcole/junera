@@ -145,8 +145,8 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-0 p-4 max-w-4xl">
-      <h1 className="text-2xl font-medium mb-6">Dashboard</h1>
-      <h2 className="text-md text-gray-500 mb-4">
+      <h1 className="text-2xl font-medium mb-4">Dashboard</h1>
+      <h2 className="text-sm text-gray-500 mb-4">
         Here&apos;s a quick glance at your progress and saved resources.
       </h2>
 

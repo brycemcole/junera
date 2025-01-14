@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { id } from "date-fns/locale";
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
@@ -21,7 +22,7 @@ const validateInput = (data) => {
 async function loginUser(emailOrUsername, password) {
   try {
     const result = await query(`
-      SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location
+      SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location, job_prefs_level
       FROM users
       WHERE email = $1 OR username = $1;
     `, [emailOrUsername]);
@@ -44,7 +45,8 @@ async function loginUser(emailOrUsername, password) {
       fullName: user.full_name,
       avatar: user.avatar || '/default.png',
       jobPrefsTitle: user.job_prefs_title,
-      jobPrefsLocation: user.job_prefs_location
+      jobPrefsLocation: user.job_prefs_location,
+      jobPrefsLevel: user.job_prefs_level
     };
   } catch (error) {
     console.error('Database error during login:', error);
@@ -70,11 +72,20 @@ export async function loginAction(data) {
       fullName: user.fullName,
       username: user.username,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      jobPrefsTitle: user.jobPrefsTitle,
+      jobPrefsLocation: user.jobPrefsLocation,
+      jobPrefsLevel: user.jobPrefsLevel
     }, SECRET_KEY);
 
     return {
       token,
-      username: user.username
+      username: user.username,
+      id: user.userId,
+      fullName: user.fullName,
+      avatar: user.avatar,
+      jobPrefsTitle: user.jobPrefsTitle,
+      jobPrefsLocation: user.jobPrefsLocation,
+      jobPrefsLevel: user.jobPrefsLevel
     };
 
   } catch (error) {
