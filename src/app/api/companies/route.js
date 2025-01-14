@@ -15,7 +15,8 @@ function hashStringToInt(str) {
 export async function GET(req) {
     const { signal } = req;
 
-    console.log('Fetching companies...'); // Debug log  
+    // Check cache first
+    const cachedCompanies = await getCached('companies');
 
     try {
         if (signal.aborted) {
@@ -47,7 +48,8 @@ ORDER BY company ASC;
 
 
         // Cache the companies data for future requests
-        //await setCached('companies', companies);
+        if (companies.length > 0)
+            await setCached('companies', companies);
 
         return new Response(JSON.stringify(companies), { status: 200 });
     } catch (error) {
