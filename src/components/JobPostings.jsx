@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
 import { redirect } from "next/navigation";
 import Link from 'next/link';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
@@ -260,6 +261,13 @@ export const JobList = ({ data, loading, error }) => {
       {loading && (
         <div className="flex justify-center py-4">
           <LoaderCircle className="animate-spin" />
+        </div>
+      )}
+      {loading && (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-md" />
+          ))}
         </div>
       )}
     </div>
