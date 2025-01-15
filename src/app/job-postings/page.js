@@ -61,6 +61,7 @@ import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
 import { set } from 'date-fns';
 import { throttle } from 'lodash';
+import { is } from 'date-fns/locale';
 
 
 const states = {
@@ -429,13 +430,10 @@ const JobCount = memo(function JobCount({ count, className }) {
 });
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, companies }) {
-  console.log(company); // name of selected company
-  console.log(companies); // array of companies {id, name, logo}
   if (!company) return null;
   if (!companies) return null;
   const companyObject = companies.find(c => c.name === company);
   if (!companyObject) return null;
-  console.log(companyObject); // object of selected company
 
   return (
     <div className="z-[100] max-w-[400px] mb-4 rounded-xl border border-emerald-700/20 bg-emerald-500/20 px-2 py-2">
@@ -508,23 +506,29 @@ export default function JobPostingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const lastRequestRef = useRef(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
-  const predefinedQuestions = [
-    "How can I improve my resume?",
-    "What skills are in high demand?",
-    "How to prepare for a job interview?",
-  ];
+  // Add new state for tracking data freshness
+  const [dataTimestamp, setDataTimestamp] = useState(null);
 
-  useEffect(() => {
-    const currentParams = {
-      title,
-      experienceLevel,
-      location,
-      company,
-      currentPage,
+  // Modify the data storage to include timestamp
+  const storeDataInSession = (data, page, params) => {
+    const timestamp = Date.now();
+    const storageData = {
+      data,
+      page,
+      params,
+      timestamp
     };
-    sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
-  }, [title, experienceLevel, location, company, currentPage]);
+    sessionStorage.setItem('jobListingsState', JSON.stringify(storageData));
+    setDataTimestamp(timestamp);
+  };
+
+  // Add this function to check if stored data is still fresh (less than 10 mins old)
+  const isDataFresh = (timestamp) => {
+    const TEN_MINUTES = 10 * 60 * 1000;
+    return Date.now() - timestamp < TEN_MINUTES;
+  };
 
   const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
@@ -606,23 +610,6 @@ export default function JobPostingsPage() {
       </Popover>
     );
   }
-
-  const fetchWithCancel = useCallback((url, options = {}) => {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const fetchData = async () => {
-      const response = await fetch(url, { ...options, signal });
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    };
-
-    const promise = fetchData();
-    return { promise, controller };
-  }, []);
-
 
   function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
     const [activeTab, setActiveTab] = useState('all');
@@ -800,132 +787,6 @@ export default function JobPostingsPage() {
   }, [user]);
 
   useEffect(() => {
-    let isActive = true;
-    const controller = new AbortController();
-    lastRequestRef.current = controller;
-
-    async function fetchData() {
-      // Reset data if it's first page
-      if (currentPage === 1) {
-        setData([]);
-        setInitialLoading(true);
-        setDataLoading(true);
-      } else {
-        setIsLoading(true);
-      }
-
-      try {
-        if (saved) {
-          await fetchBookmarkedJobs();
-          return;
-        }
-
-        const params = new URLSearchParams({
-          ...(title && { title }),
-          ...(experienceLevel && { experienceLevel }),
-          ...(location && { location }),
-          ...(company && { company }),
-          strictSearch,
-          page: currentPage.toString(),
-          limit: limit.toString()
-        });
-
-        const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
-          signal: controller.signal
-        });
-
-        if (!isActive) return;
-        if (!jobRes.ok) throw new Error("Network response was not ok");
-
-        const jobData = await jobRes.json();
-        const newJobs = jobData.jobPostings || [];
-
-        // Set hasMore based on whether we got a full page of results
-        setHasMore(newJobs.length === limit);
-
-        // Update data based on page number
-        setData(prevData => {
-          if (currentPage === 1) {
-            // For first page, just use new jobs
-            const newData = newJobs;
-            // Store in sessionStorage
-            sessionStorage.setItem('jobListingsData', JSON.stringify(newData));
-            sessionStorage.setItem('jobListingsPage', currentPage.toString());
-            sessionStorage.setItem('jobListingsParams', JSON.stringify({
-              title,
-              experienceLevel,
-              location,
-              company,
-              saved
-            }));
-            return newData;
-          } else {
-            // For subsequent pages, merge with existing data avoiding duplicates
-            const existingIds = new Set(prevData.map(job => job.id));
-            const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
-            const newData = [...prevData, ...uniqueNewJobs];
-            
-            // Store in sessionStorage
-            sessionStorage.setItem('jobListingsData', JSON.stringify(newData));
-            sessionStorage.setItem('jobListingsPage', currentPage.toString());
-            sessionStorage.setItem('jobListingsParams', JSON.stringify({
-              title,
-              experienceLevel,
-              location,
-              company,
-              saved
-            }));
-            
-            return newData;
-          }
-        });
-
-        // Only fetch count and companies on first page
-        if (currentPage === 1) {
-          Promise.all([
-            fetch(`/api/job-postings/count?${params.toString()}`),
-            fetch(`/api/companies`)
-          ]).then(([countRes, compRes]) => {
-            if (!isActive) return;
-            return Promise.all([countRes.json(), compRes.json()]);
-          }).then(([countData, companiesData]) => {
-            if (!isActive) return;
-            setCount(countData.totalJobs || 0);
-            setCompanies(companiesData || []);
-          }).catch(console.error);
-        }
-
-      } catch (err) {
-        if (err.name !== "AbortError") console.error("Error:", err);
-      } finally {
-        if (isActive) {
-          setInitialLoading(false);
-          setDataLoading(false);
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchData();
-
-    return () => {
-      isActive = false;
-      controller.abort();
-    };
-  }, [
-    user,
-    authLoading,
-    currentPage,
-    title,
-    experienceLevel,
-    location,
-    company,
-    strictSearch,
-    saved,
-    fetchBookmarkedJobs
-  ]);
-
-  useEffect(() => {
     if (!dataLoading && user) {
       fetch('/api/saved-searches', {
         headers: {
@@ -1021,90 +882,6 @@ export default function JobPostingsPage() {
     } catch (error) {
       console.error('Error saving search:', error);
       // toast destructive if needed
-    }
-  };
-
-  const handlePredefinedQuestion = async (question) => {
-    if (!user) return;
-
-    if (!userProfile) {
-      setLlmResponse("Loading user profile...");
-      return;
-    }
-
-    const technicalSkills = userProfile.user.technical_skills || 'None specified';
-    const softSkills = userProfile.user.soft_skills || 'None specified';
-    const otherSkills = userProfile.user.other_skills || 'None specified';
-
-    const systemMessage = {
-      role: "system",
-      content: `
-You are a helpful career assistant. You are talking to ${userProfile.user.username}.
-Here is their profile:
-
-### Professional Summary
-${userProfile.user.professionalSummary || 'No summary available.'}
-
-### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-- **Location**: ${exp.location || 'Not specified'}
-- **Description**: ${exp.description || 'No description available'}
-- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'
-        }
-
-### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-- **Grade**: ${edu.grade || 'Not specified'}
-- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'
-        }
-
-### Skills
-- **Technical Skills**: ${technicalSkills}
-- **Soft Skills**: ${softSkills}
-- **Other Skills**: ${otherSkills}
-
-### Job Preferences
-- **Desired Job Title**: ${userProfile.user.desired_job_title || 'Not specified'}
-- **Preferred Location**: ${userProfile.user.desired_location || 'Any location'}
-- **Preferred Salary**: $${userProfile.user.jobPreferredSalary || 'Not specified'}
-- **Employment Type**: ${userProfile.user.employment_type || 'Not specified'}
-- **Preferred Industries**: ${userProfile.user.preferred_industries || 'Not specified'}
-- **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
-
-Please provide relevant career advice and job search assistance based on their profile.
-      `,
-    };
-
-    const userMessage = { role: "user", content: question };
-    const newMessages = [systemMessage, userMessage];
-    setLlmResponse("Loading...");
-
-    try {
-      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "qwen2-0.5b-instruct",
-          messages: newMessages,
-          temperature: 0.7,
-          max_tokens: 500,
-          stream: false,
-        }),
-      });
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || "No response.";
-      setLlmResponse(content);
-    } catch (error) {
-      console.error("Error fetching LLM response:", error);
-      setLlmResponse("Failed to get a response. Please try again.");
     }
   };
 
@@ -1278,25 +1055,6 @@ Please provide relevant career advice and job search assistance based on their p
 
   const MemoizedInput26 = memo(Input26);
   const MemoizedLocationSearch = memo(LocationSearch);
-  useEffect(() => {
-    async function fetchUserProfile() {
-      if (user) {
-        try {
-          const response = await fetch('/api/user/profile', {
-            headers: {
-              'Authorization': `Bearer ${user.token}`,
-            },
-          });
-          const profile = await response.json();
-          setUserProfile(profile);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      }
-    }
-
-    fetchUserProfile();
-  }, [user]);
 
   const activeFilters = [
     { label: 'Title', value: title },
@@ -1310,31 +1068,16 @@ Please provide relevant career advice and job search assistance based on their p
     ? `Search Results${activeFilters.length > 1 ? '' : ''}`
     : 'Job Postings';
 
-  const onRemoveFilter = (type) => {
-    console.log(type);
-    switch (type) {
-      case 'Title':
-        setTitle("");
-        break;
-      case 'Experience':
-        setExperienceLevel("");
-        break;
-      case 'Location':
-        setLocation("");
-        break;
-      case 'Company':
-        setCompany("");
-        break;
-      default:
-        break;
-    }
-  }
 
   const handleScroll = useCallback(() => {
     if (!hasMore || dataLoading || isLoading) return;
 
     const scrollPosition = window.innerHeight + document.documentElement.scrollTop;
     const scrollThreshold = document.documentElement.offsetHeight - 800; // Load earlier
+
+    // Save current scroll position
+    setScrollPosition(window.scrollY);
+    sessionStorage.setItem('jobListingsScrollPos', window.scrollY.toString());
 
     if (scrollPosition > scrollThreshold) {
       // Cancel the previous request if it exists
@@ -1356,37 +1099,190 @@ Please provide relevant career advice and job search assistance based on their p
     };
   }, [handleScroll]);
 
+  const isFirstRenderRef = useRef(true);
+
   useEffect(() => {
-    // Try to restore data from sessionStorage on initial load
-    const storedData = sessionStorage.getItem('jobListingsData');
-    const storedPage = sessionStorage.getItem('jobListingsPage');
-    const storedParams = sessionStorage.getItem('jobListingsParams');
-    
-    if (storedData && storedParams) {
-      const params = JSON.parse(storedParams);
-      // Only restore if the search parameters match current parameters
-      if (
-        params.title === title &&
-        params.experienceLevel === experienceLevel &&
-        params.location === location &&
-        params.company === company &&
-        params.saved === saved
-      ) {
-        setData(JSON.parse(storedData));
-        setCurrentPage(parseInt(storedPage) || 1);
+    let isFirstRender = true;
+    const controller = new AbortController();
+    lastRequestRef.current = controller;
+
+    async function fetchData() {
+      // Reset data if it's first page
+      if (currentPage === 1) {
+        setData([]);
+        setInitialLoading(true);
+        setDataLoading(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      try {
+        if (saved) {
+          await fetchBookmarkedJobs();
+          return;
+        }
+
+        const params = new URLSearchParams({
+          ...(title && { title }),
+          ...(experienceLevel && { experienceLevel }),
+          ...(location && { location }),
+          ...(company && { company }),
+          strictSearch,
+          page: currentPage.toString(),
+          limit: limit.toString()
+        });
+
+        const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
+          signal: controller.signal
+        });
+
+        if (!jobRes.ok) throw new Error("Network response was not ok");
+
+        const jobData = await jobRes.json();
+        const newJobs = jobData.jobPostings || [];
+
+        // Set hasMore based on whether we got a full page of results
+        setHasMore(newJobs.length === limit);
+
+        // Update data based on page number
+        setData(prevData => {
+          if (currentPage === 1) {
+            // For first page, just use new jobs
+            const newData = newJobs;
+            // Store in sessionStorage
+            storeDataInSession(newData, currentPage, {
+              title,
+              experienceLevel,
+              location,
+              company,
+              saved
+            });
+            return newData;
+          } else {
+            // For subsequent pages, merge with existing data avoiding duplicates
+            const existingIds = new Set(prevData.map(job => job.id));
+            const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
+            const newData = [...prevData, ...uniqueNewJobs];
+
+            // Store in sessionStorage
+            storeDataInSession(newData, currentPage, {
+              title,
+              experienceLevel,
+              location,
+              company,
+              saved
+            });
+
+            return newData;
+          }
+        });
+
+        // Only fetch count and companies on first page
+        if (currentPage === 1) {
+          Promise.all([
+            fetch(`/api/job-postings/count?${params.toString()}`),
+            fetch(`/api/companies`)
+          ]).then(([countRes, compRes]) => {
+            return Promise.all([countRes.json(), compRes.json()]);
+          }).then(([countData, companiesData]) => {
+            setCount(countData.totalJobs || 0);
+            setCompanies(companiesData || []);
+          }).catch(console.error);
+        }
+
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Error:", err);
+      } finally {
         setInitialLoading(false);
+        setDataLoading(false);
+        setIsLoading(false);
       }
     }
-  }, []); // Run once on mount
+
+    const restoreFromSession = () => {
+      try {
+        const storedState = sessionStorage.getItem('jobListingsState');
+        if (!storedState) return false;
+
+        const { data: storedData, page, params, timestamp } = JSON.parse(storedState);
+        console.log(storedData);
+
+        // Check if data is still fresh
+        if (!isDataFresh(timestamp)) {
+          sessionStorage.removeItem('jobListingsState');
+          return false;
+        }
+
+        // Check if params match current state
+        if (
+          params.title === title &&
+          params.experienceLevel === experienceLevel &&
+          params.location === location &&
+          params.company === company &&
+          params.saved === saved
+        ) {
+          console.log('Restoring from session');
+          setData(storedData);
+          console.log(storedData);
+          return true;
+        }
+      } catch (error) {
+        console.error('Error restoring session data:', error);
+        sessionStorage.removeItem('jobListingsState');
+      }
+      return false;
+    };
+
+
+
+    if (isFirstRenderRef.current && restoreFromSession()) {
+      isFirstRenderRef.current = false;
+      return;
+    } else {
+      fetchData();
+    }
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    user,
+    authLoading,
+    currentPage,
+    title,
+    experienceLevel,
+    location,
+    company,
+    strictSearch,
+    saved,
+    fetchBookmarkedJobs
+  ]);
 
   // Clear stored data when search parameters change
   useEffect(() => {
     if (currentPage === 1) {
-      sessionStorage.removeItem('jobListingsData');
-      sessionStorage.removeItem('jobListingsPage');
-      sessionStorage.removeItem('jobListingsParams');
+      sessionStorage.removeItem('jobListingsState');
+      setDataTimestamp(null);
     }
   }, [title, experienceLevel, location, company, saved]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem('jobListingsScrollPos', window.scrollY.toString());
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Also save on page hide (mobile browsers)
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, []);
+
+
 
   return (
     <>
@@ -1464,14 +1360,6 @@ Please provide relevant career advice and job search assistance based on their p
             </>
           )}
 
-
-          {llmResponse && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <div className="mb-6 p-4 border rounded-md bg-gray-100">
-                <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
-              </div>
-            </Suspense>
-          )}
 
           <div>
             {initialLoading ? (
