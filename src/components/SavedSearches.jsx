@@ -1,5 +1,4 @@
-// components/BookmarkedJobs.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import SkeletonCard from './SkeletonCard';
@@ -10,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 export default function SavedSearches({ data, loading, error }) {
     const [jobCounts, setJobCounts] = useState({});
     const [recentJobCounts, setRecentJobCounts] = useState({});
+    const sentinelRef = useRef(null);
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         if (data && data.savedSearches) {
@@ -46,6 +47,17 @@ export default function SavedSearches({ data, loading, error }) {
         }
     }, [data]);
 
+    useEffect(() => {
+        if (!sentinelRef.current) return;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setCurrentPage((prevPage) => prevPage + 1);
+            }
+        });
+        observer.observe(sentinelRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     if (loading) return <div className="space-y-3"><Skeleton className="w-full h-[20px] rounded-full" /><Skeleton className="w-full h-[20px] rounded-full" /><Skeleton className="w-full h-[20px] rounded-full" /></div>;
     if (error) return <p className="text-red-500">{error}</p>;
     if (!data || !data.savedSearches || data.savedSearches.length === 0) return <p>No saved searches.</p>;
@@ -75,6 +87,7 @@ export default function SavedSearches({ data, loading, error }) {
 
                 );
             })}
+            <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
     );
 }

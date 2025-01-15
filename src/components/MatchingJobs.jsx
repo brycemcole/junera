@@ -1,5 +1,4 @@
-// components/MatchingJobs.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import SkeletonCard from './SkeletonCard';
 import Link from 'next/link';  
@@ -17,13 +16,15 @@ export default function MatchingJobs({ loading, error }) {
   const [jobs, setJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [errorJobs, setErrorJobs] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     const fetchMatchingJobs = async () => {
       if (!user) return;
       
       try {
-        const response = await fetch('/api/dashboard/matching-jobs', {
+        const response = await fetch(`/api/dashboard/matching-jobs?page=${currentPage}`, {
           headers: {
             Authorization: `Bearer ${user.token}`
           }
@@ -54,7 +55,7 @@ export default function MatchingJobs({ loading, error }) {
             matchingCriteria: null // Remove matching criteria for now if it's causing issues
           }));
 
-        setJobs(processedJobs);
+        setJobs((prevJobs) => [...prevJobs, ...processedJobs]);
       } catch (error) {
         console.error('Error fetching matching jobs:', error);
         setErrorJobs(error.message);
@@ -64,7 +65,18 @@ export default function MatchingJobs({ loading, error }) {
     };
 
     fetchMatchingJobs();
-  }, [user]);
+  }, [user, currentPage]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setCurrentPage((prevPage) => prevPage + 1);
+      }
+    });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   if (loading || loadingJobs) {
     return (
@@ -88,6 +100,7 @@ export default function MatchingJobs({ loading, error }) {
     <ScrollArea className="">
       <div className="space-y-4">
         <JobList data={jobs} />
+        <div ref={sentinelRef} style={{ height: 1 }} />
       </div>
       <ScrollBar />
     </ScrollArea>
