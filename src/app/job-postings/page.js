@@ -1276,18 +1276,16 @@ Please provide relevant career advice and job search assistance based on their p
     }
   }
 
-  const sentinelRef = useRef(null);
+  const handleScroll = useCallback(() => {
+    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
+      setCurrentPage((prevPage) => prevPage + 1);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!sentinelRef.current) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setCurrentPage((prevPage) => prevPage + 1);
-      }
-    });
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, []);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   return (
     <>
@@ -1387,7 +1385,6 @@ Please provide relevant career advice and job search assistance based on their p
             ) : data && data.length > 0 ? (
               <div key="job-postings">
                 <JobList data={data} loading={dataLoading} error={null} />
-                <div ref={sentinelRef} style={{ height: 1 }} />
               </div>
             ) : (
               <p>No job postings found. Adjust your search criteria.</p>

@@ -1,3 +1,4 @@
+// src/app/dashboard/page.js
 "use client";
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useAuth } from '@/context/AuthContext';

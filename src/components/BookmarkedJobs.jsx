@@ -9,7 +9,7 @@ export default function BookmarkedJobs({ jobs, loading, error }) {
     const [jobData, setJobData] = useState(jobs);
 
     useEffect(() => {
-        setJobData(jobs);
+        setJobData((prevData) => [...prevData, ...jobs]);
     }, [jobs]);
 
     if (loading) {
