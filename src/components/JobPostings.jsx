@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; // Assuming Avatar components are defined/imported
 import { Badge } from "@/components/ui/badge"; 
-import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag } from "lucide-react"; // Assuming you are using react-icons
+import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag, Loader2 } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
 import { redirect } from "next/navigation";
@@ -259,7 +259,7 @@ export const JobList = ({ data, loading, error }) => {
       ))}
       {loading && (
         <div className="flex justify-center py-4">
-          <LoaderCircle className="animate-spin" />
+          <Loader2 className="animate-spin" />
         </div>
       )}
     </div>
