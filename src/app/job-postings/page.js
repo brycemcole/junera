@@ -60,7 +60,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
 import { set } from 'date-fns';
-import _ from 'lodash';
 
 
 const states = {
@@ -505,9 +504,6 @@ export default function JobPostingsPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const loadingRef = useRef(false); // Add this ref to prevent multiple simultaneous loads
-  const isLoading = useRef(false);
-  const hasMore = useRef(true);
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -801,32 +797,58 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     let isActive = true;
-    
+    const abortController = new AbortController();
+
     async function fetchData() {
-      if (!isLoading.current) return;
+      // Only set loading states on initial load or filter changes
+      if (currentPage === 1) {
+        setInitialLoading(true);
+        setDataLoading(true);
+      }
 
       try {
+        if (saved) {
+          await fetchBookmarkedJobs();
+          return;
+        }
+
         const jobRes = await fetch(
-          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`
+          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`,
+          { signal: abortController.signal }
         );
 
         if (!isActive) return;
-        
-        const jobData = await jobRes.json();
-        
-        if (jobData.jobPostings?.length < limit) {
-          hasMore.current = false;
-        }
+        if (!jobRes.ok) throw new Error("Network response was not ok");
 
+        const jobData = await jobRes.json();
+
+        // Update data based on page number
         setData(prevData =>
           currentPage === 1
-            ? jobData.jobPostings || []
+            ? (jobData.jobPostings || [])
             : [...prevData, ...(jobData.jobPostings || [])]
         );
+
+        // Fetch count and companies in parallel after showing initial results
+        Promise.all([
+          fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`),
+          fetch(`/api/companies`)
+        ]).then(([countRes, compRes]) => {
+          if (!isActive) return;
+          return Promise.all([countRes.json(), compRes.json()]);
+        }).then(([countData, companiesData]) => {
+          if (!isActive) return;
+          setCount(countData.totalJobs || 0);
+          setCompanies(companiesData || []);
+        }).catch(console.error);
+
       } catch (err) {
-        console.error("Error:", err);
+        if (err.name !== "AbortError") console.error("Error:", err);
       } finally {
-        isLoading.current = false;
+        if (isActive) {
+          setInitialLoading(false);
+          setDataLoading(false);
+        }
       }
     }
 
@@ -834,21 +856,20 @@ export default function JobPostingsPage() {
 
     return () => {
       isActive = false;
+      abortController.abort();
     };
-  }, [currentPage, title, experienceLevel, location, company, strictSearch, limit]);
-
-  useEffect(() => {
-    // Reset loading ref when data loading completes
-    if (!dataLoading) {
-      loadingRef.current = false;
-    }
-  }, [dataLoading]);
-
-  useEffect(() => {
-    const throttledScroll = _.throttle(handleScroll, 100); // Add throttling to prevent too many calls
-    window.addEventListener('scroll', throttledScroll);
-    return () => window.removeEventListener('scroll', throttledScroll);
-  }, [handleScroll]);
+  }, [
+    user,
+    authLoading,
+    currentPage,
+    title,
+    experienceLevel,
+    location,
+    company,
+    strictSearch,
+    saved,
+    fetchBookmarkedJobs
+  ]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -1256,20 +1277,18 @@ Please provide relevant career advice and job search assistance based on their p
   }
 
   const handleScroll = useCallback(() => {
-    if (isLoading.current || !hasMore.current) return;
-
-    const scrolledToBottom =
-      window.innerHeight + Math.round(window.scrollY) >=
-      document.documentElement.scrollHeight - 100;
-
-    if (scrolledToBottom) {
-      isLoading.current = true;
-      setCurrentPage(prev => prev + 1);
+    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
+      setCurrentPage((prevPage) => prevPage + 1);
     }
   }, []);
 
-return (
-  <>
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  return (
+    <>
       <div className="container mx-auto py-0 p-4 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
