@@ -257,6 +257,11 @@ export const JobList = ({ data, loading, error }) => {
 
         </div>
       ))}
+      {loading && (
+        <div className="flex justify-center py-4">
+          <LoaderCircle className="animate-spin" />
+        </div>
+      )}
     </div>
   );
 };
