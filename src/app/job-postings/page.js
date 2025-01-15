@@ -1289,7 +1289,7 @@ Please provide relevant career advice and job search assistance based on their p
 
   return (
     <>
-      <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
+<title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
       <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through job listings and apply today!`} />
       <meta name="robots" content="index, follow" />
       <meta property="og:type" content="website" />
