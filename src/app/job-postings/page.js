@@ -1289,55 +1289,6 @@ Please provide relevant career advice and job search assistance based on their p
 
 return (
   <>
-    <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
-    <meta
-      name="description"
-      content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`}
-    />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:type" content="website" />
-    <meta
-      property="og:description"
-      content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`}
-    />
-    <meta
-      property="og:url"
-      content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`}
-    />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "JobPosting",
-            "mainEntityOfPage": {
-              "@type": "WebPage",
-              "@id": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
-            },
-            "name": `${title || 'junera'} ${location ? `in ${location}` : ''} ${company ? `at ${company} | jobs` : ''}`,
-            "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through our comprehensive job listings.`,
-            "datePosted": new Date().toISOString(),
-            "jobLocation": {
-              "@type": "Place",
-              "address": {
-                "@type": "PostalAddress",
-                "addressRegion": location || "Multiple Locations"
-              }
-            },
-            "hiringOrganization": company ? {
-              "@type": "Organization",
-              "name": company
-            } : undefined,
-            "employmentType": experienceLevel ? experienceLevel.toUpperCase() : "FULL_TIME",
-            "numberOfPositions": count?.toString() || "multiple",
-            "applicationContact": {
-              "@type": "ContactPoint",
-              "contactType": "jobs",
-              "url": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
-            }
-          }, null, 2),
-        }}
-      />
       <div className="container mx-auto py-0 p-4 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
