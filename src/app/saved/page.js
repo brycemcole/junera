@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import BookmarkedJobs from '@/components/BookmarkedJobs';
@@ -12,8 +12,6 @@ export default function SavedPage() {
     const [bookmarkedJobs, setBookmarkedJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const sentinelRef = useRef(null);
 
     useEffect(() => {
         if (!authLoading) {
@@ -24,7 +22,7 @@ export default function SavedPage() {
 
             const fetchBookmarkedJobs = async () => {
                 try {
-                    const response = await fetch(`/api/dashboard/bookmarked-jobs?page=${currentPage}`, {
+                    const response = await fetch('/api/dashboard/bookmarked-jobs', {
                         headers: {
                             'Authorization': `Bearer ${user.token}`,
                         },
@@ -32,7 +30,7 @@ export default function SavedPage() {
 
                     if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
                     const data = await response.json();
-                    setBookmarkedJobs((prevData) => [...prevData, ...data]);
+                    setBookmarkedJobs(data);
                 } catch (err) {
                     setError(err.message);
                 } finally {
@@ -42,18 +40,7 @@ export default function SavedPage() {
 
             fetchBookmarkedJobs();
         }
-    }, [user, authLoading, router, currentPage]);
-
-    useEffect(() => {
-        if (!sentinelRef.current) return;
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setCurrentPage((prevPage) => prevPage + 1);
-            }
-        });
-        observer.observe(sentinelRef.current);
-        return () => observer.disconnect();
-    }, []);
+    }, [user, authLoading, router]);
 
     if (authLoading) {
         return (
@@ -71,7 +58,6 @@ export default function SavedPage() {
                 loading={loading}
                 error={error}
             />
-            <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
     );
 }
