@@ -60,6 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
 import { set } from 'date-fns';
+import { throttle } from 'lodash';
 
 
 const states = {
@@ -504,6 +505,9 @@ export default function JobPostingsPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const lastRequestRef = useRef(null);
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -797,13 +801,17 @@ export default function JobPostingsPage() {
 
   useEffect(() => {
     let isActive = true;
-    const abortController = new AbortController();
+    const controller = new AbortController();
+    lastRequestRef.current = controller;
 
     async function fetchData() {
-      // Only set loading states on initial load or filter changes
+      // Reset data if it's first page
       if (currentPage === 1) {
+        setData([]);
         setInitialLoading(true);
         setDataLoading(true);
+      } else {
+        setIsLoading(true);
       }
 
       try {
@@ -812,35 +820,80 @@ export default function JobPostingsPage() {
           return;
         }
 
-        const jobRes = await fetch(
-          `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`,
-          { signal: abortController.signal }
-        );
+        const params = new URLSearchParams({
+          ...(title && { title }),
+          ...(experienceLevel && { experienceLevel }),
+          ...(location && { location }),
+          ...(company && { company }),
+          strictSearch,
+          page: currentPage.toString(),
+          limit: limit.toString()
+        });
+
+        const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
+          signal: controller.signal
+        });
 
         if (!isActive) return;
         if (!jobRes.ok) throw new Error("Network response was not ok");
 
         const jobData = await jobRes.json();
+        const newJobs = jobData.jobPostings || [];
+
+        // Set hasMore based on whether we got a full page of results
+        setHasMore(newJobs.length === limit);
 
         // Update data based on page number
-        setData(prevData =>
-          currentPage === 1
-            ? (jobData.jobPostings || [])
-            : [...prevData, ...(jobData.jobPostings || [])]
-        );
+        setData(prevData => {
+          if (currentPage === 1) {
+            // For first page, just use new jobs
+            const newData = newJobs;
+            // Store in sessionStorage
+            sessionStorage.setItem('jobListingsData', JSON.stringify(newData));
+            sessionStorage.setItem('jobListingsPage', currentPage.toString());
+            sessionStorage.setItem('jobListingsParams', JSON.stringify({
+              title,
+              experienceLevel,
+              location,
+              company,
+              saved
+            }));
+            return newData;
+          } else {
+            // For subsequent pages, merge with existing data avoiding duplicates
+            const existingIds = new Set(prevData.map(job => job.id));
+            const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
+            const newData = [...prevData, ...uniqueNewJobs];
+            
+            // Store in sessionStorage
+            sessionStorage.setItem('jobListingsData', JSON.stringify(newData));
+            sessionStorage.setItem('jobListingsPage', currentPage.toString());
+            sessionStorage.setItem('jobListingsParams', JSON.stringify({
+              title,
+              experienceLevel,
+              location,
+              company,
+              saved
+            }));
+            
+            return newData;
+          }
+        });
 
-        // Fetch count and companies in parallel after showing initial results
-        Promise.all([
-          fetch(`/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}`),
-          fetch(`/api/companies`)
-        ]).then(([countRes, compRes]) => {
-          if (!isActive) return;
-          return Promise.all([countRes.json(), compRes.json()]);
-        }).then(([countData, companiesData]) => {
-          if (!isActive) return;
-          setCount(countData.totalJobs || 0);
-          setCompanies(companiesData || []);
-        }).catch(console.error);
+        // Only fetch count and companies on first page
+        if (currentPage === 1) {
+          Promise.all([
+            fetch(`/api/job-postings/count?${params.toString()}`),
+            fetch(`/api/companies`)
+          ]).then(([countRes, compRes]) => {
+            if (!isActive) return;
+            return Promise.all([countRes.json(), compRes.json()]);
+          }).then(([countData, companiesData]) => {
+            if (!isActive) return;
+            setCount(countData.totalJobs || 0);
+            setCompanies(companiesData || []);
+          }).catch(console.error);
+        }
 
       } catch (err) {
         if (err.name !== "AbortError") console.error("Error:", err);
@@ -848,6 +901,7 @@ export default function JobPostingsPage() {
         if (isActive) {
           setInitialLoading(false);
           setDataLoading(false);
+          setIsLoading(false);
         }
       }
     }
@@ -856,7 +910,7 @@ export default function JobPostingsPage() {
 
     return () => {
       isActive = false;
-      abortController.abort();
+      controller.abort();
     };
   }, [
     user,
@@ -1277,15 +1331,62 @@ Please provide relevant career advice and job search assistance based on their p
   }
 
   const handleScroll = useCallback(() => {
-    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
-      setCurrentPage((prevPage) => prevPage + 1);
+    if (!hasMore || dataLoading || isLoading) return;
+
+    const scrollPosition = window.innerHeight + document.documentElement.scrollTop;
+    const scrollThreshold = document.documentElement.offsetHeight - 800; // Load earlier
+
+    if (scrollPosition > scrollThreshold) {
+      // Cancel the previous request if it exists
+      if (lastRequestRef.current) {
+        lastRequestRef.current.abort();
+      }
+
+      setCurrentPage(prev => prev + 1);
     }
-  }, []);
+  }, [hasMore, dataLoading, isLoading]);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const throttledScrollHandler = throttle(handleScroll, 500);
+    window.addEventListener('scroll', throttledScrollHandler);
+
+    return () => {
+      window.removeEventListener('scroll', throttledScrollHandler);
+      throttledScrollHandler.cancel();
+    };
   }, [handleScroll]);
+
+  useEffect(() => {
+    // Try to restore data from sessionStorage on initial load
+    const storedData = sessionStorage.getItem('jobListingsData');
+    const storedPage = sessionStorage.getItem('jobListingsPage');
+    const storedParams = sessionStorage.getItem('jobListingsParams');
+    
+    if (storedData && storedParams) {
+      const params = JSON.parse(storedParams);
+      // Only restore if the search parameters match current parameters
+      if (
+        params.title === title &&
+        params.experienceLevel === experienceLevel &&
+        params.location === location &&
+        params.company === company &&
+        params.saved === saved
+      ) {
+        setData(JSON.parse(storedData));
+        setCurrentPage(parseInt(storedPage) || 1);
+        setInitialLoading(false);
+      }
+    }
+  }, []); // Run once on mount
+
+  // Clear stored data when search parameters change
+  useEffect(() => {
+    if (currentPage === 1) {
+      sessionStorage.removeItem('jobListingsData');
+      sessionStorage.removeItem('jobListingsPage');
+      sessionStorage.removeItem('jobListingsParams');
+    }
+  }, [title, experienceLevel, location, company, saved]);
 
   return (
     <>
