@@ -1276,16 +1276,18 @@ Please provide relevant career advice and job search assistance based on their p
     }
   }
 
-  const handleScroll = useCallback(() => {
-    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
-      setCurrentPage((prevPage) => prevPage + 1);
-    }
-  }, []);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setCurrentPage((prevPage) => prevPage + 1);
+      }
+    });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
 
 return (
   <>
@@ -1385,6 +1387,7 @@ return (
             ) : data && data.length > 0 ? (
               <div key="job-postings">
                 <JobList data={data} loading={dataLoading} error={null} />
+                <div ref={sentinelRef} style={{ height: 1 }} />
               </div>
             ) : (
               <p>No job postings found. Adjust your search criteria.</p>

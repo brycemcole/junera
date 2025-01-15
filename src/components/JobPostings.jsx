@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; // Assuming Avatar components are defined/imported
 import { Badge } from "@/components/ui/badge"; 
@@ -11,10 +11,22 @@ import Link from 'next/link';
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
   const [jobData, setJobData] = useState(data);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
-    setJobData((prevData) => [...prevData, ...data]);
+    setJobData(data);
   }, [data]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        // Fetch next page or load more items
+      }
+    });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const stateMap = {
     'remote': 'N/A',
@@ -262,6 +274,7 @@ export const JobList = ({ data, loading, error }) => {
           <LoaderCircle className="animate-spin" />
         </div>
       )}
+      <div ref={sentinelRef} style={{ height: 1 }} />
     </div>
   );
 };
