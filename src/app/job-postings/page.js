@@ -1287,16 +1287,23 @@ Please provide relevant career advice and job search assistance based on their p
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  return (
-    <>
-<title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
-      <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through job listings and apply today!`} />
-      <meta name="robots" content="index, follow" />
-      <meta property="og:type" content="website" />
-<meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
-
-      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company}. Browse through our comprehensive job listings.`} />
-      <meta property="og:url" content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`} />
+return (
+  <>
+    <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
+    <meta
+      name="description"
+      content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`}
+    />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:description"
+      content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`}
+    />
+    <meta
+      property="og:url"
+      content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`}
+    />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
