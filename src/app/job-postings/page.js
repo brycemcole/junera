@@ -504,6 +504,7 @@ export default function JobPostingsPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const loadingRef = useRef(false); // Add this ref to prevent multiple simultaneous loads
 
   const predefinedQuestions = [
     "How can I improve my resume?",
@@ -800,9 +801,14 @@ export default function JobPostingsPage() {
     const abortController = new AbortController();
 
     async function fetchData() {
+      if (loadingRef.current) return; // Skip if already loading
+
+
       // Only set loading states on initial load or filter changes
       if (currentPage === 1) {
         setInitialLoading(true);
+        setDataLoading(true);
+      } else {
         setDataLoading(true);
       }
 
@@ -848,6 +854,7 @@ export default function JobPostingsPage() {
         if (isActive) {
           setInitialLoading(false);
           setDataLoading(false);
+          loadingRef.current = false; // Reset loading ref
         }
       }
     }
@@ -1277,14 +1284,29 @@ Please provide relevant career advice and job search assistance based on their p
   }
 
   const handleScroll = useCallback(() => {
-    if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
-      setCurrentPage((prevPage) => prevPage + 1);
+    if (loadingRef.current) return; // Skip if already loading
+
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const documentHeight = document.documentElement.scrollHeight;
+    const scrollThreshold = documentHeight - (window.innerHeight * 1.5); // Load more when 1.5 viewport heights from bottom
+
+    if (scrollPosition >= scrollThreshold) {
+      loadingRef.current = true;
+      setCurrentPage(prevPage => prevPage + 1);
     }
   }, []);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Reset loading ref when data loading completes
+    if (!dataLoading) {
+      loadingRef.current = false;
+    }
+  }, [dataLoading]);
+
+  useEffect(() => {
+    const throttledScroll = _.throttle(handleScroll, 100); // Add throttling to prevent too many calls
+    window.addEventListener('scroll', throttledScroll);
+    return () => window.removeEventListener('scroll', throttledScroll);
   }, [handleScroll]);
 
 return (
