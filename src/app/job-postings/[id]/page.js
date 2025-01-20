@@ -807,11 +807,11 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
           </div>
 
-          {jobPosting?.experienceLevel && (
+          {jobPosting?.experiencelevel && (
             <>
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-foreground" />
-                <span>{jobPosting.experienceLevel}</span>
+                <span>{jobPosting.experiencelevel}</span>
               </div>
 
             </>

@@ -1,6 +1,7 @@
 "use client";
 import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
+import { unstable_cache } from 'next/cache'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
@@ -772,6 +773,7 @@ export default function JobPostingsPage() {
         headers: {
           'Authorization': `Bearer ${user.token}`,
         },
+        cache: 'force-cache',
       });
 
       if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
@@ -792,6 +794,7 @@ export default function JobPostingsPage() {
         headers: {
           'Authorization': `Bearer ${user.token}`,
         },
+        cache: 'force-cache',
       })
         .then(response => response.json())
         .then(data => setSavedSearches(data.savedSearches))
@@ -832,19 +835,18 @@ export default function JobPostingsPage() {
     }
   };
 
-  const handleSearch = useCallback(
+  const handleTitleSearch = useCallback(
     (val) => {
       if (val !== title) {
         setTitle(val);
         setCurrentPage(1);
         const params = {
+          ...Object.fromEntries(new URLSearchParams(window.location.search)),
           title: val,
-          explevel: experienceLevel,
-          location,
-          company,
-          strict: strictSearch,
           page: '1'
         };
+        // Remove empty params
+        Object.keys(params).forEach(key => !params[key] && delete params[key]);
         const newParams = new URLSearchParams(params);
         const newUrl = `/job-postings?${newParams.toString()}`;
         if (newUrl !== router.asPath) {
@@ -852,7 +854,29 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title, strictSearch]
+    [router, title]
+  );
+
+  const handleLocationSearch = useCallback(
+    (val) => {
+      if (val !== location) {
+        setLocation(val);
+        setCurrentPage(1);
+        const params = {
+          ...Object.fromEntries(new URLSearchParams(window.location.search)),
+          location: val,
+          page: '1'
+        };
+        // Remove empty params
+        Object.keys(params).forEach(key => !params[key] && delete params[key]);
+        const newParams = new URLSearchParams(params);
+        const newUrl = `/job-postings?${newParams.toString()}`;
+        if (newUrl !== router.asPath) {
+          router.push(newUrl);
+        }
+      }
+    },
+    [router, location]
   );
 
   const handleSaveSearch = async () => {
@@ -1133,7 +1157,8 @@ export default function JobPostingsPage() {
         });
 
         const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
-          signal: controller.signal
+          signal: controller.signal,
+          cache: 'force-cache',
         });
 
         if (!jobRes.ok) throw new Error("Network response was not ok");
@@ -1180,12 +1205,13 @@ export default function JobPostingsPage() {
         // Only fetch count and companies on first page
         if (currentPage === 1) {
           Promise.all([
-            fetch(`/api/job-postings/count?${params.toString()}`),
-            fetch(`/api/companies`)
+            fetch(`/api/job-postings/count?${params.toString()}`, { cache: 'force-cache' }),
+            fetch(`/api/companies`, { cache: 'force-cache' })
           ]).then(([countRes, compRes]) => {
             return Promise.all([countRes.json(), compRes.json()]);
           }).then(([countData, companiesData]) => {
-            setCount(countData.totalJobs || 0);
+            console.log(countData);
+            setCount(countData?.count || countData.totalJobs || 0);
             setCompanies(companiesData || []);
           }).catch(console.error);
         }
@@ -1317,10 +1343,10 @@ export default function JobPostingsPage() {
             </Suspense>
           )}
           <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedInput26 onSearch={handleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
+            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} />
+            <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
 
           <TabComponent
@@ -1329,21 +1355,6 @@ export default function JobPostingsPage() {
             currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
           />
 
-          {!loading && Math.random() > 0.5 && !user && (
-            <div className="rounded-lg border border-green-600/30 bg-green-500/20 px-4 py-3 mb-6">
-              <p className="text-sm leading-relaxed">
-                <BookmarkIcon
-                  className="-mt-0.5 me-3 inline-flex text-green-500"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                Login to save your searches and get notified when new jobs are posted. <Link href="/login" className="text-green-500 hover:underline">
-                  Login here.
-                </Link>
-              </p>
-            </div>
-          )}
 
         </div>
 
