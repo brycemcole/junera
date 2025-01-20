@@ -341,18 +341,6 @@ export default function CompanyView({ companyName, page }) {
 
     return (
         <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
-            <Breadcrumb className="mb-4">
-                <BreadcrumbList>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink href="/job-postings">Jobs</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                        <BreadcrumbPage>{company.company_name}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                </BreadcrumbList>
-            </Breadcrumb>
-
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Avatar className="h-12 w-12">
