@@ -1,5 +1,6 @@
 import { query } from "@/lib/pgdb";
 import { NextResponse } from 'next/server';
+const he = require('he');
 
 function extractSalary(text) {
   if (!text) return "";
