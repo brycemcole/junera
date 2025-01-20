@@ -89,11 +89,30 @@ function extractSalary(text) {
   return "";
 }
 
+const processJobPostings = (jobs) => {
+  return jobs.map((job) => {
+    const salary = extractSalary(job.description || "");
+
+    return {
+      id: job.job_id || "",
+      title: job.title || "",
+      company: job.company || "",
+      companyLogo: job.company ? `https://logo.clearbit.com/${encodeURIComponent(job.company.replace('.com', ''))}.com` : "",
+      experienceLevel: job.experiencelevel || "",
+      summary: job.summary || "",
+      description: job.description || "",
+      location: job.location || "",
+      salary: salary || "",
+      postedDate: job.created_at ? job.created_at.toISOString() : "",
+    };
+  });
+};
+
 export async function GET(req, { params }) {
     const companyName = decodeURIComponent(params.name);
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page')) || 1;
-    const limit = parseInt(url.searchParams.get('limit')) || 10;
+    const limit = parseInt(url.searchParams.get('limit')) || 30;
     const offset = (page - 1) * limit;
 
     try {
@@ -149,7 +168,7 @@ export async function GET(req, { params }) {
               company,
               location,
               description,
-              experiencelevel as experience_level,
+              experiencelevel,
               created_at,
               source_url,
               views,
@@ -196,7 +215,7 @@ export async function GET(req, { params }) {
         return NextResponse.json({
             success: true,
             company,
-            jobPostings,
+            jobPostings: processJobPostings(jobPostings),
             pagination: {
                 current_page: page,
                 total_pages: totalPages,
