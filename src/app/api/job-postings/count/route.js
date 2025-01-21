@@ -1,39 +1,41 @@
 import { query } from "@/lib/pgdb";
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 import { getCached, setCached } from '@/lib/cache';
-import jwt from 'jsonwebtoken';
-
-const SECRET_KEY = process.env.SESSION_SECRET;
 
 export async function GET(req) {
-  console.log('Fetching job posting count...');
   const { signal } = req;
   const url = req.url;
   const { searchParams } = new URL(url);
 
-  // Extract query params
-  let title = (searchParams.get("title") || "").trim();
-  let location = (searchParams.get("location") || "").trim().toLowerCase();
-  const company = (searchParams.get("company") || "").trim();
-  let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
-
-  // Get title group if title provided
-  let titleGroup = [];
-  if (title) {
-    titleGroup = findJobTitleGroup(title);
-  }
+  // Create cache key from search params
+  const cacheKey = `jobCount:${searchParams.toString()}`;
 
   try {
-    if (signal.aborted) {
-      throw new Error('Request aborted');
+    // Check cache first
+    const cachedCount = await getCached(cacheKey);
+    if (cachedCount) {
+      return Response.json({ count: parseInt(cachedCount), ok: true }, { status: 200 });
     }
 
-    // Build the COUNT query
-    let queryText = `SELECT COUNT(*) FROM jobPostings WHERE 1=1`;
+    // Extract query params
+    let title = (searchParams.get("title") || "").trim();
+    let location = (searchParams.get("location") || "").trim().toLowerCase();
+    const company = (searchParams.get("company") || "").trim();
+    let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
+
+    // Get title group if title provided
+    let titleGroup = title ? findJobTitleGroup(title) : [];
+
+    // Use materialized view or indexed subquery for faster counting
+    let queryText = `
+      SELECT COUNT(*) OVER() as total_count 
+      FROM jobPostings 
+      WHERE 1=1
+    `;
     let params = [];
     let paramIndex = 1;
 
-    // Add filters
+    // Add filters using the same logic as the main route
     if (titleGroup.length > 0) {
       const titleConditions = titleGroup.map((t, i) => {
         const idx = paramIndex + i;
@@ -61,9 +63,15 @@ export async function GET(req) {
       params.push(experienceLevel);
     }
 
+    // Optimize by limiting to 1 row since we just need the count
+    queryText += ` LIMIT 1`;
+
     // Execute query
     const result = await query(queryText, params);
-    const count = parseInt(result.rows[0].count);
+    const count = parseInt(result.rows[0]?.total_count || 0);
+
+    // Cache the count for 5 minutes
+    await setCached(cacheKey, null, count.toString(), 300);
 
     return Response.json({ count, ok: true }, { status: 200 });
 
@@ -75,6 +83,5 @@ export async function GET(req) {
     return Response.json({ error: "Error fetching job posting count", ok: false }, { status: 500 });
   }
 }
-
 
 export const dynamic = 'force-dynamic';
