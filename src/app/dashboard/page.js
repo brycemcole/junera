@@ -29,6 +29,8 @@ export default function DashboardPage() {
   const [recentCompanies, setRecentCompanies] = useState([]);
   const [bookmarkedJobs, setBookmarkedJobs] = useState([]);
   const [savedSearches, setSavedSearches] = useState([]);
+  const [featuredBookmark, setFeaturedBookmark] = useState(null);
+  const [similarJobs, setSimilarJobs] = useState({ baseJob: null, similarJobs: [] });
 
   // Loading States
   const [loadingRecentlyViewed, setLoadingRecentlyViewed] = useState(true);
@@ -37,6 +39,8 @@ export default function DashboardPage() {
   const [loadingRecentCompanies, setLoadingRecentCompanies] = useState(true);
   const [loadingBookmarkedJobs, setLoadingBookmarkedJobs] = useState(true);
   const [loadingSavedSearches, setLoadingSavedSearches] = useState(true);
+  const [loadingSimilarJobs, setLoadingSimilarJobs] = useState(true);
+  const [loadingFeaturedBookmark, setLoadingFeaturedBookmark] = useState(true);
 
   // Error States
   const [errorRecentlyViewed, setErrorRecentlyViewed] = useState(null);
@@ -45,6 +49,8 @@ export default function DashboardPage() {
   const [errorRecentCompanies, setErrorRecentCompanies] = useState(null);
   const [errorBookmarkedJobs, setErrorBookmarkedJobs] = useState(null);
   const [errorSavedSearches, setErrorSavedSearches] = useState(null);
+  const [errorSimilarJobs, setErrorSimilarJobs] = useState(null);
+  const [errorFeaturedBookmark, setErrorFeaturedBookmark] = useState(null);
 
   // Add a simple cache
   const cache = {};
@@ -106,6 +112,24 @@ export default function DashboardPage() {
 
           // Fetch Bookmarked Jobs
           await fetchAndCache('/api/dashboard/bookmarked-jobs', setBookmarkedJobs, setErrorBookmarkedJobs, setLoadingBookmarkedJobs, 'bookmarkedJobs');
+
+          // Fetch featured bookmark
+          await fetchAndCache(
+            '/api/dashboard/featured-bookmark',
+            setFeaturedBookmark,
+            setErrorFeaturedBookmark,
+            setLoadingFeaturedBookmark,
+            'featuredBookmark'
+          );
+
+          // Fetch similar jobs
+          await fetchAndCache(
+            '/api/dashboard/similar-jobs',
+            setSimilarJobs,
+            setErrorSimilarJobs,
+            setLoadingSimilarJobs,
+            'similarJobs'
+          );
         }
 
         fetchData();
@@ -146,7 +170,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-0 p-4 max-w-4xl">
       <section className="mb-4">
-        <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-2">
+        <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-1">
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -155,6 +179,32 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Featured Bookmark Section */}
+        {featuredBookmark && (
+          <Card className="border-none shadow-none col-span-2 relative">
+            <CardTitle className="mb-4">
+              Featured Saved Job
+              {loadingFeaturedBookmark && <LoaderCircle className="absolute bottom-3 right-0 animate-spin" />}
+            </CardTitle>
+            <CardDescription>
+              {/* Add your featured bookmark component here */}
+            </CardDescription>
+          </Card>
+        )}
+
+        {/* Similar Jobs Section */}
+        {similarJobs.baseJob && (
+          <Card className="border-none shadow-none col-span-2 relative">
+            <CardTitle className="mb-4">
+              Similar to "{similarJobs.baseJob.title}"
+              {loadingSimilarJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin" />}
+            </CardTitle>
+            <CardDescription>
+              {/* Add your similar jobs component here */}
+            </CardDescription>
+          </Card>
+        )}
+
         <Suspense fallback={<Skeleton />}>
           <Card className="border-none shadow-none col-span-2 relative">
             <CardTitle className="mb-4">

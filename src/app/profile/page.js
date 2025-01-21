@@ -752,21 +752,27 @@ export default function ProfilePage() {
 
     return (
         <div className="container mx-auto py-0 px-4 max-w-4xl">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Profile</h1>
-                <EditProfileDialog
-                    fields={profileFields}
-                    initialData={profile?.user}
-                    onSubmit={handleProfileUpdate}
-                    title={<Edit2 size={14} />}
-                    description="Update your profile information"
-                />
-            </div>
+            <section className="mb-4">
+                <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+                    Profile
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                    View and edit your profile information.
+                </p>
+
+            </section>
 
             {/* Personal Information */}
             <Card className="mb-6">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Personal Information</CardTitle>
+                    <EditProfileDialog
+                        fields={profileFields}
+                        initialData={profile?.user}
+                        onSubmit={handleProfileUpdate}
+                        title={<Edit2 size={12} />}
+                        description="Update your profile information"
+                    />
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-2">

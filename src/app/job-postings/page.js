@@ -69,6 +69,7 @@ const states = {
   "null": "Any",
   "remote": "Remote",
   "new york": "New York",
+  "new york": "New York",
   "california": "California",
   "texas": "Texas",
   "florida": "Florida",
@@ -1107,11 +1108,12 @@ export default function JobPostingsPage() {
       // Cancel the previous request if it exists
       if (lastRequestRef.current) {
         lastRequestRef.current.abort();
-      }
 
-      setCurrentPage(prev => prev + 1);
-    }
-  }, [hasMore, dataLoading, isLoading]);
+        // Set loading state before incrementing page
+        setIsLoading(true);
+        setCurrentPage(prev => prev + 1);
+      }
+    }, [hasMore, dataLoading, isLoading]);
 
   useEffect(() => {
     const throttledScrollHandler = throttle(handleScroll, 500);
@@ -1221,7 +1223,7 @@ export default function JobPostingsPage() {
       } finally {
         setInitialLoading(false);
         setDataLoading(false);
-        setIsLoading(false);
+        setIsLoading(false); // Make sure to reset loading state
       }
     }
 
@@ -1326,7 +1328,7 @@ export default function JobPostingsPage() {
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-2">{headerTitle}</h1>
+              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">{headerTitle}</h1>
               <p className="text-sm text-muted-foreground">
                 <small className="text-sm text-muted-foreground">
                   {count} results
@@ -1393,5 +1395,9 @@ export default function JobPostingsPage() {
         </Suspense>
       </div>
     </>
+  );
+    </>
+}
+
   );
 }

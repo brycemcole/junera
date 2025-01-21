@@ -52,7 +52,14 @@ export default function SavedPage() {
 
     return (
         <div className="container mx-auto px-4 max-w-4xl">
-            <h1 className="text-2xl font-medium mb-6">Saved Jobs</h1>
+            <section className="mb-4">
+                <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+                    Saved
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                    View all the jobs you&apos;ve saved for later. Click on a job to view more details.
+                </p>
+            </section>
             <BookmarkedJobs
                 jobs={bookmarkedJobs}
                 loading={loading}

@@ -541,141 +541,55 @@ export async function GET(req) {
       WHERE 1 = 1
     `;
 
-    //
-    // Strict vs. Non-Strict Filtering
-    //
-    // The difference is whether we chain conditions by AND or by OR.
-    //
-    if (strict) {
-      // Strict mode: all typed conditions must match
-      //  1) Title
-      //  2) Experience
-      //  3) Location
-      //  4) Company
-
-      // For the Title:
-      // We build OR conditions for each item in titleGroup, then wrap them in parentheses
-      if (titleGroup.length > 0) {
-        const titleConditions = titleGroup.map((t, i) => {
-          const idx = paramIndex + i;
-          return `title_vector @@ to_tsquery('english', $${idx})`;
-        });
-        queryText += ` AND (${titleConditions.join(' OR ')})`;
-        filterParams.push(
-          ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
-        );
-        paramIndex += titleGroup.length;
-      }
-
-      // 2) Experience
-      if (experienceLevel) {
-        queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
-        filterParams.push(experienceLevel);
-        paramIndex++;
-      }
-
-      // 3) Location
-      if (locationSearchTerms.length > 0) {
-        const escapedTerms = locationSearchTerms.map((term) =>
-          term.replace(/'/g, "''")
-        );
-        const tsquery = escapedTerms
-          .map((term) =>
-            term.includes(' ') ? term.split(' ').join(' & ') : term
-          )
-          .join(' | ');
-        queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
-        filterParams.push(tsquery);
-        paramIndex++;
-      }
-
-      // 4) Company
-      if (company) {
-        queryText += ` AND company = $${paramIndex}`;
-        filterParams.push(company);
-        paramIndex++;
-      }
-
-      // === Adjust ORDER BY based on sort parameter
-      if (sort === 'relevancy') {
-        queryText += `
-          ORDER BY 
-            relevance DESC,
-            created_at DESC
-        `;
-      } else if (sort === 'recent') {
-        queryText += `
-          ORDER BY 
-            created_at DESC
-        `;
-      }
-    } else {
-      // Non-strict mode: ANY typed condition can match (OR).
-      const conditions = [];
-
-      // 1) Title
-      if (titleGroup.length > 0) {
-        const titleConditions = titleGroup.map((t, i) => {
-          const idx = paramIndex + i;
-          return `title_vector @@ to_tsquery('english', $${idx})`;
-        });
-        conditions.push(`(${titleConditions.join(' OR ')})`);
-        filterParams.push(
-          ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
-        );
-        paramIndex += titleGroup.length;
-      }
-
-      // 2) Experience
-      if (experienceLevel) {
-        conditions.push(`LOWER(experiencelevel) = $${paramIndex}`);
-        filterParams.push(experienceLevel);
-        paramIndex++;
-      }
-
-      // 3) Location
-      if (locationSearchTerms.length > 0) {
-        const escapedTerms = locationSearchTerms.map((term) =>
-          term.replace(/'/g, "''")
-        );
-        const tsquery = escapedTerms
-          .map((term) =>
-            term.includes(' ') ? term.split(' ').join(' & ') : term
-          )
-          .join(' | ');
-        conditions.push(`location_vector @@ to_tsquery('simple', $${paramIndex})`);
-        filterParams.push(tsquery);
-        paramIndex++;
-      }
-
-      // 4) Company
-      if (company) {
-        conditions.push(`company = $${paramIndex}`);
-        filterParams.push(company);
-        paramIndex++;
-      }
-
-      // If we have typed conditions, combine them into a single OR block
-      if (conditions.length > 0) {
-        queryText += ` AND (${conditions.join(' OR ')})`;
-      }
-
-      // === Adjust ORDER BY based on sort parameter
-      if (sort === 'relevancy') {
-        queryText += `
-          ORDER BY
-            relevance DESC,
-            created_at DESC
-        `;
-      } else if (sort === 'recent') {
-        queryText += `
-          ORDER BY
-            created_at DESC
-        `;
-      }
+    // Build WHERE conditions
+    
+    // 1) Title conditions
+    if (titleGroup.length > 0) {
+      const titleConditions = titleGroup.map((t, i) => {
+        const idx = paramIndex + i;
+        return `title_vector @@ to_tsquery('english', $${idx})`;
+      });
+      queryText += ` AND (${titleConditions.join(' OR ')})`;
+      filterParams.push(
+        ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
+      );
+      paramIndex += titleGroup.length;
     }
 
-    // Finally, add LIMIT / OFFSET
+    // 2) Experience Level - Always include null experience levels
+    if (experienceLevel) {
+      queryText += ` AND (LOWER(experiencelevel) = $${paramIndex} OR experiencelevel IS NULL)`;
+      filterParams.push(experienceLevel);
+      paramIndex++;
+    }
+
+    // 3) Location
+    if (locationSearchTerms.length > 0) {
+      const tsquery = locationSearchTerms
+        .map((term) => 
+          term.includes(' ') ? term.split(' ').join(' & ') : term
+        )
+        .join(' | ');
+      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
+      filterParams.push(tsquery);
+      paramIndex++;
+    }
+
+    // 4) Company
+    if (company) {
+      queryText += ` AND company = $${paramIndex}`;
+      filterParams.push(company);
+      paramIndex++;
+    }
+
+    // Order by relevance and recency
+    queryText += `
+      ORDER BY 
+        relevance DESC,
+        created_at DESC
+    `;
+
+    // Add LIMIT/OFFSET
     queryText += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1};`;
     params.push(...relevanceParams, ...filterParams, limit, offset);
 

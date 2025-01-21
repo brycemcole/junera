@@ -91,16 +91,18 @@ export default function Notifications() {
 
   return (
     <div className="container mx-auto px-4 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Notifications</h1>
-        <Button onClick={markAllAsRead} variant="outline">
-          Mark all as read
-        </Button>
-      </div>
+      <section className="mb-4">
+        <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+          Notifications
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          View all your notifications here.
+        </p>
+      </section>
 
       {error && <div className="text-red-500 mb-4">{error}</div>}
-      
-      <JobList 
+
+      <JobList
         data={jobs}
         loading={isLoading}
         error={error}
