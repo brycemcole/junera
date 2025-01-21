@@ -56,7 +56,7 @@ export default function About() {
       <main className="space-y-4 items-center">
         {/* Hero Section */}
         <section className="text-center space-y-4 mb-20">
-          <h1 className="text-3xl text-center dark:text-neutral-200 font-mono">
+          <h1 className="text-3xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-mono)]">
             about
           </h1>
           <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg">
@@ -68,13 +68,13 @@ export default function About() {
         <section className="justify-center md:max-w-[750px] mx-auto space-y-14">
           <div className="grid grid-cols-2 gap-12">
             <div className="space-y-4">
-              <h3 className="text-2xl text-center dark:text-neutral-200 font-mono">Speed</h3>
+              <h3 className="text-2xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-mono)]">Speed</h3>
               <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg py-4">
                 We aim to bring you jobs as quick as possible with a job board that is updated daily with STEM jobs from accross the web.
               </p>
             </div>
             <div className="space-y-4">
-              <h3 className="text-2xl text-center dark:text-neutral-200 font-mono">Quality</h3>
+              <h3 className="text-2xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-mono)]">Quality</h3>
               <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg py-4">
                 Our parameters ensure you get information right from the companies official website, prioritizing real, quality jobs.
               </p>
@@ -90,7 +90,7 @@ export default function About() {
           <CardContent className="flex p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <h3 className="text-xl dark:text-neutral-200 font-mono">contact</h3>
+                <h3 className="text-xl dark:text-neutral-200 font-[family-name:var(--font-geist-mono)]">contact</h3>
                 <p className="w-full mx-auto dark:text-neutral-300 md:text-md">
                   Feel free to reach out with any feedback or suggestions
                 </p>

@@ -145,24 +145,16 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-0 p-4 max-w-4xl">
-      <h1 className="text-2xl font-medium mb-4">Dashboard</h1>
-      <h2 className="text-sm text-gray-500 mb-4">
-        Here&apos;s a quick glance at your progress and saved resources.
-      </h2>
+      <section className="mb-4">
+        <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-2">
+          Dashboard
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          New jobs, saved searches, and more.
+        </p>
+      </section>
 
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Suspense fallback={<Skeleton />}>
-          <Card className="py-2 border-none shadow-none bg-transparent relative col-span-2 md:col-span-3">
-            <CardTitle className="mb-4 w-full flex">
-              Saved Searches
-              {loadingSavedSearches && <LoaderCircle className="absolute bottom-3 right-0 animate-spin -mt-0.5 me-3 text-gray-600 inline-flex" size={16} strokeWidth={2} aria-hidden="true" />}
-              {errorSavedSearches && (<CircleAlert className="absolute bottom-3 right-0 -mt-0.5 me-3 text-red-600 inline-flex opacity-60" size={16} strokeWidth={2} aria-hidden="true" />)}
-            </CardTitle>
-            <SavedSearches data={savedSearches} loading={loadingSavedSearches} error={errorSavedSearches} />
-            <Button variant="ghost" size="sm" className="absolute right-0 hover:underline top-0 ml-auto" onClick={() => router.push('/job-postings/saved-searches')}>View All</Button>
-
-          </Card>
-        </Suspense>
         <Suspense fallback={<Skeleton />}>
           <Card className="border-none shadow-none col-span-2 relative">
             <CardTitle className="mb-4">

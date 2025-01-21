@@ -17,15 +17,19 @@ export const AuthProvider = ({ children }) => {
           setUser({ token, fullName: decoded.fullName, email: decoded.email, username: decoded.username, id: decoded.id, avatar: decoded.avatar, jobPrefsTitle: decoded.jobPrefsTitle, jobPrefsLocation: decoded.jobPrefsLocation, jobPrefsLevel: decoded.jobPrefsLevel });
         } else {
           localStorage.removeItem('token');
+          setLoading(false);
           setUser(null);
         }
       } catch (error) {
         console.error("Token decoding failed:", error);
         localStorage.removeItem('token');
         setUser(null);
+      } finally {
+        setLoading(false);
       }
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = (token, username, id, avatar) => {

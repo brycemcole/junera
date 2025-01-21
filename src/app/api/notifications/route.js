@@ -41,18 +41,13 @@ export async function GET(request) {
                 n.id,
                 n.type,
                 n.message as important_message,
-                n.related_id as jobid,
+                j.job_id,
                 n.created_at as "createdAt",
                 n.is_read,
                 n.metadata,
-                j.job_id,
                 CASE 
-                    WHEN n.type = 'job_match' AND j.company IS NOT NULL THEN j.company
-                    ELSE COALESCE(u.username, 'system')
-                END AS "senderUsername",
-                CASE 
-                    WHEN n.type = 'job_match' AND j.company IS NOT NULL THEN j.company
-                    ELSE COALESCE(u.full_name, 'System Notification')
+                    WHEN n.type = 'job_match' THEN COALESCE(j.company, 'Unknown Company')
+                    ELSE 'System'
                 END AS "senderName",
                 CASE 
                     WHEN n.type = 'job_match' AND j.company IS NOT NULL THEN 
@@ -61,7 +56,6 @@ export async function GET(request) {
                 END AS "senderLogo",
                 COUNT(*) OVER() as total_count
             FROM notifications n
-            LEFT JOIN users u ON n.user_id = u.id
             LEFT JOIN jobpostings j ON n.type = 'job_match' AND n.related_id = j.id
             WHERE n.user_id = $1 AND n.is_active = true
             ORDER BY n.created_at DESC

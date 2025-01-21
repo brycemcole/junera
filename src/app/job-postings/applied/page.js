@@ -108,8 +108,15 @@ export default function AppliedJobsPage() {
   }
 
   return (
-    <div className="container mx-auto py-10 p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-4">Applied Jobs</h1>
+    <div className="container mx-auto py-0 p-4 max-w-4xl">
+      <section className="mb-4">
+        <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+          Applied Jobs
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          View all the jobs you&apos;ve applied to. Click on a job to view more details.
+        </p>
+      </section>
       <div className="flex flex-col">
         <AppliedJobs jobs={appliedJobs?.appliedJobs} />
       </div>

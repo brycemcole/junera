@@ -191,11 +191,11 @@ export const JobList = ({ data, loading, error }) => {
           {/* Header Section */}
           <Link href={{ pathname: `/job-postings/${job.id}`, query: router.query }}>
 
-          <div className="flex flex-col min-w-0 gap-1">
+          <div className="flex flex-col min-w-0 gap-0">
                 <h4 className="text-md text-muted-foreground truncate">
                   {job?.company || "No company name available"}
                 </h4>
-            <h3 className="font-semibold group-hover:underline text-lg">
+            <h3 className="font-semibold group-hover:underline text-foreground text-lg">
               {job?.title || "No job titles available"}
             </h3>
             <div className="text-sm leading-loose line-clamp-3 max-w-full">
@@ -203,7 +203,7 @@ export const JobList = ({ data, loading, error }) => {
 
             </div>
 
-            <div className="flex gap-2 gap-x-3 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
+            <div className="flex gap-1 gap-x-3 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
             {job?.salary ? (
                 <div className="flex text-foreground items-center gap-2">
                   <span className="truncate">{job.salary}</span>

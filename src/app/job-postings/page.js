@@ -423,7 +423,7 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
 const JobCount = memo(function JobCount({ count, className }) {
   return (
     <span className={className}>
-      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-mono text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-[family-name:var(--font-geist-mono)] text-muted-foreground">
         <span>{count} jobs</span>
       </div>
     </span>
@@ -1326,7 +1326,7 @@ export default function JobPostingsPage() {
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-2xl font-medium mb-4">{headerTitle}</h1>
+              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-2">{headerTitle}</h1>
               <p className="text-sm text-muted-foreground">
                 <small className="text-sm text-muted-foreground">
                   {count} results

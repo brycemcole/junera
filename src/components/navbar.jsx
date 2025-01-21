@@ -466,7 +466,7 @@ export default function Navbar() {
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
-          <span className="text-sm font-mono">junera</span>
+          <span className="text-sm font-[family-name:var(--font-geist-mono)]">junera</span>
         </div>
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>

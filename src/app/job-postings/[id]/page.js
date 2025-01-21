@@ -664,10 +664,10 @@ Please assess the qualifications and provide a brief explanation of whether the 
   if (loading) return <div className="container mx-auto py-2 px-4 max-w-4xl">
     <div className="animate-pulse">
       <div className="flex flex-row items-center gap-4">
-        <div className="h-14 w-14 bg-gray-200 dark:bg-gray-900 rounded-full w-1/4 mb-4"></div>
-        <div className="h-16 bg-gray-200 dark:bg-gray-900 rounded-xl w-3/4 mb-4"></div>
-
+        <div className="h-16 bg-gray-200 dark:bg-gray-900 rounded-xl w-full mb-4"></div>
+        <div className="h-14 w-14 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/4 mb-4"></div>
       </div>
+      <div className="h-6 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
       <div className="h-6 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
       <div className="h-6 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
       <div className="space-y-3">
@@ -736,14 +736,19 @@ Please assess the qualifications and provide a brief explanation of whether the 
         }}
       />
       <div className="container mx-auto py-0 p-4 max-w-4xl">
-        <div className="flex flex-row items-center mb-4 gap-4">
+        <div className="flex flex-row items-center gap-4 mb-4">
+          <div>
+            <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
+            <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-mono)] font-medium">
+
+              {jobPosting.title}
+            </h1>
+          </div>
+
           <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-xl">
             <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
             <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <h1 data-scroll-title className="text-lg sm:text-2xl font-medium decoration-2 leading-normal min-w-0">
-            {jobPosting.title} at <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
-          </h1>
         </div>
         <div className="mb-4 flex flex-col gap-y-2 text-sm text-foreground items-start">
           {jobPosting?.salary ? (

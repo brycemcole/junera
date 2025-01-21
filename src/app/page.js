@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="container py-20 px-4 mx-auto max-w-4xl md:px-0 w-full">
       <main className="space-y-4 items-center">
-        <h1 className="text-3xl text-center dark:text-neutral-200 font-mono">
+        <h1 className="text-3xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-mono)]">
           junera
         </h1>
         <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg">
