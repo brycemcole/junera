@@ -116,7 +116,7 @@ function DropdownMenuDemo2() {
       <DropdownMenuContent className="w-56 mr-4 mt-4">
        
          <DropdownMenuGroup>
-          {user && (
+          {!loading && user && user.email && user.fullName && (
             <>
             <DropdownMenuLabel className="flex min-w-0 flex-col">
           <span className="truncate text-sm font-medium text-foreground">{user.fullName}</span>
@@ -140,13 +140,9 @@ function DropdownMenuDemo2() {
                   </DropdownMenuShortcut>
                   )}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/saved')}>
-                  <Bookmark/>
-                  <span>Saved</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/job-postings/applied')}>
+                <DropdownMenuItem onClick={() => router.push('/job-postings/my-jobs')}>
                   <BriefcaseBusiness/>
-                  <span>Applied</span>
+                  <span>My Jobs</span>
                 </DropdownMenuItem>
             </>
           )}
@@ -248,7 +244,7 @@ function DropdownMenuDemo() {
                 <DropdownMenuSeparator />
                 {user && !loading && (
                   <>
-                    <DropdownMenuItem onClick={() => router.push('/job-postings/applied')}>
+                    <DropdownMenuItem onClick={() => router.push('/job-postings/my-jobs')}>
                       <span>Your Jobs</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -333,7 +329,7 @@ export default function Navbar() {
         <div className="md:hidden items-center flex gap-4">
           {!loading && (
             <>
-              {user ? (
+              {!loading && user && user.email && user.fullName ? (
                 <DropdownMenuDemo2 />
               ) : (
                 <>

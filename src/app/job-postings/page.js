@@ -1001,14 +1001,10 @@ export default function JobPostingsPage() {
     );
   }
 
-  function LocationSearch({ location, setLocation, userPreferredLocation = "" }) {
+  function LocationSearch({ location, setLocation }) {
     const [searchValue, setSearchValue] = useState(location || "");
     const [timer, setTimer] = useState(null);
 
-    // if userPreferredLocation is an array, use the first element
-    if (Array.isArray(userPreferredLocation)) {
-      userPreferredLocation = userPreferredLocation[0];
-    }
 
     const handleInputChange = (e) => {
       const newValue = e.target.value;
@@ -1113,7 +1109,8 @@ export default function JobPostingsPage() {
         setIsLoading(true);
         setCurrentPage(prev => prev + 1);
       }
-    }, [hasMore, dataLoading, isLoading]);
+    }
+  }, [hasMore, dataLoading, isLoading]);
 
   useEffect(() => {
     const throttledScrollHandler = throttle(handleScroll, 500);
@@ -1148,15 +1145,17 @@ export default function JobPostingsPage() {
           return;
         }
 
+
         const params = new URLSearchParams({
-          ...(title && { title }),
+          ...((title || (user?.jobPrefsTitle[0] && !title)) && { title: title || user?.jobPrefsTitle[0] }),
           ...(experienceLevel && { experienceLevel }),
-          ...(location && { location }),
+          ...((location || user?.jobPrefsLocation[0]) && { location: (location || user?.jobPrefsLocation[0])?.toLowerCase() }),
           ...(company && { company }),
           strictSearch,
           page: currentPage.toString(),
           limit: limit.toString()
         });
+
 
         const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
           signal: controller.signal,
@@ -1395,9 +1394,5 @@ export default function JobPostingsPage() {
         </Suspense>
       </div>
     </>
-  );
-    </>
-}
-
   );
 }

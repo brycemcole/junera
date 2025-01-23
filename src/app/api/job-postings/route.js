@@ -265,8 +265,8 @@ export async function GET(req) {
   const allowedSortValues = ['relevancy', 'recent'];
   const sort = allowedSortValues.includes(sortParam) ? sortParam : 'relevancy';
 
-  if (page < 1 || limit < 1) {
-    return Response.json({ error: "Invalid page or limit" }, { status: 400 });
+  if (page < 1) {
+    return Response.json({ error: "Invalid page" }, { status: 400 });
   }
   if (limit > 50) {
     return Response.json({ error: "Limit exceeds maximum value" }, { status: 400 });
@@ -542,7 +542,7 @@ export async function GET(req) {
     `;
 
     // Build WHERE conditions
-    
+
     // 1) Title conditions
     if (titleGroup.length > 0) {
       const titleConditions = titleGroup.map((t, i) => {
@@ -566,7 +566,7 @@ export async function GET(req) {
     // 3) Location
     if (locationSearchTerms.length > 0) {
       const tsquery = locationSearchTerms
-        .map((term) => 
+        .map((term) =>
           term.includes(' ') ? term.split(' ').join(' & ') : term
         )
         .join(' | ');
@@ -620,6 +620,73 @@ export async function GET(req) {
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
+
+    // Function to get jobs with relaxed filters
+    const getJobsWithRelaxedFilters = async (queryText, params, removedFilter) => {
+      // Create new arrays without the removed filter's parameters
+      const newParams = [...params];
+      const filterToRemove = removedFilter === 'title' ?
+        titleGroup.length : // Remove title parameters
+        1; // Remove single parameter for location
+
+      // Remove the filter's parameters
+      newParams.splice(
+        removedFilter === 'title' ?
+          relevanceParams.length : // Title params start after relevance params
+          relevanceParams.length + titleGroup.length, // Location params start after title params
+        filterToRemove
+      );
+
+      // Modify query text to remove the filter condition
+      const modifiedQuery = queryText.replace(
+        removedFilter === 'title' ?
+          /AND \(title_vector @@ to_tsquery\('english', \$\d+\)\)/ :
+          /AND location_vector @@ to_tsquery\('simple', \$\d+\)/,
+        ''
+      );
+
+      return await query(modifiedQuery, newParams);
+    };
+
+    try {
+      // First try with all filters
+      let result = await query(queryText, params);
+      let metadata = {
+        relaxedFilters: {
+          removedTitle: false,
+          removedLocation: false
+        },
+        hasMore: result.rows.length > 0
+      };
+
+      // If no results and we have filters to relax
+      if (result.rows.length === 0 && page === 1) {
+        // Try removing title first if it exists
+        if (title) {
+          console.log('Relaxing title filter...');
+          result = await getJobsWithRelaxedFilters(queryText, params, 'title');
+          metadata.relaxedFilters.removedTitle = true;
+        }
+        // If still no results and we have location, try removing that
+        if (result.rows.length === 0 && location) {
+          console.log('Relaxing location filter...');
+          result = await getJobsWithRelaxedFilters(queryText, params, 'location');
+          metadata.relaxedFilters.removedLocation = true;
+        }
+      }
+
+      const jobPostings = processJobPostings(result.rows);
+
+      return Response.json({
+        jobPostings,
+        metadata,
+        timings,
+        ok: true
+      }, { status: 200 });
+
+    } catch (error) {
+      // ...existing error handling...
+    }
 
     return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
   } catch (error) {
