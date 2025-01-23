@@ -1094,26 +1094,16 @@ export default function JobPostingsPage() {
     if (!hasMore || dataLoading || isLoading) return;
 
     const scrollPosition = window.innerHeight + document.documentElement.scrollTop;
-    const scrollThreshold = document.documentElement.offsetHeight - 800; // Load earlier
-
-    // Save current scroll position
-    setScrollPosition(window.scrollY);
-    sessionStorage.setItem('jobListingsScrollPos', window.scrollY.toString());
+    const scrollThreshold = document.documentElement.offsetHeight - 800;
 
     if (scrollPosition > scrollThreshold) {
-      // Cancel the previous request if it exists
-      if (lastRequestRef.current) {
-        lastRequestRef.current.abort();
-
-        // Set loading state before incrementing page
-        setIsLoading(true);
-        setCurrentPage(prev => prev + 1);
-      }
+      setIsLoading(true); // Set loading state before incrementing page
+      setCurrentPage(prev => prev + 1);
     }
   }, [hasMore, dataLoading, isLoading]);
 
   useEffect(() => {
-    const throttledScrollHandler = throttle(handleScroll, 500);
+    const throttledScrollHandler = throttle(handleScroll, 200); // Reduce throttle time
     window.addEventListener('scroll', throttledScrollHandler);
 
     return () => {
@@ -1130,14 +1120,12 @@ export default function JobPostingsPage() {
     lastRequestRef.current = controller;
 
     async function fetchData() {
-      // Reset data if it's first page
+      // Only set loading states if it's not a subsequent page
       if (currentPage === 1) {
         setData([]);
         setInitialLoading(true);
-        setDataLoading(true);
-      } else {
-        setIsLoading(true);
       }
+      setDataLoading(true);
 
       try {
         if (saved) {
@@ -1173,34 +1161,12 @@ export default function JobPostingsPage() {
         // Update data based on page number
         setData(prevData => {
           if (currentPage === 1) {
-            // For first page, just use new jobs
-            const newData = newJobs;
-            // Store in sessionStorage
-            storeDataInSession(newData, currentPage, {
-              title,
-              experienceLevel,
-              location,
-              company,
-              saved
-            });
-            return newData;
-          } else {
-            // For subsequent pages, merge with existing data avoiding duplicates
-            const existingIds = new Set(prevData.map(job => job.id));
-            const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
-            const newData = [...prevData, ...uniqueNewJobs];
-
-            // Store in sessionStorage
-            storeDataInSession(newData, currentPage, {
-              title,
-              experienceLevel,
-              location,
-              company,
-              saved
-            });
-
-            return newData;
+            return newJobs;
           }
+          // Ensure we're properly merging data for subsequent pages
+          const existingIds = new Set(prevData.map(job => job.id));
+          const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
+          return [...prevData, ...uniqueNewJobs];
         });
 
         // Only fetch count and companies on first page
@@ -1222,7 +1188,7 @@ export default function JobPostingsPage() {
       } finally {
         setInitialLoading(false);
         setDataLoading(false);
-        setIsLoading(false); // Make sure to reset loading state
+        setIsLoading(false);
       }
     }
 
