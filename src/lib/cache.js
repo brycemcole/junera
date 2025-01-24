@@ -3,19 +3,20 @@ const cacheExpiry = new Map();
 
 const getCached = async (key) => {
   const expiry = cacheExpiry.get(key);
-  
+
   // Check if cache has expired
   if (expiry && Date.now() > expiry) {
     memoryCache.delete(key);
     cacheExpiry.delete(key);
     return null;
   }
-  
+
   return memoryCache.get(key) || null;
 };
 
 const setCached = async (key, value, ttlSeconds = 300) => {
-  if (!value) {
+  if (value == null) {
+    console.log(key, value);
     console.warn('Attempted to cache null/undefined value');
     return;
   }

@@ -45,7 +45,7 @@ export async function GET(request) {
     await setCached(cacheKey, isBookmarked, 3600);
 
     return NextResponse.json({
-      isBookmarked
+      isBookmarked: isBookmarked
     });
   } catch (error) {
     console.error('GET error:', error);

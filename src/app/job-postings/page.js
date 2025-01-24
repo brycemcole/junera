@@ -1167,7 +1167,12 @@ export default function JobPostingsPage() {
           timestamp: Date.now()
         }));
       } catch (error) {
-        console.error("Error storing encrypted response in local storage:", error);
+        if (error.name === 'QuotaExceededError') {
+          console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
+          // Optionally, implement logic to clear space or notify the user
+        } else {
+          console.error("Error storing encrypted response in local storage:", error);
+        }
       }
     }
 
@@ -1213,8 +1218,28 @@ export default function JobPostingsPage() {
         const cachedData = await isDataInLocalStorage(route);
 
         if (isCacheValid(cachedData)) {
-          setData([...data, ...cachedData.jobPostings]);
-          setHasMore(cachedData.hasMore);
+          // Check for cached data from multiple pages
+          const cachedPages = [];
+          let pageNum = 1;
+
+          while (true) {
+            const pageParams = new URLSearchParams(params);
+            pageParams.set('page', pageNum.toString());
+            const pageRoute = `/api/job-postings?${pageParams.toString()}`;
+            const pageData = await isDataInLocalStorage(pageRoute);
+
+            if (!pageData || !isCacheValid(pageData)) {
+              break;
+            }
+
+            cachedPages.push(...pageData.jobPostings);
+            if (!pageData.hasMore) break;
+            pageNum++;
+          }
+
+          setData(cachedPages);
+          setHasMore(cachedPages.length >= pageNum * limit);
+          setCurrentPage(pageNum);
         } else {
           const jobData = await fetchJobData(route, params);
           await storeResponseInLocalStorage(route, jobData);
