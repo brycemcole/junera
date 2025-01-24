@@ -5,7 +5,7 @@ import { useState, useEffect, use } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { NavbarMenu } from '@/components/navbar-menu';
-import { Info, BriefcaseBusiness, LayoutDashboard, LogOut, Home, User, UserPlus, Bell, Bookmark } from "lucide-react";
+import { Info, BriefcaseBusiness, LayoutDashboard, LogOut, Home, User, UserPlus, Bell, Bookmark, Bot } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuShortcut, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -278,6 +278,10 @@ function DropdownMenuDemo() {
 
           {user ? (
             <>
+              <DropdownMenuItem onClick={() => router.push('/agents')}>
+                <Bot />
+                <span>Agents</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                 <LayoutDashboard />
                 <span>Dashboard</span>

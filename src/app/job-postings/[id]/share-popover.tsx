@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { RiCodeFill, RiFacebookFill, RiMailLine, RiTwitterXFill } from "@remixicon/react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ShareIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
 export default function SharePopover({title}: {title: string}) {
@@ -53,9 +53,11 @@ export default function SharePopover({title}: {title: string}) {
     <div className="flex flex-col gap-4">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline">Share</Button>
+          <Button variant="outline" size="icon">
+            <ShareIcon className="h-4 w-4" />
+          </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-72">
+        <PopoverContent className="w-72 mx-6 mt-2">
           <div className="flex flex-col gap-3 text-center">
             <div className="text-sm font-medium">Share job posting</div>
             <div className="text-sm font-medium">{title}</div>

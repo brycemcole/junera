@@ -48,8 +48,9 @@ import { Plus } from "lucide-react";
 import { useState } from 'react'
 import { ToastAction } from "@/components/ui/toast";
 
-const SavedSearchCard = ({ search, onEdit, onDelete }) => {
+export const SavedSearchCard = ({ search, onEdit, onDelete }) => {
   const router = useRouter();
+  console.log(search);
 
   const redirectToSearch = () => {
     const { title = "", location, experienceLevel } = search.search_criteria;
@@ -64,7 +65,7 @@ const SavedSearchCard = ({ search, onEdit, onDelete }) => {
             <Button variant="ghost" size="icon" className="hover:text-destructive/80" onClick={redirectToSearch}>
               <Search className="w-4 h-4 text-primary" />
             </Button>
-            {search.search_name}
+            {search?.search_name}
           </CardTitle>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -92,14 +93,14 @@ const SavedSearchCard = ({ search, onEdit, onDelete }) => {
 
       <CardContent className="space-y-3 p-2 pt-0 text-sm">
         <p className="text-muted-foreground">
-          <strong className="text-foreground">{search.search_criteria.title || 'Any'}</strong> jobs in <strong className="text-foreground">{search.search_criteria.location || 'Any location'}</strong> requiring <strong className="text-foreground">{search.search_criteria.experienceLevel || 'Any'}</strong> experience level.
+          <strong className="text-foreground">{search?.search_criteria.title || 'Any'}</strong> jobs in <strong className="text-foreground">{search?.search_criteria.location || 'Any location'}</strong> requiring <strong className="text-foreground">{search?.search_criteria.experienceLevel || 'Any'}</strong> experience level.
         </p>
 
         <div className="flex items-center gap-3">
-          <Bell className={`w-4 h-4 ${search.notify ? 'text-green-500' : 'text-muted-foreground'}`} />
+          <Bell className={`w-4 h-4 ${search?.notify ? 'text-green-500' : 'text-muted-foreground'}`} />
           <div>
             <p className="font-medium">
-              {search.notify ? "You will receive alerts." : "You will not receive alerts."}
+              {search?.notify ? "You will receive alerts." : "You will not receive alerts."}
             </p>
           </div>
         </div>

@@ -39,7 +39,6 @@ export async function GET(request) {
       WHERE ui.user_id = $1 
       AND ui.interaction_type = 'view'
       ORDER BY ui.interaction_date DESC
-      LIMIT 10
     `, [userId]);
 
     const recentlyViewed = result.rows.map(job => ({

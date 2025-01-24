@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 export default function Footer() {
   return (
     <footer className="w-full bg-background  py-3">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-6">
         <div className="flex flex-col items-center justify-center gap-3 text-sm text-foreground">
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-foreground">
             <span className="whitespace-nowrap"><Link href="/job-postings">Browse Jobs</Link></span>

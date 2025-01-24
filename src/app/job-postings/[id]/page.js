@@ -91,38 +91,7 @@ const decodeHTMLEntities = (str) => {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
-
-
-function MagicButton({ handleSummarizationQuery }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="disabled:opacity-100 group"
-        >
-          <Sparkles className="group-hover:stroke-emerald-500 text-muted-foreground" size={16} strokeWidth={2} aria-hidden="true" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="max-w-[280px] py-3 ml-4 shadow-none" side="top">
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <p className="text-[13px] font-medium">Generate Summary</p>
-            <p className="text-xs text-muted-foreground">
-              Instantly generate a summary of the job posting using AI models.
-            </p>
-          </div>
-          <Button size="sm" className="h-7 px-2" onClick={handleSummarizationQuery}>
-            Generate Summary
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-
+import { redirect } from 'next/navigation';
 
 // Create a separate component for Similar Jobs
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
@@ -262,21 +231,9 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
           />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="mx-4">
-        {title && (
-          <DropdownMenuItem>
-            <InfoIcon size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-            {title}
-          </DropdownMenuItem>
-        )}
-        {location && (
-          <DropdownMenuItem>
-            <MapPin size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-            {location}
-          </DropdownMenuItem>
-        )}
+      <DropdownMenuContent className="mx-6 mt-2">
         {company && (
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => redirect(`/companies/${company}`)}>
             <Building2 size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
             {company}
           </DropdownMenuItem>

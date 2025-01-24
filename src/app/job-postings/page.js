@@ -697,14 +697,7 @@ export default function JobPostingsPage() {
           </TabsTrigger>
 
           {!loading && user && (
-            <>
-              <TabsTrigger
-                value="saved"
-                onClick={() => handleTabClick('saved')}
-                className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
-              >
-                <BookmarkIcon size={16} strokeWidth={2} className="shrink-0" />
-              </TabsTrigger>
+            <>  
               <TabsTrigger
                 value="preferences"
                 onClick={() => handleTabClick('preferences')}

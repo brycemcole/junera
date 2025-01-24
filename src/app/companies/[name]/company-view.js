@@ -16,7 +16,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { ChevronLeft, ChevronRight, Factory, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Factory, MapPin, Pencil, ShareIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { JobList } from "@/components/JobPostings";
 import {
@@ -51,6 +51,7 @@ export default function CompanyView({ companyName, page }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [company, setCompany] = useState(null);
+    const [companyJobCount, setCompanyJobCount] = useState(0);
     const [jobPostings, setJobPostings] = useState([]);
     const [pagination, setPagination] = useState(null);
     const [isFollowing, setIsFollowing] = useState(false);
@@ -59,6 +60,7 @@ export default function CompanyView({ companyName, page }) {
     const [showReviewForm, setShowReviewForm] = useState(false);
     const [editingReview, setEditingReview] = useState(null);
     const [experiences, setExperiences] = useState([]);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
         async function fetchCompanyData() {
@@ -93,10 +95,25 @@ export default function CompanyView({ companyName, page }) {
             }
         }
 
-        if (companyName) {
-            fetchCompanyData();
+        async function fetchCompanyJobCount() {
+            try {
+                const response = await fetch(`/api/job-postings/count?company=${encodeURIComponent(companyName)}`);
+                if (!response.ok) throw new Error('Failed to fetch job count');
+                const data = await response.json();
+                if (!data.ok) throw new Error('Invalid response structure');
+                if (!data.count) throw new Error('Invalid job count data');
+                setCompanyJobCount(data.count);
+            } catch (error) {
+                console.error('Error fetching job count:', error);
+            }
         }
-    }, [companyName, page]);
+
+        if (companyName && !isMounted) {
+            fetchCompanyJobCount();
+            fetchCompanyData();
+            setIsMounted(true);
+        }
+    }, [companyName, page, isMounted]);
 
     // Add initial follow status check
     useEffect(() => {
@@ -340,7 +357,7 @@ export default function CompanyView({ companyName, page }) {
     }
 
     return (
-        <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
+        <div className="container mx-auto py-6 px-6 sm:px-6 lg:px-8 max-w-4xl">
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Avatar className="h-12 w-12">
@@ -373,8 +390,8 @@ export default function CompanyView({ companyName, page }) {
                 <Button
                     variant="outline"
                     className={cn(
-                        "gap-2",
-                        isFollowing && "bg-primary/10 text-primary"
+                        "gap-2 hover:bg-green-100/20 hover:border-green-600/20",
+                        isFollowing && "bg-green-500/20 border-green-600/20 text-primary"
                     )}
                     onClick={handleFollow}
                 >
@@ -391,11 +408,11 @@ export default function CompanyView({ companyName, page }) {
 
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" className="gap-2">
-                            Share
+                        <Button variant="outline" size="icon" className="gap-2">
+                            <ShareIcon className="h-4 w-4" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80">
+                    <PopoverContent className="w-80 mx-6 mt-2">
                         <div className="space-y-4">
                             <h4 className="font-medium leading-none">Share Company Profile</h4>
                             <div className="space-y-2">
@@ -467,7 +484,13 @@ export default function CompanyView({ companyName, page }) {
                 <div className="space-y-4">
                     {reviews.map(review => debugReview(review))}
                     {reviews.length === 0 && (
-                        <p className="text-muted-foreground text-sm">No reviews yet. Be the first to review!</p>
+                        !user ? (
+                            <p className="text-muted-foreground text-sm">
+                                Please <Link href="/login" className="underline underline-offset-4">login</Link> to share your review of {company.company_name}.
+                            </p>
+                        ) : (
+                            <p className="text-muted-foreground text-sm">No reviews yet. Be the first to review!</p>
+                        )
                     )}
                 </div>
             </div>
@@ -481,7 +504,7 @@ export default function CompanyView({ companyName, page }) {
                     {experiences.map((person) => (
                         <Link
                             key={person.id}
-                            href={`/profile/${encodeURIComponent(person.username)}`} // Add encodeURIComponent
+                            href={`/profile/${encodeURIComponent(person.username)}`}
                             className="inline-flex items-center gap-2 p-2 rounded-lg hover:bg-accent"
                         >
                             <Avatar className="h-6 w-6">
@@ -491,16 +514,24 @@ export default function CompanyView({ companyName, page }) {
                             <span className="text-sm font-medium">{person.username}</span>
                         </Link>
                     ))}
-                    {experiences.length === 0 && (
+                    {experiences.length === 0 ? !user ? (
                         <p className="text-muted-foreground text-sm">
                             No one has shared their experience working at {company.company_name} yet.
                         </p>
-                    )}
+                    ) :
+                        (
+                            <p className="text-muted-foreground text-sm">
+                                Worked at {company.company_name}? Share your experience on your <Link className="underline underline-offset-4 text-foreground" href={`/profile/${user.username}`}>profile</Link>
+                            </p>
+                        )
+                        :
+                        <></>
+                    }
                 </div>
             </div>
 
             <div className="space-y-6"></div>
-            <h2 className="text-md font-semibold">Job Postings</h2>
+            <h2 className="text-md font-semibold">{companyJobCount} Job Postings</h2>
             <JobList data={jobPostings} loading={loading} error={error} />
 
             {pagination && (
