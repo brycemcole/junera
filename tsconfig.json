@@ -34,7 +34,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "src/**/*.tsx"
-, "src/components/job-postings-chart.js", "src/app/register/page.js", "src/app/job-postings/saved-searches/page.js", "src/components/edit-profile.js", "src/components/ui/dropdown-menu.tsx", "src/app/job-postings/saved-searches/saved-search-form.jsx", "src/components/navbar-menu.jsx", "src/components/company-review-form.jsx"  ],
+, "src/components/job-postings-chart.js", "src/app/register/page.js", "src/app/job-postings/saved-searches/page.js", "src/components/edit-profile.js", "src/components/ui/dropdown-menu.tsx", "src/components/navbar-menu.jsx", "src/components/company-review-form.jsx"  ],
   "exclude": [
     "node_modules"
   ]

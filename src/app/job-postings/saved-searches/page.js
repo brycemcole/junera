@@ -48,7 +48,7 @@ import { Plus } from "lucide-react";
 import { useState } from 'react'
 import { ToastAction } from "@/components/ui/toast";
 
-export const SavedSearchCard = ({ search, onEdit, onDelete }) => {
+const SavedSearchCard = ({ search, onEdit, onDelete }) => {
   const router = useRouter();
   console.log(search);
 

@@ -116,7 +116,7 @@ function DropdownMenuDemo2() {
       <DropdownMenuContent className="w-56 mr-4 mt-4">
        
          <DropdownMenuGroup>
-          {!loading && user && user.email && user.fullName && (
+          {user && (
             <>
             <DropdownMenuLabel className="flex min-w-0 flex-col">
           <span className="truncate text-sm font-medium text-foreground">{user.fullName}</span>

@@ -91,7 +91,7 @@ function InputForm() {
               <FormControl>
                 <div className="relative">
                   <User2 size={12} className="absolute top-1/2 left-3 transform -translate-y-1/2 text-muted-foreground" />
-                  <Input className="pl-9" placeholder="email or username" {...field} />
+                  <Input className="pl-9" placeholder="email or username" autoComplete="username" {...field} />
                 </div>
               </FormControl>
               <FormMessage />
@@ -107,7 +107,7 @@ function InputForm() {
               <FormControl>
                 <div className="relative">
                   <Lock size={12} className="absolute top-1/2 left-3 transform -translate-y-1/2 text-muted-foreground" />
-                  <Input className="pl-9 pr-9" type="password" placeholder="password" {...field} />
+                  <Input className="pl-9 pr-9" type="password" placeholder="password" autoComplete="current-password" {...field} />
                   <Button variant="ghost" size="smicon" className="absolute top-1/2 right-3 transform -translate-y-1/2" type="button" onClick={() => {
                     const input = document.querySelector('input[name="password"]');
                     input.type = input.type === 'password' ? 'text' : 'password';

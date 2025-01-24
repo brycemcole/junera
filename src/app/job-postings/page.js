@@ -64,6 +64,32 @@ import { set } from 'date-fns';
 import { throttle } from 'lodash';
 import { is } from 'date-fns/locale';
 
+// Add encryption utilities
+const encryptData = (data) => {
+  try {
+    // Simple XOR encryption with a random key
+    const key = Math.random().toString(36).substring(2);
+    const encrypted = JSON.stringify(data).split('').map((char, i) =>
+      String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+    ).join('');
+    return { encrypted, key };
+  } catch (error) {
+    console.error('Encryption error:', error);
+    return null;
+  }
+};
+
+const decryptData = (encrypted, key) => {
+  try {
+    const decrypted = encrypted.split('').map((char, i) =>
+      String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+    ).join('');
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error('Decryption error:', error);
+    return null;
+  }
+};
 
 const states = {
   "null": "Any",
@@ -522,7 +548,15 @@ export default function JobPostingsPage() {
       params,
       timestamp
     };
-    sessionStorage.setItem('jobListingsState', JSON.stringify(storageData));
+
+    const { encrypted, key } = encryptData(storageData);
+    if (!encrypted || !key) return;
+
+    sessionStorage.setItem('jobListingsState', JSON.stringify({
+      data: encrypted,
+      key,
+      timestamp
+    }));
     setDataTimestamp(timestamp);
   };
 
@@ -629,7 +663,6 @@ export default function JobPostingsPage() {
       if (searchId === 'preferences') {
         // Handle preferences tab
         setActiveTab('preferences');
-        console.log(user);
         const params = new URLSearchParams({
           title: user.jobPrefsTitle,
           location: user.jobPrefsLocation,
@@ -660,7 +693,6 @@ export default function JobPostingsPage() {
 
     // Update active tab based on URL params
     useEffect(() => {
-      console.log(user);
       if (currentSearchParams.saved) {
         setActiveTab('saved');
       } else if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
@@ -697,7 +729,7 @@ export default function JobPostingsPage() {
           </TabsTrigger>
 
           {!loading && user && (
-            <>  
+            <>
               <TabsTrigger
                 value="preferences"
                 onClick={() => handleTabClick('preferences')}
@@ -1112,8 +1144,58 @@ export default function JobPostingsPage() {
     const controller = new AbortController();
     lastRequestRef.current = controller;
 
+    async function storeResponseInLocalStorage(route_location, route_response) {
+      try {
+        // Purge old data from localStorage
+        Object.keys(localStorage).forEach(key => {
+          try {
+            const item = JSON.parse(localStorage.getItem(key));
+            if (item.timestamp && Date.now() - item.timestamp > 60 * 60 * 1000) { // 1 hour
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            // Skip non-JSON items
+          }
+        });
+
+        const { encrypted, key } = encryptData(route_response);
+        if (!encrypted || !key) return;
+
+        localStorage.setItem(route_location, JSON.stringify({
+          data: encrypted,
+          key,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error("Error storing encrypted response in local storage:", error);
+      }
+    }
+
+    async function isDataInLocalStorage(route_location) {
+      try {
+        const storedData = localStorage.getItem(route_location);
+        if (!storedData) return null;
+
+        const { data: encrypted, key, timestamp } = JSON.parse(storedData);
+        if (!encrypted || !key) return null;
+
+        // Check if data is older than 1 hour
+        if (Date.now() - timestamp > 60 * 60 * 1000) {
+          localStorage.removeItem(route_location);
+          return null;
+        }
+
+        const decrypted = decryptData(encrypted, key);
+        if (!decrypted) return null;
+
+        return decrypted;
+      } catch (error) {
+        console.error("Error checking encrypted local storage:", error);
+        return null;
+      }
+    }
+
     async function fetchData() {
-      // Only set loading states if it's not a subsequent page
       if (currentPage === 1) {
         setData([]);
         setInitialLoading(true);
@@ -1126,54 +1208,21 @@ export default function JobPostingsPage() {
           return;
         }
 
+        const params = buildQueryParams();
+        const route = `/api/job-postings?${params.toString()}`;
+        const cachedData = await isDataInLocalStorage(route);
 
-        const params = new URLSearchParams({
-          ...((title || (user?.jobPrefsTitle[0] && !title)) && { title: title || user?.jobPrefsTitle[0] }),
-          ...(experienceLevel && { experienceLevel }),
-          ...((location || user?.jobPrefsLocation[0]) && { location: (location || user?.jobPrefsLocation[0])?.toLowerCase() }),
-          ...(company && { company }),
-          strictSearch,
-          page: currentPage.toString(),
-          limit: limit.toString()
-        });
+        if (isCacheValid(cachedData)) {
+          setData([...data, ...cachedData.jobPostings]);
+          setHasMore(cachedData.hasMore);
+        } else {
+          const jobData = await fetchJobData(route, params);
+          await storeResponseInLocalStorage(route, jobData);
+          updateJobDataState(jobData);
+        }
 
-
-        const jobRes = await fetch(`/api/job-postings?${params.toString()}`, {
-          signal: controller.signal,
-          cache: 'force-cache',
-        });
-
-        if (!jobRes.ok) throw new Error("Network response was not ok");
-
-        const jobData = await jobRes.json();
-        const newJobs = jobData.jobPostings || [];
-
-        // Set hasMore based on whether we got a full page of results
-        setHasMore(newJobs.length === limit);
-
-        // Update data based on page number
-        setData(prevData => {
-          if (currentPage === 1) {
-            return newJobs;
-          }
-          // Ensure we're properly merging data for subsequent pages
-          const existingIds = new Set(prevData.map(job => job.id));
-          const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
-          return [...prevData, ...uniqueNewJobs];
-        });
-
-        // Only fetch count and companies on first page
         if (currentPage === 1) {
-          Promise.all([
-            fetch(`/api/job-postings/count?${params.toString()}`, { cache: 'force-cache' }),
-            fetch(`/api/companies`, { cache: 'force-cache' })
-          ]).then(([countRes, compRes]) => {
-            return Promise.all([countRes.json(), compRes.json()]);
-          }).then(([countData, companiesData]) => {
-            console.log(countData);
-            setCount(countData?.count || countData.totalJobs || 0);
-            setCompanies(companiesData || []);
-          }).catch(console.error);
+          fetchAdditionalData(params);
         }
 
       } catch (err) {
@@ -1185,6 +1234,61 @@ export default function JobPostingsPage() {
       }
     }
 
+    function buildQueryParams() {
+      return new URLSearchParams({
+        ...((title || (user?.jobPrefsTitle[0] && !title)) && { title: title || user?.jobPrefsTitle[0] }),
+        ...(experienceLevel && { experienceLevel }),
+        ...((location || user?.jobPrefsLocation[0]) && { location: (location || user?.jobPrefsLocation[0])?.toLowerCase() }),
+        ...(company && { company }),
+        strictSearch,
+        page: currentPage.toString(),
+        limit: limit.toString()
+      });
+    }
+
+    function isCacheValid(cachedData) {
+      return cachedData && Date.now() - cachedData.timestamp < 15 * 60 * 1000;
+    }
+
+    async function fetchJobData(route, params) {
+      const response = await fetch(route, {
+        signal: controller.signal,
+        cache: 'force-cache',
+      });
+      if (!response.ok) throw new Error("Network response was not ok");
+      const data = await response.json();
+      data.timestamp = Date.now();
+      data.hasMore = data.jobPostings.length === limit;
+      return data;
+    }
+
+    function updateJobDataState(jobData) {
+      const newJobs = jobData?.jobPostings || [];
+      setHasMore(newJobs.length === limit);
+      setData(prevData => {
+        if (currentPage === 1) {
+          return newJobs;
+        }
+        const existingIds = new Set(prevData.map(job => job.id));
+        const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
+        return [...prevData, ...uniqueNewJobs];
+      });
+    }
+
+    function fetchAdditionalData(params) {
+      Promise.all([
+        fetch(`/api/job-postings/count?${params.toString()}`, { cache: 'force-cache' }),
+        fetch(`/api/companies`, { cache: 'force-cache' })
+      ])
+        .then(([countRes, compRes]) => Promise.all([countRes.json(), compRes.json()]))
+        .then(([countData, companiesData]) => {
+          console.log(countData);
+          setCount(countData?.count || countData.totalJobs || 0);
+          setCompanies(companiesData || []);
+        })
+        .catch(console.error);
+    }
+
     const restoreFromSession = () => {
       try {
         const storedState = sessionStorage.getItem('jobListingsState');
@@ -1192,6 +1296,7 @@ export default function JobPostingsPage() {
 
         const { data: storedData, page, params, timestamp } = JSON.parse(storedState);
         console.log(storedData);
+        console.log('ATTEMPTING TO RESTORE SESSION DATA');
 
         // Check if data is still fresh
         if (!isDataFresh(timestamp)) {

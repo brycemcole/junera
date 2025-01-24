@@ -76,7 +76,7 @@ export default function SavedPage() {
                                 </p>
                 ) : (
                     savedSearches.map((search) => (
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground" key={search.id}>
                         <strong className="text-foreground">{search?.search_criteria.title || 'Any'}</strong> jobs in <strong className="text-foreground">{search?.search_criteria.location || 'Any location'}</strong> requiring <strong className="text-foreground">{search?.search_criteria.experienceLevel || 'Any'}</strong> experience level.
                       </p>
                     ))
