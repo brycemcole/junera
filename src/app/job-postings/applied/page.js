@@ -11,17 +11,17 @@ export default function JobHistoryPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("applied");
-  
+
   // States for different job types
   const [appliedJobs, setAppliedJobs] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
   const [viewedJobs, setViewedJobs] = useState([]);
-  
+
   // Loading states
   const [isLoadingApplied, setIsLoadingApplied] = useState(true);
   const [isLoadingSaved, setIsLoadingSaved] = useState(true);
   const [isLoadingViewed, setIsLoadingViewed] = useState(true);
-  
+
   // Error states
   const [errorApplied, setErrorApplied] = useState(null);
   const [errorSaved, setErrorSaved] = useState(null);
@@ -93,7 +93,7 @@ export default function JobHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto py-0 p-4 max-w-4xl">
+    <div className="container mx-auto py-0 p-6 max-w-4xl">
       <section className="mb-4">
         <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
           Job History
@@ -120,7 +120,7 @@ export default function JobHistoryPage() {
 
           <TabsContent value="applied" className="mt-0">
             <Card className="p-4">
-              <JobList 
+              <JobList
                 data={appliedJobs}
                 loading={isLoadingApplied}
                 error={errorApplied}
@@ -131,7 +131,7 @@ export default function JobHistoryPage() {
 
           <TabsContent value="saved" className="mt-0">
             <Card className="p-4">
-              <JobList 
+              <JobList
                 data={savedJobs}
                 loading={isLoadingSaved}
                 error={errorSaved}
@@ -142,7 +142,7 @@ export default function JobHistoryPage() {
 
           <TabsContent value="viewed" className="mt-0">
             <Card className="p-4">
-              <JobList 
+              <JobList
                 data={viewedJobs}
                 loading={isLoadingViewed}
                 error={errorViewed}

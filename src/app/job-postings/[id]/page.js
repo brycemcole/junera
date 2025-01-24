@@ -735,8 +735,8 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 p-4 max-w-4xl">
-        <div className="flex flex-row items-center gap-4 mb-4">
+      <div className="container mx-auto py-0 p-6 max-w-4xl">
+        <div className="flex flex-row items-center justify-between gap-4 mb-4">
           <div>
             <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
             <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-mono)] font-medium">
@@ -812,7 +812,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
           </div>
 
-          {jobPosting?.experiencelevel && (
+          {jobPosting?.experiencelevel && jobPosting?.experiencelevel !== "null" && (
             <>
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-foreground" />

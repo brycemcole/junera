@@ -685,10 +685,10 @@ export async function GET(req) {
       }, { status: 200 });
 
     } catch (error) {
-      // ...existing error handling...
+      console.error("Error fetching job postings:", error);
+      return Response.json({ error: "Error fetching job postings" }, { status: 500 });
     }
 
-    return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
   } catch (error) {
     if (error.message === 'Request aborted') {
       return Response.json({ error: 'Request was aborted', ok: false }, { status: 499 });

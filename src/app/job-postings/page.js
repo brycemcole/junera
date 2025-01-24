@@ -1279,7 +1279,7 @@ export default function JobPostingsPage() {
 
   return (
     <>
-      <div className="container mx-auto py-0 p-4 max-w-4xl">
+      <div className="container mx-auto py-0 p-6 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
