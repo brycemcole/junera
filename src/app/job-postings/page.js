@@ -1236,8 +1236,7 @@ export default function JobPostingsPage() {
         }));
       } catch (error) {
         if (error.name === 'QuotaExceededError') {
-          console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
-          // Optionally, implement logic to clear space or notify the user
+          // console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
         } else {
           console.error("Error storing encrypted response in local storage:", error);
         }
