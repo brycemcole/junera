@@ -91,6 +91,70 @@ const decryptData = (encrypted, key) => {
   }
 };
 
+// Add compression utilities at the top with the other utility functions
+const compressData = async (data) => {
+  try {
+    // Check if CompressionStream is available
+    if ('CompressionStream' in window) {
+      const jsonString = JSON.stringify(data);
+      const encodedData = new TextEncoder().encode(jsonString);
+      const compressedStream = new Blob([encodedData]).stream().pipeThrough(new CompressionStream('gzip'));
+      const compressedData = await new Response(compressedStream).arrayBuffer();
+      return new Uint8Array(compressedData);
+    } else {
+      // Fallback compression using base64 and simple RLE
+      const jsonString = JSON.stringify(data);
+      let compressed = '';
+      let count = 1;
+
+      for (let i = 0; i < jsonString.length; i++) {
+        if (jsonString[i] === jsonString[i + 1]) {
+          count++;
+        } else {
+          compressed += (count > 1 ? count : '') + jsonString[i];
+          count = 1;
+        }
+      }
+
+      return btoa(compressed);
+    }
+  } catch (error) {
+    console.error('Compression error:', error);
+    return null;
+  }
+};
+
+const decompressData = async (compressed) => {
+  try {
+    // Check if CompressionStream is available
+    if ('CompressionStream' in window && compressed instanceof Uint8Array) {
+      const decompressedStream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const decompressedData = await new Response(decompressedStream).arrayBuffer();
+      const decoded = new TextDecoder().decode(new Uint8Array(decompressedData));
+      return JSON.parse(decoded);
+    } else {
+      // Fallback decompression
+      const decompressed = atob(compressed);
+      let result = '';
+      let i = 0;
+
+      while (i < decompressed.length) {
+        let count = '';
+        while (/\d/.test(decompressed[i])) {
+          count += decompressed[i++];
+        }
+        result += decompressed[i].repeat(count ? parseInt(count) : 1);
+        i++;
+      }
+
+      return JSON.parse(result);
+    }
+  } catch (error) {
+    console.error('Decompression error:', error);
+    return null;
+  }
+};
+
 const states = {
   "null": "Any",
   "remote": "Remote",
@@ -1158,12 +1222,16 @@ export default function JobPostingsPage() {
           }
         });
 
-        const { encrypted, key } = encryptData(route_response);
+        const compressed = await compressData(route_response);
+        if (!compressed) return;
+
+        const { encrypted, key } = encryptData(compressed);
         if (!encrypted || !key) return;
 
         localStorage.setItem(route_location, JSON.stringify({
           data: encrypted,
           key,
+          compressed: true,
           timestamp: Date.now()
         }));
       } catch (error) {
@@ -1181,7 +1249,7 @@ export default function JobPostingsPage() {
         const storedData = localStorage.getItem(route_location);
         if (!storedData) return null;
 
-        const { data: encrypted, key, timestamp } = JSON.parse(storedData);
+        const { data: encrypted, key, compressed, timestamp } = JSON.parse(storedData);
         if (!encrypted || !key) return null;
 
         // Check if data is older than 1 hour
@@ -1193,7 +1261,7 @@ export default function JobPostingsPage() {
         const decrypted = decryptData(encrypted, key);
         if (!decrypted) return null;
 
-        return decrypted;
+        return compressed ? await decompressData(decrypted) : decrypted;
       } catch (error) {
         console.error("Error checking encrypted local storage:", error);
         return null;
