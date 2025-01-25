@@ -14,7 +14,7 @@ export async function GET(req, { params }) {
         const decoded = jwt.verify(token, process.env.SESSION_SECRET);
         const followerId = decoded.id;
 
-        const username = await params.username;
+        const username = params.username;
 
         // Get the target user's ID
         const userResult = await query(
@@ -105,7 +105,7 @@ export async function DELETE(req, { params }) {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.SESSION_SECRET);
         const followerId = decoded.id;
-        const username = await params.username;
+        const username = params.username;
 
         // Get target user's ID
         const userResult = await query(

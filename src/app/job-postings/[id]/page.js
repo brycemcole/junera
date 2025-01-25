@@ -841,7 +841,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
             ].map(({ key, label }) => (
               <div key={key}>
                 <span className="flex flex-row mb-2 gap-4 items-center">
-                  <InfoIcon size={16} strokeWidth={2} className="text-foreground" />
                   <h2 className="text-md font-semibold text-foreground">{label}</h2>
                 </span>
                 <p className="leading-loose text-md text-foreground dark:text-neutral-300">

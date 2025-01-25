@@ -25,7 +25,7 @@ export async function GET(req) {
                 job_prefs_title,
                 job_prefs_location,
                 job_prefs_industry,
-                job_prefs_experience_level,
+                job_prefs_level,
                 job_prefs_salary
             FROM users 
             WHERE id = $1
@@ -45,7 +45,7 @@ export async function GET(req) {
                     job_prefs_title,
                     job_prefs_location,
                     job_prefs_industry,
-                    job_prefs_experience_level,
+                    job_prefs_level,
                     job_prefs_salary
                 FROM users 
                 WHERE id = $1
@@ -101,9 +101,9 @@ export async function GET(req) {
         }
 
         // Experience level matching (if specified and valid)
-        if (typeof userPrefs.job_prefs_experience_level === 'string' && userPrefs.job_prefs_experience_level.trim() !== '') {
+        if (typeof userPrefs.job_prefs_level === 'string' && userPrefs.job_prefs_level.trim() !== '') {
             jobsQuery += ` AND LOWER(j.experiencelevel) LIKE $${paramIndex}`;
-            params.push(`%${userPrefs.job_prefs_experience_level.toLowerCase()}%`);
+            params.push(`%${userPrefs.job_prefs_level.toLowerCase()}%`);
             paramIndex++;
         }
 

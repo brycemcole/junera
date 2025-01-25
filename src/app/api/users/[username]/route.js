@@ -18,8 +18,8 @@ export async function GET(req, { params }) {
             }
         }
 
-        // Get the username from params and decode it
-        const username = await params.username;
+        // No need to await params.username since it's already a string
+        const username = params.username;
         console.log('Fetching profile for username:', username); // Debug log
 
         // Get user's basic info (excluding sensitive information)
@@ -32,7 +32,7 @@ export async function GET(req, { params }) {
                 u.avatar,
                 u.job_prefs_title,
                 u.job_prefs_location,
-                u.job_prefs_experience_level,
+                u.job_prefs_level,
                 COUNT(DISTINCT uje.id) as experience_count,
                 COUNT(DISTINCT ue.id) as education_count,
                 COUNT(DISTINCT uc.id) as certification_count

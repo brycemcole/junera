@@ -91,41 +91,37 @@ function CancelDialog({ experience, onConfirm }) {
 
 function GitHubSection({ githubUser, onLink }) {
     return (
-        <Card className="mb-6">
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>GitHub Account</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {githubUser ? (
-                    <div className="flex items-center gap-2">
-                        <Github size={20} />
-                        <span>Connected as <strong>{githubUser}</strong></span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="ml-auto"
-                            onClick={() => onLink(null)}
-                        >
-                            Disconnect
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-                                const returnUrl = encodeURIComponent(`${window.location.origin}/api/auth/github/callback`);
-                                window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=user`;
-                            }}
-                        >
-                            <Github className="mr-2 h-4 w-4" />
-                            Connect GitHub Account
-                        </Button>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <div className="mb-6">
+            <h3 className="text-md font-semibold mb-2">GitHub Account</h3>
+            {githubUser ? (
+                <div className="flex items-center gap-2">
+                    <Github size={20} />
+                    <span>Connected as <strong>{githubUser}</strong></span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() => onLink(null)}
+                    >
+                        Disconnect
+                    </Button>
+                </div>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+                            const returnUrl = encodeURIComponent(`${window.location.origin}/api/auth/github/callback`);
+                            window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=user`;
+                        }}
+                    >
+                        <Github className="mr-2 h-4 w-4" />
+                        Connect GitHub Account
+                    </Button>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -893,9 +889,9 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="container mx-auto py-0 px-4 max-w-4xl">
+        <div className="container mx-auto py-0 px-6 max-w-4xl">
             <section className="mb-4">
-                <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+                <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-1">
                     Profile
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -905,276 +901,212 @@ export default function ProfilePage() {
             </section>
 
             {/* Personal Information */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Personal Information</CardTitle>
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20">
+                            <AvatarImage src={profile.user.avatar_url} />
+                            <AvatarFallback>{profile.user.full_name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <h2 className="text-lg font-medium">{profile.user.full_name}</h2>
+                            {profile.user.headline && (
+                                <p className="text-muted-foreground">{profile.user.headline}</p>
+                            )}
+                        </div>
+                    </div>
                     <EditProfileDialog
                         fields={profileFields}
                         initialData={profile?.user}
                         onSubmit={handleProfileUpdate}
                         title={<Edit2 size={12} />}
-                        description="Update your profile information"
                     />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        <p><strong>Name:</strong> {profile.user.full_name}</p>
-                        <p><strong>Username:</strong> {profile.user.username}</p>
-                        <p><strong>Email:</strong> {profile.user.email}</p>
-                        <p><strong>Headline:</strong> {profile.user.headline}</p>
-                        <p><strong>Phone:</strong> {profile.user.phone_number}</p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Work Experience */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Work Experience</CardTitle>
-                    <EditProfileDialog
-                        fields={experienceFields}
-                        onSubmit={handleExperienceAdd}
-                        title={<PlusCircle size={14} />}
-                        description="Add new work experience"
-                    />
-                </CardHeader>
-                <CardContent>
-                    {sortExperiences(profile.experience)?.map((exp, index) => (
-                        <div key={exp.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
-                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <EditProfileDialog
-                                    fields={experienceFields}
-                                    initialData={exp}
-                                    onSubmit={(formData) => handleExperienceEdit(exp.id, formData)}
-                                    title={<Edit2 size={14} />}
-                                    description="Update work experience"
-                                />
-                                <CancelDialog experience={exp} onConfirm={() => handleExperienceDelete(exp.id)} />
-                            </div>
-                            <div className="flex flex-row items-center gap-4">
-                                <ExperienceAvatar image={`https://logo.clearbit.com/${encodeURIComponent(exp.company_name.replace('.com', ''))}.com`} username={exp.company_name} />
-                                <div className="flex flex-col">
-                                    <p className="text-sm text-muted-foreground">{exp.company_name}</p>
-                                    <h3 className="font-semibold">{exp.job_title}</h3>
-                                    {exp.is_current ?
-                                        (
-                                            <>
-                                                <p className="text-sm">
-                                                    {formatStartDate(exp.start_date)},  Present
-                                                </p>
-
-                                            </>
-                                        ) : (
-                                            <p className="text-sm">
-                                                {formatStartDate(exp.start_date)},  {calculateDuration(exp.start_date, exp.end_date)}
-                                            </p>
-                                        )}
-                                    <p className="mt-2">{exp.description}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Education */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Education</CardTitle>
-                    <EditProfileDialog
-                        fields={educationFields}
-                        onSubmit={handleEducationAdd}
-                        title={<PlusCircle size={14} />}
-                        description="Add new education"
-                    />
-                </CardHeader>
-                <CardContent>
-                    {sortEducation(profile.education)?.map((edu, index) => (
-                        <div key={edu.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
-                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <EditProfileDialog
-                                    fields={educationFields}
-                                    initialData={edu}
-                                    onSubmit={(formData) => handleEducationEdit(edu.id, formData)}
-                                    title={<Edit2 size={14} />}
-                                    description="Update education information"
-                                />
-                                <CancelDialog experience={edu} onConfirm={() => handleEducationDelete(edu.id)} />
-                            </div>
-                            <h3 className="font-semibold">{edu.institution_name}</h3>
-                            <p className="text-sm">{edu.degree} in {edu.field_of_study}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {new Date(edu.start_date).toLocaleDateString()} - {edu.is_current ? 'Present' : new Date(edu.end_date).toLocaleDateString()}
-                            </p>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Projects */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Projects</CardTitle>
-                    <EditProfileDialog
-                        fields={projectFields}
-                        onSubmit={handleProjectAdd}
-                        title={<PlusCircle size={14} />}
-                        description="Add new project"
-                    />
-                </CardHeader>
-                <CardContent>
-                    {sortByDate(profile.projects)?.map((proj, index) => (
-                        <div key={proj.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
-                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <EditProfileDialog
-                                    fields={projectFields}
-                                    initialData={proj}
-                                    onSubmit={(formData) => handleProjectEdit(proj.id, formData)}
-                                    title={<Edit2 size={14} />}
-                                    description="Update project information"
-                                />
-                                <CancelDialog experience={proj} onConfirm={() => handleProjectDelete(proj.id)} />
-                            </div>
-                            <h3 className="font-semibold">{proj.project_name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {formatStartDate(proj.start_date)} - {proj.is_current ? 'Present' : formatStartDate(proj.end_date)}
-                            </p>
-                            <p className="mt-2">{proj.description}</p>
-                            {proj.technologies_used && (
-                                <p className="mt-1 text-sm text-muted-foreground">Technologies: {proj.technologies_used}</p>
-                            )}
-                            {proj.project_url && (
-                                <Link href={proj.project_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
-                                    {proj.project_url}
-                                </Link>
-                            )}
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Certifications */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Certifications</CardTitle>
-                    <EditProfileDialog
-                        fields={certificationFields}
-                        onSubmit={handleCertificationAdd}
-                        title={<PlusCircle size={14} />}
-                        description="Add new certification"
-                    />
-                </CardHeader>
-                <CardContent>
-                    {sortByDate(profile.certifications)?.map((cert, index) => (
-                        <div key={cert.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
-                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <EditProfileDialog
-                                    fields={certificationFields}
-                                    initialData={cert}
-                                    onSubmit={(formData) => handleCertificationEdit(cert.id, formData)}
-                                    title={<Edit2 size={14} />}
-                                    description="Update certification information"
-                                />
-                                <CancelDialog experience={cert} onConfirm={() => handleCertificationDelete(cert.id)} />
-                            </div>
-                            <h3 className="font-semibold">{cert.certification_name}</h3>
-                            <p className="text-sm">{cert.issuing_organization}</p>
-                            <p className="text-sm text-muted-foreground">
-                                Issued: {formatStartDate(cert.issue_date)}
-                                {cert.expiration_date && ` · Expires: ${formatStartDate(cert.expiration_date)}`}
-                            </p>
-                            {cert.credential_url && (
-                                <Link href={cert.credential_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
-                                    View Credential
-                                </Link>
-                            )}
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Awards */}
-            <Card className="mb-6">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Awards</CardTitle>
-                    <EditProfileDialog
-                        fields={awardFields}
-                        onSubmit={handleAwardAdd}
-                        title={<PlusCircle size={14} />}
-                        description="Add new award"
-                    />
-                </CardHeader>
-                <CardContent>
-                    {sortByDate(profile.awards)?.map((award, index) => (
-                        <div key={award.id} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''} relative group`}>
-                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <EditProfileDialog
-                                    fields={awardFields}
-                                    initialData={award}
-                                    onSubmit={(formData) => handleAwardEdit(award.id, formData)}
-                                    title={<Edit2 size={14} />}
-                                    description="Update award information"
-                                />
-                                <CancelDialog experience={award} onConfirm={() => handleAwardDelete(award.id)} />
-                            </div>
-                            <h3 className="font-semibold">{award.award_name}</h3>
-                            <p className="text-sm">{award.award_issuer}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {formatStartDate(award.award_date)}
-                            </p>
-                            {award.award_description && (
-                                <p className="mt-2">{award.award_description}</p>
-                            )}
-                            {award.award_url && (
-                                <Link href={award.award_url} target="_blank" className="text-sm text-blue-500 hover:underline mt-1 block">
-                                    View Award
-                                </Link>
-                            )}
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-            <GitHubSection 
-                githubUser={profile.user.github_user}
-                onLink={async (githubUser) => {
-                    if (!githubUser) {
-                        // Disconnect GitHub account
-                        const response = await fetch('/api/user/github', {
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': `Bearer ${user.token}`,
-                            },
-                        });
-                        
-                        if (response.ok) {
-                            setProfile(prev => ({
-                                ...prev,
-                                user: { ...prev.user, github_user: null, github_access_token: null }
-                            }));
-                            toast({
-                                title: 'Success',
-                                description: 'GitHub account disconnected'
-                            });
-                        }
-                    }
-                }}
-            />
+                </div>
+                {profile.user.email && (
+                    <p className="text-sm text-muted-foreground">{profile.user.email}</p>
+                )}
+            </div>
 
             {/* Job Preferences */}
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle>Job Preferences</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        <p className="text-muted-foreground">
-                            <strong className="text-foreground">{profile.user.job_prefs_title || 'Any'}</strong> jobs {profile.user.job_prefs_relocatable || 'only'} in <strong className="text-foreground">{profile.user.job_prefs_location || 'Any location'}</strong> requiring <strong className="text-foreground">{profile.user.job_prefs_level || 'Any'}</strong> experience level.
-                            making <strong className="text-foreground">{profile.user.job_prefs_salary || 'Any'}</strong> annually.
-                        </p>
+            {(profile.user.job_prefs_title || profile.user.job_prefs_location || profile.user.job_prefs_level || profile.user.job_prefs_salary) && (
+                <div className="mb-8">
+                    <h2 className="text-md font-semibold mb-4">Job Preferences <small className="float-right text-muted-foreground">Only visible to you</small></h2>
+                    <p className="text-sm text-muted-foreground">
+                        Looking for {profile.user.job_prefs_title || 'any'} positions
+                        {profile.user.job_prefs_location ? ` in ${profile.user.job_prefs_location}` : ''}
+                        {profile.user.job_prefs_level ? ` at ${profile.user.job_prefs_level} level` : ''}
+                        {profile.user.job_prefs_salary ? ` with compensation around ${profile.user.job_prefs_salary}` : ''}.
+                        {profile.user.job_prefs_relocatable && ' Open to relocation.'}
+                    </p>
+                </div>
+            )}
+
+            {/* Work Experience */}
+            {profile.experience && profile.experience.length > 0 && (
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-md font-semibold">Experience</h2>
+                        <EditProfileDialog
+                            fields={experienceFields}
+                            onSubmit={handleExperienceAdd}
+                            title={<PlusCircle size={14} />}
+                        />
                     </div>
-                </CardContent>
-            </Card>
+                    <div className="space-y-6">
+                        {sortExperiences(profile.experience)?.map((exp) => (
+                            <div key={exp.id} className="group relative">
+                                <div className="absolute right-0 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <EditProfileDialog
+                                        fields={experienceFields}
+                                        initialData={exp}
+                                        onSubmit={(formData) => handleExperienceEdit(exp.id, formData)}
+                                        title={<Edit2 size={14} />}
+                                    />
+                                    <CancelDialog experience={exp} onConfirm={() => handleExperienceDelete(exp.id)} />
+                                </div>
+                                <div className="flex gap-4">
+                                    <ExperienceAvatar
+                                        image={`https://logo.clearbit.com/${encodeURIComponent(exp.company_name.replace('.com', ''))}.com`}
+                                        username={exp.company_name}
+                                    />
+                                    <div>
+                                        <h3 className="font-medium">{exp.job_title}</h3>
+                                        <p className="text-sm text-muted-foreground">{exp.company_name}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {exp.is_current
+                                                ? `${formatStartDate(exp.start_date)} - Present`
+                                                : `${formatStartDate(exp.start_date)} - ${formatStartDate(exp.end_date)} · ${calculateDuration(exp.start_date, exp.end_date)}`
+                                            }
+                                        </p>
+                                        {exp.description && (
+                                            <p className="mt-2 text-sm">{exp.description}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Education */}
+            {profile.education && profile.education.length > 0 && (
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-md font-semibold">Education</h2>
+                        <EditProfileDialog
+                            fields={educationFields}
+                            onSubmit={handleEducationAdd}
+                            title={<PlusCircle size={14} />}
+                        />
+                    </div>
+                    <div className="space-y-6">
+                        {sortEducation(profile.education)?.map((edu) => (
+                            <div key={edu.id} className="group relative">
+                                <div className="absolute right-0 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <EditProfileDialog
+                                        fields={educationFields}
+                                        initialData={edu}
+                                        onSubmit={(formData) => handleEducationEdit(edu.id, formData)}
+                                        title={<Edit2 size={14} />}
+                                    />
+                                    <CancelDialog experience={edu} onConfirm={() => handleEducationDelete(edu.id)} />
+                                </div>
+                                <h3 className="font-medium">{edu.institution_name}</h3>
+                                <p className="text-sm">{edu.degree} in {edu.field_of_study}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {formatStartDate(edu.start_date)} - {edu.is_current ? 'Present' : formatStartDate(edu.end_date)}
+                                </p>
+                                {edu.description && (
+                                    <p className="mt-2 text-sm">{edu.description}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Projects */}
+            {profile.projects && profile.projects.length > 0 && (
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-md font-semibold">Projects</h2>
+                        <EditProfileDialog
+                            fields={projectFields}
+                            onSubmit={handleProjectAdd}
+                            title={<PlusCircle size={14} />}
+                        />
+                    </div>
+                    <div className="space-y-6">
+                        {sortByDate(profile.projects)?.map((proj) => (
+                            <div key={proj.id} className="group relative">
+                                <div className="absolute right-0 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <EditProfileDialog
+                                        fields={projectFields}
+                                        initialData={proj}
+                                        onSubmit={(formData) => handleProjectEdit(proj.id, formData)}
+                                        title={<Edit2 size={14} />}
+                                    />
+                                    <CancelDialog experience={proj} onConfirm={() => handleProjectDelete(proj.id)} />
+                                </div>
+                                <div>
+                                    <h3 className="font-medium">{proj.project_name}</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        {formatStartDate(proj.start_date)} - {proj.is_current ? 'Present' : formatStartDate(proj.end_date)}
+                                    </p>
+                                    {proj.description && (
+                                        <p className="mt-2 text-sm">{proj.description}</p>
+                                    )}
+                                    {proj.technologies_used && (
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            {proj.technologies_used}
+                                        </p>
+                                    )}
+                                    {proj.project_url && (
+                                        <Link
+                                            href={proj.project_url.startsWith('http') ? proj.project_url : `https://${proj.project_url}`}
+                                            target="_blank"
+                                            className="text-sm text-blue-500 hover:underline mt-1 block"
+                                        >
+                                            View Project
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Integrations */}
+            <div className="mb-8">
+                <h2 className="text-md font-semibold mb-4">Integrations</h2>
+                <GitHubSection
+                    githubUser={profile.user.github_user}
+                    onLink={async (githubUser) => {
+                        if (!githubUser) {
+                            const response = await fetch('/api/user/github', {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': `Bearer ${user.token}`,
+                                },
+                            });
+
+                            if (response.ok) {
+                                setProfile(prev => ({
+                                    ...prev,
+                                    user: { ...prev.user, github_user: null, github_access_token: null }
+                                }));
+                                toast({
+                                    title: 'Success',
+                                    description: 'GitHub account disconnected'
+                                });
+                            }
+                        }
+                    }}
+                />
+            </div>
+
         </div>
     );
 }
