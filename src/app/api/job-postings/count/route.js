@@ -71,7 +71,7 @@ export async function GET(req) {
     const count = parseInt(result.rows[0]?.total_count || 0);
 
     // Cache the count for 5 minutes
-    await setCached(cacheKey, null, count.toString(), 300);
+    await setCached(cacheKey, count, 300);
 
     return Response.json({ count, ok: true }, { status: 200 });
 
