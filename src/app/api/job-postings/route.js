@@ -210,7 +210,7 @@ const processJobPostings = (jobs) => {
       companyLogo: job.company ? `https://logo.clearbit.com/${encodeURIComponent(job.company.replace('.com', ''))}.com` : "",
       experienceLevel: job.experiencelevel || "",
       summary: job.summary || "",
-      description: job.description || "",
+      description: "",
       location: job.location || "",
       salary: salary || "",
       postedDate: job.created_at ? job.created_at.toISOString() : "",
@@ -218,6 +218,30 @@ const processJobPostings = (jobs) => {
       keywords: keywords || [],
     };
   });
+};
+
+// Add query timeout error handling
+const QUERY_TIMEOUT_MS = 10000;
+
+// Add this function at the top
+const executeQueryWithTimeout = async (queryText, params) => {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('Query timeout'));
+    }, QUERY_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      query(queryText, params),
+      timeoutPromise
+    ]);
+  } catch (error) {
+    if (error.message === 'Query timeout') {
+      throw new Error('Query timed out');
+    }
+    throw error;
+  }
 };
 
 export async function GET(req) {
@@ -598,7 +622,7 @@ export async function GET(req) {
     const queryExecStart = performance.now();
 
     // Execute query
-    const result = await query(queryText, params /*, { signal }*/);
+    const result = await executeQueryWithTimeout(queryText, params);
 
     const queryExecEnd = performance.now();
     timings.queryExecution = queryExecEnd - queryExecStart;
@@ -692,6 +716,12 @@ export async function GET(req) {
   } catch (error) {
     if (error.message === 'Request aborted') {
       return Response.json({ error: 'Request was aborted', ok: false }, { status: 499 });
+    }
+    if (error.message === 'Query timed out') {
+      return Response.json({
+        error: 'Request timed out',
+        ok: false
+      }, { status: 408 });
     }
     console.error("Error fetching job postings:", error);
     const overallEnd = performance.now();
