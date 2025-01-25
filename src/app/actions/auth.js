@@ -104,7 +104,9 @@ export async function registerAction(formData) {
   const username = formData.get('username')?.trim();
   const password = formData.get('password')?.trim();
 
-  const ip = cookies().get('x-real-ip')?.value || 'unknown';
+  // Get cookies asynchronously
+  const cookieStore = await cookies();
+  const ip = cookieStore.get('x-real-ip')?.value || 'unknown';
 
   try {
     // Check rate limit
@@ -117,12 +119,6 @@ export async function registerAction(formData) {
     if (!validateInput(fullname) || !validateInput(email) ||
       !validateInput(username) || !validateInput(password)) {
       return { error: "Invalid input detected" };
-    }
-
-    // Add complexity requirements for password
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      return { error: "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, and one number" };
     }
 
     // Check username requirements

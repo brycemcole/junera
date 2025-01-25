@@ -337,7 +337,7 @@ export default function Navbar() {
                 <DropdownMenuDemo2 />
               ) : (
                 <>
-                  <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
+                  <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9 hover:text-primary">
                     <Link href="/login">
                      Login
                     </Link>

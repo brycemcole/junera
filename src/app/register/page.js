@@ -27,12 +27,18 @@ const FormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
+  username: z.string().min(3, {
+    message: "Username must be at least 3 characters.",
+  }).max(20, {
+    message: "Username must be less than 20 characters.",
+  }).regex(/^[a-zA-Z0-9_-]+$/, {
+    message: "Username can only contain letters, numbers, underscores, and hyphens.",
   }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters." })
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+      message: "Password must contain at least one uppercase letter, one lowercase letter, and one number.",
+    }),
 })
 
 function InputForm() {
@@ -50,23 +56,31 @@ function InputForm() {
 
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+    
+    try {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
 
-    const result = await registerAction(formData);
+      const result = await registerAction(formData);
 
-    if (result.error) {
-      setStatusMessage({ text: result.error, isError: true });
-      return;
-    }
+      if (result.error) {
+        setStatusMessage({ text: result.error, isError: true });
+        return;
+      }
 
-    if (result.token) {
-      localStorage.setItem('token', result.token);
-      login(result.token, result.username, result.userId);
-      setStatusMessage({ text: 'Account created successfully. Welcome to Junera!', isError: false });
-      form.reset();
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        login(result.token, result.username, result.userId);
+        setStatusMessage({ text: 'Account created successfully. Welcome to Junera!', isError: false });
+        form.reset();
+      }
+    } catch (error) {
+      setStatusMessage({ 
+        text: 'An error occurred during registration. Please try again.', 
+        isError: true 
+      });
     }
   }
 

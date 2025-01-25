@@ -1328,9 +1328,9 @@ export default function JobPostingsPage() {
 
     function buildQueryParams() {
       return new URLSearchParams({
-        ...((title || (user?.jobPrefsTitle[0] && !title)) && { title: title || user?.jobPrefsTitle[0] }),
+        ...((title || (user?.jobPrefsTitle?.[0] && !title)) && { title: title ?? user?.jobPrefsTitle?.[0] ?? null }),
         ...(experienceLevel && { experienceLevel }),
-        ...((location || user?.jobPrefsLocation[0]) && { location: (location || user?.jobPrefsLocation[0])?.toLowerCase() }),
+        ...((location || user?.jobPrefsLocation?.[0]) && { location: (location ?? user?.jobPrefsLocation?.[0] ?? '').toLowerCase() }),
         ...(company && { company }),
         strictSearch,
         page: currentPage.toString(),
