@@ -18,7 +18,9 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Loader2 } from "lucide-react";
+import { useId } from "react";
+import { useDebounce } from 'use-debounce';
 
 const FormSchema = z.object({
   fullname: z.string().min(2, {
@@ -44,6 +46,19 @@ const FormSchema = z.object({
 function InputForm() {
   const { login } = useAuth();
   const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
+  const [validating, setValidating] = useState({
+    fullname: false,
+    email: false,
+    username: false,
+    password: false
+  });
+  const [fieldErrors, setFieldErrors] = useState({
+    fullname: '',
+    email: '',
+    username: '',
+    password: ''
+  });
+
   const form = useForm({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -52,11 +67,88 @@ function InputForm() {
       username: "",
       password: "",
     },
-  })
+    mode: "onChange"
+  });
+
+  // Watch form values for real-time validation
+  const fullname = form.watch("fullname");
+  const email = form.watch("email");
+  const username = form.watch("username");
+  const password = form.watch("password");
+
+  // Debounce the values
+  const [debouncedFullname] = useDebounce(fullname, 500);
+  const [debouncedEmail] = useDebounce(email, 500);
+  const [debouncedUsername] = useDebounce(username, 500);
+  const [debouncedPassword] = useDebounce(password, 500);
+
+  // Validate fields on debounced value changes
+  useEffect(() => {
+    if (!debouncedFullname) {
+      setFieldErrors(prev => ({ ...prev, fullname: '' }));
+      return;
+    }
+    setValidating(prev => ({ ...prev, fullname: true }));
+    try {
+      FormSchema.shape.fullname.parse(debouncedFullname);
+      setFieldErrors(prev => ({ ...prev, fullname: '' }));
+    } catch (error) {
+      setFieldErrors(prev => ({ ...prev, fullname: error.errors[0].message }));
+    }
+    setValidating(prev => ({ ...prev, fullname: false }));
+  }, [debouncedFullname]);
+
+  // Similar validation effects for email, username, and password...
+  useEffect(() => {
+    if (!debouncedEmail) {
+      setFieldErrors(prev => ({ ...prev, email: '' }));
+      return;
+    }
+    setValidating(prev => ({ ...prev, email: true }));
+    try {
+      FormSchema.shape.email.parse(debouncedEmail);
+      setFieldErrors(prev => ({ ...prev, email: '' }));
+    } catch (error) {
+      setFieldErrors(prev => ({ ...prev, email: error.errors[0].message }));
+    }
+    setValidating(prev => ({ ...prev, email: false }));
+  }, [debouncedEmail]);
+
+  // Similar for username and password...
+
+  useEffect(() => {
+    if (!debouncedUsername) {
+      setFieldErrors(prev => ({ ...prev, username: '' }));
+      return;
+    }
+    setValidating(prev => ({ ...prev, username: true }));
+    try {
+      FormSchema.shape.username.parse(debouncedUsername);
+      setFieldErrors(prev => ({ ...prev, username: '' }));
+    } catch (error) {
+      setFieldErrors(prev => ({ ...prev, username: error.errors[0].message }));
+    }
+    setValidating(prev => ({ ...prev, username: false }));
+  }, [debouncedUsername]);
+
+  useEffect(() => {
+    if (!debouncedPassword) {
+      setFieldErrors(prev => ({ ...prev, password: '' }));
+      return;
+    }
+    setValidating(prev => ({ ...prev, password: true }));
+    try {
+      FormSchema.shape.password.parse(debouncedPassword);
+      setFieldErrors(prev => ({ ...prev, password: '' }));
+    } catch (error) {
+      setFieldErrors(prev => ({ ...prev, password: error.errors[0].message }));
+    }
+    setValidating(prev => ({ ...prev, password: false }));
+  }, [debouncedPassword]);
 
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });
-    
+
     try {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
@@ -77,12 +169,51 @@ function InputForm() {
         form.reset();
       }
     } catch (error) {
-      setStatusMessage({ 
-        text: 'An error occurred during registration. Please try again.', 
-        isError: true 
+      setStatusMessage({
+        text: 'An error occurred during registration. Please try again.',
+        isError: true
       });
     }
   }
+
+  const renderFormField = (name, label, type = "text", description = "") => {
+    const id = useId();
+    const error = fieldErrors[name];
+    const isValidating = validating[name];
+
+    return (
+      <FormField
+        control={form.control}
+        name={name}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel htmlFor={id}>{label}</FormLabel>
+            <div className="relative">
+              <FormControl>
+                <Input
+                  id={id}
+                  type={type}
+                  className={error && "border-destructive/50 text-destructive focus-visible:ring-destructive/20"}
+                  {...field}
+                />
+              </FormControl>
+              {isValidating && (
+                <div className="absolute right-2 top-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" />
+                </div>
+              )}
+            </div>
+            {description && <FormDescription>{description}</FormDescription>}
+            {error && (
+              <p className="text-xs text-destructive mt-1" role="alert">
+                {error}
+              </p>
+            )}
+          </FormItem>
+        )}
+      />
+    );
+  };
 
   return (
     <Form {...form}>
@@ -103,65 +234,32 @@ function InputForm() {
             </p>
           </div>
         )}
-        <FormField
-          control={form.control}
-          name="fullname"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input placeholder="full name" {...field} />
-              </FormControl>
-              <FormDescription>
-                This is your public display name.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="username" {...field} />
-              </FormControl>
-              <FormDescription>
-                You cannot change this later.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30" type="submit">Create Account</Button>
+
+        {renderFormField(
+          "fullname",
+          "Full Name",
+          "text",
+          "This is your public display name."
+        )}
+
+        {renderFormField("email", "Email")}
+
+        {renderFormField(
+          "username",
+          "Username",
+          "text",
+          "You cannot change this later."
+        )}
+
+        {renderFormField("password", "Password", "password")}
+
+        <Button
+          className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30"
+          type="submit"
+          disabled={Object.values(fieldErrors).some(error => error)}
+        >
+          Create Account
+        </Button>
       </form>
     </Form>
   )

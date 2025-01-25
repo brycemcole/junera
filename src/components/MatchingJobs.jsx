@@ -21,25 +21,15 @@ export default function MatchingJobs({ loading, error }) {
   useEffect(() => {
     const fetchMatchingJobs = async () => {
       if (!user) return;
-      
-      try {
-        const response = await fetch('/api/dashboard/matching-jobs', {
-          headers: {
-            Authorization: `Bearer ${user.token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch matching jobs');
-        }
+      if (!user.token) return;
 
-        const data = await response.json();
+      const processJobs = (data) => {
         console.log('Raw jobs data:', data); // Debug log
         
         // Ensure we're getting an array of jobs, even if empty
         const jobsArray = Array.isArray(data.jobs) ? data.jobs : [];
         
-        const processedJobs = jobsArray
+        return jobsArray
           .filter(job => job && typeof job === 'object') // Filter out null/undefined/non-object values
           .map(job => ({
             id: job.id || job.job_id || '',
@@ -53,8 +43,47 @@ export default function MatchingJobs({ loading, error }) {
             postedDate: job.postedDate || job.created_at || '',
             matchingCriteria: null // Remove matching criteria for now if it's causing issues
           }));
+      };
 
-        setJobs(processedJobs);
+      if (!user.jobPrefsTitle && !user.jobPrefsLocation && !user.jobPrefsLevel) {
+        // load regular jobs instead since no prefs are set
+        try {
+          const response = await fetch('/api/job-postings', {
+            headers: {
+              Authorization: `Bearer ${user.token}`
+            },
+            cache: 'force-cache'
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch regular jobs');
+          }
+
+          const data = await response.json();
+          setJobs(processJobs(data));
+        } catch (error) {
+          console.error('Error fetching regular jobs:', error);
+          setErrorJobs(error.message);
+        } finally {
+          setLoadingJobs(false);
+        }
+
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/dashboard/matching-jobs', {
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch matching jobs');
+        }
+
+        const data = await response.json();
+        setJobs(processJobs(data));
       } catch (error) {
         console.error('Error fetching matching jobs:', error);
         setErrorJobs(error.message);
