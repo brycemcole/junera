@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -18,9 +18,8 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { CircleAlert, Loader2 } from "lucide-react";
-import { useId } from "react";
-import { useDebounce } from 'use-debounce';
+import { CircleAlert, Github } from "lucide-react";
+import { useState } from "react";
 
 const FormSchema = z.object({
   fullname: z.string().min(2, {
@@ -43,21 +42,34 @@ const FormSchema = z.object({
     }),
 })
 
+const FormFieldComponent = ({ name, label, type = "text", description = "", form }) => {
+  return (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <Input
+              type={type}
+              className={form.formState.errors[name] && 
+                "border-destructive/50 text-destructive focus-visible:ring-destructive/20"}
+              {...field}
+            />
+          </FormControl>
+          {description && <FormDescription>{description}</FormDescription>}
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+};
+
 function InputForm() {
   const { login } = useAuth();
+  const router = useRouter();
   const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
-  const [validating, setValidating] = useState({
-    fullname: false,
-    email: false,
-    username: false,
-    password: false
-  });
-  const [fieldErrors, setFieldErrors] = useState({
-    fullname: '',
-    email: '',
-    username: '',
-    password: ''
-  });
 
   const form = useForm({
     resolver: zodResolver(FormSchema),
@@ -67,84 +79,7 @@ function InputForm() {
       username: "",
       password: "",
     },
-    mode: "onChange"
   });
-
-  // Watch form values for real-time validation
-  const fullname = form.watch("fullname");
-  const email = form.watch("email");
-  const username = form.watch("username");
-  const password = form.watch("password");
-
-  // Debounce the values
-  const [debouncedFullname] = useDebounce(fullname, 500);
-  const [debouncedEmail] = useDebounce(email, 500);
-  const [debouncedUsername] = useDebounce(username, 500);
-  const [debouncedPassword] = useDebounce(password, 500);
-
-  // Validate fields on debounced value changes
-  useEffect(() => {
-    if (!debouncedFullname) {
-      setFieldErrors(prev => ({ ...prev, fullname: '' }));
-      return;
-    }
-    setValidating(prev => ({ ...prev, fullname: true }));
-    try {
-      FormSchema.shape.fullname.parse(debouncedFullname);
-      setFieldErrors(prev => ({ ...prev, fullname: '' }));
-    } catch (error) {
-      setFieldErrors(prev => ({ ...prev, fullname: error.errors[0].message }));
-    }
-    setValidating(prev => ({ ...prev, fullname: false }));
-  }, [debouncedFullname]);
-
-  // Similar validation effects for email, username, and password...
-  useEffect(() => {
-    if (!debouncedEmail) {
-      setFieldErrors(prev => ({ ...prev, email: '' }));
-      return;
-    }
-    setValidating(prev => ({ ...prev, email: true }));
-    try {
-      FormSchema.shape.email.parse(debouncedEmail);
-      setFieldErrors(prev => ({ ...prev, email: '' }));
-    } catch (error) {
-      setFieldErrors(prev => ({ ...prev, email: error.errors[0].message }));
-    }
-    setValidating(prev => ({ ...prev, email: false }));
-  }, [debouncedEmail]);
-
-  // Similar for username and password...
-
-  useEffect(() => {
-    if (!debouncedUsername) {
-      setFieldErrors(prev => ({ ...prev, username: '' }));
-      return;
-    }
-    setValidating(prev => ({ ...prev, username: true }));
-    try {
-      FormSchema.shape.username.parse(debouncedUsername);
-      setFieldErrors(prev => ({ ...prev, username: '' }));
-    } catch (error) {
-      setFieldErrors(prev => ({ ...prev, username: error.errors[0].message }));
-    }
-    setValidating(prev => ({ ...prev, username: false }));
-  }, [debouncedUsername]);
-
-  useEffect(() => {
-    if (!debouncedPassword) {
-      setFieldErrors(prev => ({ ...prev, password: '' }));
-      return;
-    }
-    setValidating(prev => ({ ...prev, password: true }));
-    try {
-      FormSchema.shape.password.parse(debouncedPassword);
-      setFieldErrors(prev => ({ ...prev, password: '' }));
-    } catch (error) {
-      setFieldErrors(prev => ({ ...prev, password: error.errors[0].message }));
-    }
-    setValidating(prev => ({ ...prev, password: false }));
-  }, [debouncedPassword]);
 
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });
@@ -167,6 +102,7 @@ function InputForm() {
         login(result.token, result.username, result.userId);
         setStatusMessage({ text: 'Account created successfully. Welcome to Junera!', isError: false });
         form.reset();
+        router.push('/dashboard');
       }
     } catch (error) {
       setStatusMessage({
@@ -176,43 +112,9 @@ function InputForm() {
     }
   }
 
-  const renderFormField = (name, label, type = "text", description = "") => {
-    const id = useId();
-    const error = fieldErrors[name];
-    const isValidating = validating[name];
-
-    return (
-      <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel htmlFor={id}>{label}</FormLabel>
-            <div className="relative">
-              <FormControl>
-                <Input
-                  id={id}
-                  type={type}
-                  className={error && "border-destructive/50 text-destructive focus-visible:ring-destructive/20"}
-                  {...field}
-                />
-              </FormControl>
-              {isValidating && (
-                <div className="absolute right-2 top-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/70" />
-                </div>
-              )}
-            </div>
-            {description && <FormDescription>{description}</FormDescription>}
-            {error && (
-              <p className="text-xs text-destructive mt-1" role="alert">
-                {error}
-              </p>
-            )}
-          </FormItem>
-        )}
-      />
-    );
+  const handleGitHubLogin = () => {
+    const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=https://dev.junera.us/api/login/github`;
   };
 
   return (
@@ -235,38 +137,66 @@ function InputForm() {
           </div>
         )}
 
-        {renderFormField(
-          "fullname",
-          "Full Name",
-          "text",
-          "This is your public display name."
-        )}
+        <FormFieldComponent
+          name="fullname"
+          label="Full Name"
+          description="This is your public display name."
+          form={form}
+        />
 
-        {renderFormField("email", "Email")}
+        <FormFieldComponent
+          name="email"
+          label="Email"
+          type="email"
+          form={form}
+        />
 
-        {renderFormField(
-          "username",
-          "Username",
-          "text",
-          "You cannot change this later."
-        )}
+        <FormFieldComponent
+          name="username"
+          label="Username"
+          description="You cannot change this later."
+          form={form}
+        />
 
-        {renderFormField("password", "Password", "password")}
+        <FormFieldComponent
+          name="password"
+          label="Password"
+          type="password"
+          form={form}
+        />
 
         <Button
           className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30"
           type="submit"
-          disabled={Object.values(fieldErrors).some(error => error)}
         >
           Create Account
+        </Button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleGitHubLogin}
+        >
+          <Github className="mr-2 h-4 w-4" />
+          GitHub
         </Button>
       </form>
     </Form>
   )
 }
 
-
-export default function Login() {
+export default function Register() {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -283,7 +213,6 @@ export default function Login() {
           <h1 className="text-2xl font-medium">Register</h1>
           <p className="text-muted-foreground text-sm">
             Already have an account? <Link href="/login" className="text-primary">Login</Link>
-
           </p>
         </div>
 

@@ -32,7 +32,7 @@ export async function GET(req) {
                     username, full_name, headline, email, phone_number, profile_links,
                     is_premium, job_prefs_title, job_prefs_location, job_prefs_skills,
                     job_prefs_industry, job_prefs_language, job_prefs_salary, job_prefs_relocatable,
-                    job_prefs_level, avatar
+                    job_prefs_level, avatar, github_user, github_access_token
                 FROM users
                 WHERE id = $1
             ),
@@ -123,48 +123,71 @@ export async function PUT(req) {
         const userId = decoded.id;
 
         const updates = await req.json();
+        
+        // Convert arrays to PostgreSQL array format with proper quoting
+        const formatArray = (arr) => {
+            if (!arr) return null;
+            const values = Array.isArray(arr) ? arr : [arr];
+            // Double quote each value and wrap in array braces
+            return `{${values.map(v => `"${v}"`).join(',')}}`;
+        };
 
-        const jobPrefsSalary = updates.job_prefs_salary || null;
-        const jobPrefsRelocatable = updates.job_prefs_relocatable ? Boolean(updates.job_prefs_relocatable) : null;
+        const jobPrefsTitle = formatArray(updates.job_prefs_title);
+        const jobPrefsLocation = formatArray(updates.job_prefs_location);
+        const jobPrefsLevel = formatArray(updates.job_prefs_level);
 
-        // Update query
+        // Ensure salary is a number
+        const jobPrefsSalary = updates.job_prefs_salary 
+            ? parseInt(updates.job_prefs_salary, 10) 
+            : null;
+
+        // Convert relocatable to boolean
+        const jobPrefsRelocatable = updates.job_prefs_relocatable === true 
+            || updates.job_prefs_relocatable === 'true';
+
+        // Update query with proper type casting for arrays
         const updateQuery = `
             UPDATE users
             SET 
-                full_name = $1,
-                headline = $2,
-                email = $3,
+                full_name = COALESCE($1, full_name),
+                headline = COALESCE($2, headline),
+                email = COALESCE($3, email),
                 phone_number = $4,
                 profile_links = $5,
-                job_prefs_title = $6,
-                job_prefs_location = $7,
+                job_prefs_title = $6::text[],
+                job_prefs_location = $7::text[],
                 job_prefs_skills = $8,
                 job_prefs_industry = $9,
                 job_prefs_language = $10,
                 job_prefs_salary = $11,
                 job_prefs_relocatable = $12,
-                job_prefs_level = $13
+                job_prefs_level = $13::text[]
             WHERE id = $14
+            RETURNING *;
         `;
 
         const params = [
-            updates.full_name,
-            updates.headline,
-            updates.email,
-            updates.phone_number,
-            updates.profile_links,
-            updates.job_prefs_title,
-            updates.job_prefs_location,
-            updates.job_prefs_skills,
-            updates.job_prefs_industry,
-            updates.job_prefs_language,
+            updates.full_name || null,
+            updates.headline || null,
+            updates.email || null,
+            updates.phone_number || null,
+            updates.profile_links || null,
+            jobPrefsTitle,
+            jobPrefsLocation,
+            updates.job_prefs_skills || null,
+            updates.job_prefs_industry || null,
+            updates.job_prefs_language || null,
             jobPrefsSalary,
             jobPrefsRelocatable,
-            updates.job_prefs_level,
+            jobPrefsLevel,
             userId
         ];
 
-        await query(updateQuery, params);
+        const result = await query(updateQuery, params);
+
+        if (result.rows.length === 0) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
 
         // Clear the cache after successful update
         try {
@@ -174,7 +197,10 @@ export async function PUT(req) {
             console.error('Cache clear error:', cacheError);
         }
 
-        return NextResponse.json({ message: 'Profile updated successfully.' });
+        return NextResponse.json({ 
+            message: 'Profile updated successfully',
+            user: result.rows[0]
+        });
     } catch (error) {
         console.error('Error updating user profile:', error);
         return NextResponse.json({ error: 'Error updating profile data' }, { status: 500 });

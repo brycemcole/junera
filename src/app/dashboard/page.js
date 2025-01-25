@@ -23,6 +23,24 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <LoaderCircle className="animate-spin h-8 w-8" />
+        </div>
+      );
+    }
+
+    if (!user) {
+      return null;
+    }
+  }, [user, loading, router]);
+
+
   // Data States
   const [matchingJobs, setMatchingJobs] = useState([]);
   const [savedSearches, setSavedSearches] = useState([]);

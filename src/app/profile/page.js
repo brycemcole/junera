@@ -24,6 +24,7 @@ import {
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
 import Link from 'next/link';
+import { Github } from "lucide-react";
 
 function formatStartDate(date, locale = enUS) {
     try {
@@ -88,7 +89,45 @@ function CancelDialog({ experience, onConfirm }) {
     );
 }
 
-
+function GitHubSection({ githubUser, onLink }) {
+    return (
+        <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>GitHub Account</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {githubUser ? (
+                    <div className="flex items-center gap-2">
+                        <Github size={20} />
+                        <span>Connected as <strong>{githubUser}</strong></span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-auto"
+                            onClick={() => onLink(null)}
+                        >
+                            Disconnect
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+                                const returnUrl = encodeURIComponent(`${window.location.origin}/api/auth/github/callback`);
+                                window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=user`;
+                            }}
+                        >
+                            <Github className="mr-2 h-4 w-4" />
+                            Connect GitHub Account
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function ProfilePage() {
     const { user, loading: authLoading } = useAuth();
@@ -104,13 +143,6 @@ export default function ProfilePage() {
             name: 'full_name',
             label: 'Full Name',
             placeholder: 'Enter your full name',
-            required: true
-        },
-        {
-            type: 'text',
-            name: 'username',
-            label: 'Username',
-            placeholder: 'Enter username',
             required: true
         },
         {
@@ -131,37 +163,62 @@ export default function ProfilePage() {
             label: 'Phone Number'
         },
         {
-            type: 'text',
+            type: 'multiselect',
             name: 'job_prefs_title',
-            label: 'Desired Job Title'
+            label: 'Desired Job Titles',
+            placeholder: 'Select job titles',
+            options: [
+                { value: 'Software Engineer', label: 'Software Engineer' },
+                { value: 'Frontend Developer', label: 'Frontend Developer' },
+                { value: 'Backend Developer', label: 'Backend Developer' },
+                { value: 'Full Stack Developer', label: 'Full Stack Developer' },
+                { value: 'DevOps Engineer', label: 'DevOps Engineer' },
+                { value: 'Project Manager', label: 'Project Manager' },
+                // Add more options as needed
+            ]
         },
         {
-            type: 'text',
+            type: 'multiselect',
             name: 'job_prefs_location',
-            label: 'Preferred Location'
+            label: 'Preferred Locations',
+            placeholder: 'Select preferred locations',
+            options: [
+                { value: 'New York', label: 'New York' },
+                { value: 'San Francisco', label: 'San Francisco' },
+                { value: 'Remote', label: 'Remote' },
+                // Add more location options as needed
+            ]
         },
         {
             type: 'text',
             name: 'job_prefs_industry',
-            label: 'Preferred Industry'
+            label: 'Preferred Industry',
+            placeholder: 'e.g. Technology, Finance'
         },
         {
-            type: 'select',
+            type: 'text',
+            name: 'job_prefs_language',
+            label: 'Preferred Language',
+            placeholder: 'e.g. English'
+        },
+        {
+            type: 'multiselect',
             name: 'job_prefs_level',
             label: 'Experience Level',
             options: [
-                { value: 'internship', label: 'Internships' },
-                { value: 'entry', label: 'Entry Level' },
-                { value: 'mid', label: 'Mid Level' },
-                { value: 'senior', label: 'Senior Level' },
-                { value: 'lead', label: 'Lead' },
-                { value: 'manager', label: 'Manager' }
+                { value: 'Internship', label: 'Internship' },
+                { value: 'Entry Level', label: 'Entry Level' },
+                { value: 'Mid Level', label: 'Mid Level' },
+                { value: 'Senior Level', label: 'Senior Level' },
+                { value: 'Lead', label: 'Lead' },
+                { value: 'Manager', label: 'Manager' }
             ]
         },
         {
             type: 'number',
             name: 'job_prefs_salary',
-            label: 'Expected Salary'
+            label: 'Expected Salary (Annual)',
+            placeholder: 'Enter expected salary'
         },
         {
             type: 'boolean',
@@ -397,31 +454,66 @@ export default function ProfilePage() {
 
     const handleProfileUpdate = async (formData) => {
         try {
+            // Ensure all array fields are properly formatted
+            const processedData = {
+                ...formData,
+                job_prefs_title: formData.job_prefs_title
+                    ? (Array.isArray(formData.job_prefs_title)
+                        ? formData.job_prefs_title
+                        : [formData.job_prefs_title])
+                    : [],
+                job_prefs_location: formData.job_prefs_location
+                    ? (Array.isArray(formData.job_prefs_location)
+                        ? formData.job_prefs_location
+                        : [formData.job_prefs_location])
+                    : [],
+                job_prefs_level: formData.job_prefs_level
+                    ? (Array.isArray(formData.job_prefs_level)
+                        ? formData.job_prefs_level
+                        : [formData.job_prefs_level])
+                    : [],
+                job_prefs_salary: formData.job_prefs_salary
+                    ? parseInt(formData.job_prefs_salary, 10)
+                    : null,
+                job_prefs_relocatable: Boolean(formData.job_prefs_relocatable)
+            };
+
             const response = await fetch('/api/user/profile', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${user.token}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(processedData),
             });
 
             if (!response.ok) {
-                toast({ title: 'Error', description: 'Failed to update profile', type: 'error' });
+                const errorData = await response.json();
+                toast({
+                    title: 'Error',
+                    description: errorData.error || 'Failed to update profile',
+                    variant: 'destructive'
+                });
                 throw new Error('Failed to update profile');
             }
 
-            // Refresh profile data
-            const updatedProfile = await response.json();
+            const { user: updatedUser } = await response.json();
             setProfile(prev => ({
                 ...prev,
-                user: { ...prev.user, ...formData }
+                user: updatedUser
             }));
-            toast({ title: 'Success', description: 'Profile updated successfully', type: 'success' });
+            toast({
+                title: 'Success',
+                description: 'Profile updated successfully'
+            });
 
         } catch (err) {
             console.error('Error updating profile:', err);
-            setError(err.message);
+            toast({
+                title: 'Error',
+                description: 'Failed to update profile',
+                variant: 'destructive'
+            });
         }
     };
 
@@ -597,6 +689,56 @@ export default function ProfilePage() {
         } catch (err) {
             console.error('Error adding project:', err);
             toast({ title: 'Error', description: 'Failed to add project', variant: 'destructive' });
+        }
+    };
+
+    const handleProjectEdit = async (id, formData) => {
+        try {
+            const response = await fetch('/api/user/projects', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id, ...formData }),
+            });
+
+            if (!response.ok) throw new Error('Failed to update project');
+
+            setProfile(prev => ({
+                ...prev,
+                projects: prev.projects.map(proj =>
+                    proj.id === id ? { ...formData, id } : proj
+                )
+            }));
+            toast({ title: 'Success', description: 'Project updated successfully' });
+        } catch (err) {
+            console.error('Error updating project:', err);
+            toast({ title: 'Error', description: 'Failed to update project', variant: 'destructive' });
+        }
+    };
+
+    const handleProjectDelete = async (id) => {
+        try {
+            const response = await fetch('/api/user/projects', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id }),
+            });
+
+            if (!response.ok) throw new Error('Failed to delete project');
+
+            setProfile(prev => ({
+                ...prev,
+                projects: prev.projects.filter(proj => proj.id !== id)
+            }));
+            toast({ title: 'Success', description: 'Project deleted successfully' });
+        } catch (err) {
+            console.error('Error deleting project:', err);
+            toast({ title: 'Error', description: 'Failed to delete project', variant: 'destructive' });
         }
     };
 
@@ -992,6 +1134,32 @@ export default function ProfilePage() {
                     ))}
                 </CardContent>
             </Card>
+
+            <GitHubSection 
+                githubUser={profile.user.github_user}
+                onLink={async (githubUser) => {
+                    if (!githubUser) {
+                        // Disconnect GitHub account
+                        const response = await fetch('/api/user/github', {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${user.token}`,
+                            },
+                        });
+                        
+                        if (response.ok) {
+                            setProfile(prev => ({
+                                ...prev,
+                                user: { ...prev.user, github_user: null, github_access_token: null }
+                            }));
+                            toast({
+                                title: 'Success',
+                                description: 'GitHub account disconnected'
+                            });
+                        }
+                    }
+                }}
+            />
 
             {/* Job Preferences */}
             <Card className="mb-6">

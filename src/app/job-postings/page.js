@@ -1328,9 +1328,9 @@ export default function JobPostingsPage() {
 
     function buildQueryParams() {
       return new URLSearchParams({
-        ...((title || (user?.jobPrefsTitle?.[0] && !title)) && { title: title ?? user?.jobPrefsTitle?.[0] ?? null }),
+        ...(title || user?.jobPrefsTitle ? { title: title || user?.jobPrefsTitle[0] } : {}),
         ...(experienceLevel && { experienceLevel }),
-        ...((location || user?.jobPrefsLocation?.[0]) && { location: (location ?? user?.jobPrefsLocation?.[0] ?? '').toLowerCase() }),
+        ...(location || user?.jobPrefsLocation ? { location: (location || user?.jobPrefsLocation[0] || '').toLowerCase() } : {}),
         ...(company && { company }),
         strictSearch,
         page: currentPage.toString(),
@@ -1418,12 +1418,7 @@ export default function JobPostingsPage() {
 
 
 
-    if (isFirstRenderRef.current && restoreFromSession()) {
-      isFirstRenderRef.current = false;
-      return;
-    } else {
-      fetchData();
-    }
+    fetchData();
 
     return () => {
       controller.abort();

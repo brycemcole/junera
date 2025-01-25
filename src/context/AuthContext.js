@@ -32,9 +32,25 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (token, username, id, avatar) => {
-    localStorage.setItem('token', token);
-    setUser({ token, username, id, avatar });
+  const login = async (token, username, id, fullName, avatar, jobPrefsTitle, jobPrefsLocation, jobPrefsLevel) => {
+    try {
+      localStorage.setItem('token', token);
+      const userData = {
+        token,
+        username,
+        id,
+        fullName,
+        avatar,
+        jobPrefsTitle,
+        jobPrefsLocation,
+        jobPrefsLevel
+      };
+      setUser(userData);
+      return true;
+    } catch (error) {
+      console.error('Error during login:', error);
+      return false;
+    }
   };
 
   const logout = () => {

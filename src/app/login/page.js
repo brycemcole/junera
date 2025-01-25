@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { CircleAlert, Eye, Lock, User2 } from "lucide-react";
+import { CircleAlert, Eye, Lock, User2, Github } from "lucide-react";
 
 const FormSchema = z.object({
   emailOrUsername: z.string().min(1, {
@@ -53,8 +53,9 @@ function InputForm() {
       }
 
       if (result.token) {
-        await login(result.token, result.id, result.username, result.fullName, result.avatar, result.jobPrefsTitle, result.jobPrefsLocation, result.jobPrefsLevel);
+        await login(result.token, result.username, result.id, result.fullName, result.avatar, result.jobPrefsTitle, result.jobPrefsLocation, result.jobPrefsLevel);
         setStatusMessage({ text: 'Logged in successfully. Welcome back!', isError: false });
+        router.refresh(); // Force a refresh of the router
         router.push('/dashboard');
       }
     } catch (error) {
@@ -138,6 +139,11 @@ export default function Login() {
     }
   }, [user, router]);
 
+  const handleGitHubLogin = () => {
+    const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=https://dev.junera.us/api/login/github`;
+  };
+
   return (
     <div className="flex justify-center p-4 sm:p-8">
       <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
@@ -145,10 +151,27 @@ export default function Login() {
           <h1 className="text-2xl font-medium">Login</h1>
           <p className="text-muted-foreground text-sm">
             Don&apos;t have an account? <Link href="/register" className="text-primary">Register</Link>
-
           </p>
         </div>
         <InputForm />
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleGitHubLogin}
+        >
+          <Github className="mr-2 h-4 w-4" />
+          GitHub
+        </Button>
       </main>
     </div>
   );
