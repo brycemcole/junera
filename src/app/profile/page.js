@@ -91,7 +91,7 @@ function CancelDialog({ experience, onConfirm }) {
 
 const handleGitHubLink = () => {
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    const returnUrl = encodeURIComponent(`${window.location.origin}/api/login/github?mode=link&userId=${user.id}`);
+    const returnUrl = encodeURIComponent(`https://dev.junera.us/api/login/github?mode=link&userId=${user.id}`);
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}`;
 };
 
