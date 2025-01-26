@@ -8,6 +8,8 @@ const SECRET_KEY = process.env.SESSION_SECRET;
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    const mode = searchParams.get('mode'); // 'link' or undefined (for login/register)
+    const userId = searchParams.get('userId'); // Only present for linking
 
     if (!code) {
         return new Response('No code provided', { status: 400 });
@@ -53,6 +55,18 @@ export async function GET(request) {
         const emails = await emailResponse.json();
         const primaryEmail = emails.find(email => email.primary)?.email || emails[0]?.email;
 
+        if (mode === 'link' && userId) {
+            // Handle profile linking
+            await query(
+                `UPDATE users SET 
+                github_id = $1,
+                github_user = $2
+                WHERE id = $3`,
+                [userData.id, userData.login, userId]
+            );
+            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/profile?github_linked=true`);
+        }
+
         // Check if user exists
         let result = await query(
             'SELECT * FROM users WHERE email = $1 OR github_id = $2',
@@ -62,21 +76,17 @@ export async function GET(request) {
         let user;
 
         if (result.rows.length === 0) {
-            // Create new user
-            result = await query(
-                `INSERT INTO users (
-          username, email, full_name, github_id, avatar, created_at, last_login
-        ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-        RETURNING *`,
-                [
-                    userData.login,
-                    primaryEmail,
-                    userData.name || userData.login,
-                    userData.id,
-                    userData.avatar_url,
-                ]
-            );
-            user = result.rows[0];
+            // Redirect to registration form with GitHub data
+            const githubData = {
+                github_id: userData.id,
+                email: primaryEmail,
+                username: userData.login,
+                full_name: userData.name || userData.login,
+                avatar_url: userData.avatar_url,
+            };
+            
+            const encoded = Buffer.from(JSON.stringify(githubData)).toString('base64');
+            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/register?github_data=${encoded}`);
         } else {
             user = result.rows[0];
             // Update existing user

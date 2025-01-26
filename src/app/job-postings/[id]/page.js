@@ -59,7 +59,7 @@ import { JobCard } from "../../../components/job-posting";
 import { CollapsibleJobs } from "./collapsible";
 import { StickyNavbar } from './navbar';
 const stripHTML = (str) => {
-  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'u'];
+  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'u', 'b', 'i', 'strong', 'em'];
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
 
@@ -71,12 +71,14 @@ const stripHTML = (str) => {
     }
   });
 
-  // Reset font size to match the parent
+  // Cap font sizes
   const allElements = doc.body.querySelectorAll('*');
   allElements.forEach((el) => {
     const computedStyle = window.getComputedStyle(el);
-    const parentFontSize = computedStyle.getPropertyValue('font-size');
-    el.style.fontSize = parentFontSize; // Reset the font size to parent
+    const fontSize = parseFloat(computedStyle.getPropertyValue('font-size'));
+    if (fontSize > 24) { // Cap font size to 24px
+      el.style.fontSize = '24px';
+    }
   });
 
   return doc.body.innerHTML;
@@ -843,7 +845,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
                 <span className="flex flex-row mb-2 gap-4 items-center">
                   <h2 className="text-md font-semibold text-foreground">{label}</h2>
                 </span>
-                <p className="leading-loose text-md text-foreground dark:text-neutral-300">
+                <p className="leading-loose text-md break-words text-foreground dark:text-neutral-300">
                   <div
                     className="space-y-2"
                     dangerouslySetInnerHTML={{

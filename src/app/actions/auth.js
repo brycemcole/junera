@@ -104,6 +104,10 @@ export async function registerAction(formData) {
   const username = formData.get('username')?.trim();
   const password = formData.get('password')?.trim();
 
+  const githubId = formData.get('github_id');
+  const githubUser = formData.get('github_user');
+  const avatarUrl = formData.get('avatar_url');
+
   // Get cookies asynchronously
   const cookieStore = await cookies();
   const ip = cookieStore.get('x-real-ip')?.value || 'unknown';
@@ -144,10 +148,17 @@ export async function registerAction(formData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await query(`
-      INSERT INTO users (full_name, email, username, password, last_login, created_at)
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      INSERT INTO users (
+        full_name, email, username, password, 
+        github_id, github_user, avatar,
+        last_login, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
       RETURNING id;
-    `, [fullname, email, username, hashedPassword]);
+    `, [
+      fullname, email, username, hashedPassword,
+      githubId || null, githubUser || null, avatarUrl || null
+    ]);
 
     const userId = result.rows[0].id;
 

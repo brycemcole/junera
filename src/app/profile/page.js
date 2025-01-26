@@ -89,6 +89,12 @@ function CancelDialog({ experience, onConfirm }) {
     );
 }
 
+const handleGitHubLink = () => {
+    const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+    const returnUrl = encodeURIComponent(`${window.location.origin}/api/login/github?mode=link&userId=${user.id}`);
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}`;
+};
+
 function GitHubSection({ githubUser, onLink }) {
     return (
         <div className="mb-6">
@@ -110,11 +116,7 @@ function GitHubSection({ githubUser, onLink }) {
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => {
-                            const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-                            const returnUrl = encodeURIComponent(`${window.location.origin}/api/auth/github/callback`);
-                            window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=user`;
-                        }}
+                        onClick={handleGitHubLink}
                     >
                         <Github className="mr-2 h-4 w-4" />
                         Connect GitHub Account

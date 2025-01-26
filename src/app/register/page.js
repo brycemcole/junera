@@ -70,6 +70,7 @@ function InputForm() {
   const { login } = useAuth();
   const router = useRouter();
   const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
+  const [githubData, setGithubData] = useState(null);
 
   const form = useForm({
     resolver: zodResolver(FormSchema),
@@ -81,6 +82,25 @@ function InputForm() {
     },
   });
 
+  useEffect(() => {
+    // Check for GitHub data in URL
+    const params = new URLSearchParams(window.location.search);
+    const encodedData = params.get('github_data');
+    if (encodedData) {
+      try {
+        const decoded = JSON.parse(atob(encodedData));
+        setGithubData(decoded);
+        form.reset({
+          fullname: decoded.full_name,
+          email: decoded.email,
+          username: decoded.username,
+        });
+      } catch (error) {
+        console.error('Error parsing GitHub data:', error);
+      }
+    }
+  }, []);
+
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });
 
@@ -89,6 +109,13 @@ function InputForm() {
       Object.entries(data).forEach(([key, value]) => {
         formData.append(key, value);
       });
+
+      // Add GitHub data if available
+      if (githubData) {
+        formData.append('github_id', githubData.github_id);
+        formData.append('github_user', githubData.username);
+        formData.append('avatar_url', githubData.avatar_url);
+      }
 
       const result = await registerAction(formData);
 
