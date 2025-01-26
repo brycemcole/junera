@@ -89,13 +89,16 @@ function CancelDialog({ experience, onConfirm }) {
     );
 }
 
-const handleGitHubLink = () => {
+const handleGitHubLink = (e) => {
+    const userId = e.target.getAttribute('data-user-id');
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    const returnUrl = encodeURIComponent(`https://dev.junera.us/api/login/github?mode=link&userId=${user.id}`);
+    const returnUrl = encodeURIComponent(`https://dev.junera.us/api/login/github?mode=link&userId=${userId}`);
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}`;
 };
 
 function GitHubSection({ githubUser, onLink }) {
+    const { user, loading } = useAuth();
+    console.log(user);
     return (
         <div className="mb-6">
             <h3 className="text-md font-semibold mb-2">GitHub Account</h3>
@@ -113,15 +116,18 @@ function GitHubSection({ githubUser, onLink }) {
                     </Button>
                 </div>
             ) : (
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={handleGitHubLink}
-                    >
-                        <Github className="mr-2 h-4 w-4" />
-                        Connect GitHub Account
-                    </Button>
-                </div>
+                !loading && user && (
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            data-user-id={user.id}
+                            onClick={handleGitHubLink}
+                        >
+                            <Github className="mr-2 h-4 w-4" />
+                            Connect GitHub Account
+                        </Button>
+                    </div>
+                )
             )}
         </div>
     );
