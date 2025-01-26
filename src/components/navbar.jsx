@@ -310,13 +310,12 @@ function DropdownMenuDemo() {
 }
 
 export default function Navbar() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, initialized } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  if (!initialized) {
+    return null; // Or return a minimal loading navbar
+  }
 
   return (
     <nav className="backdrop-blur shadow-md bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
@@ -331,18 +330,14 @@ export default function Navbar() {
           <NavbarMenu/>
         </div>
         <div className="md:hidden items-center flex gap-4">
-          {!loading && (
+          {initialized && (
             <>
-              {!loading && user && user.email && user.fullName ? (
+              {user ? (
                 <DropdownMenuDemo2 />
               ) : (
-                <>
-                  <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9 hover:text-primary">
-                    <Link href="/login">
-                     Login
-                    </Link>
-                  </Button>
-                </>
+                <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9">
+                  <Link href="/login">Login</Link>
+                </Button>
               )}
             </>
           )}

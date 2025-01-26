@@ -69,7 +69,7 @@ function InputForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {statusMessage.text && (
           <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
-            ? 'border-red-500/50 text-red-600'
+            ? 'border-red-500/50 bg-red-600/20 text-red-600'
             : 'border-green-500/50 text-green-600'
             }`}>
             <p className="text-sm">
@@ -132,21 +132,60 @@ function InputForm() {
 export default function Login() {
   const { user } = useAuth();
   const router = useRouter();
+  const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
 
   useEffect(() => {
     if (user) {
       router.push('/dashboard');
     }
+
+    // Check for GitHub auth error
+    const searchParams = new URLSearchParams(window.location.search);
+    const error = searchParams.get('error');
+    if (error === 'github_auth_failed') {
+      setStatusMessage({
+        text: 'GitHub authentication failed. Please try again or use another login method.',
+        isError: true
+      });
+    }
   }, [user, router]);
 
-  const handleGitHubLogin = () => {
+  const handleGitHubLogin = (mode = 'login') => {
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=https://dev.junera.us/api/login/github`;
+    const userId = user?.id; // Get current user ID if available
+    
+    const params = new URLSearchParams({
+      client_id: GITHUB_CLIENT_ID,
+      redirect_uri: 'https://dev.junera.us/api/login/github',
+    });
+
+    if (mode === 'link' && userId) {
+      params.append('mode', 'link');
+      params.append('userId', userId);
+    }
+
+    window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
   };
 
   return (
     <div className="flex justify-center p-4 sm:p-8">
       <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
+        {statusMessage.text && (
+          <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
+            ? 'border-red-500/50 bg-red-600/20 text-red-600'
+            : 'border-green-500/50 text-green-600'
+            }`}>
+            <p className="text-sm">
+              <CircleAlert
+                className="-mt-0.5 me-3 inline-flex opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              {statusMessage.text}
+            </p>
+          </div>
+        )}
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-medium">Login</h1>
           <p className="text-muted-foreground text-sm">

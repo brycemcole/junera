@@ -38,6 +38,12 @@ async function loginUser(emailOrUsername, password) {
       return { error: "Invalid password" };
     }
 
+    // Update last_login after successful password match
+    await query(
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
+      [user.id]
+    );
+
     return {
       userId: user.id,
       email: user.email,

@@ -12,7 +12,7 @@ export async function GET(request) {
     const userId = searchParams.get('userId'); // Only present for linking
 
     if (!code) {
-        return new Response('No code provided', { status: 400 });
+        return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/login?error=github_auth_failed`);
     }
 
     try {
@@ -56,35 +56,38 @@ export async function GET(request) {
         const primaryEmail = emails.find(email => email.primary)?.email || emails[0]?.email;
 
         if (mode === 'link' && userId) {
-            // Handle profile linking
+            // Link existing account
             await query(
                 `UPDATE users SET 
                 github_id = $1,
-                github_user = $2
-                WHERE id = $3`,
-                [userData.id, userData.login, userId]
+                github_username = $2,
+                github_access_token = $3,
+                avatar = COALESCE(NULLIF($4, ''), avatar),
+                WHERE id = $5`,
+                [userData.id, userData.login, tokenData.access_token, userData.avatar_url, userId]
             );
-            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/profile?github_linked=true`);
+            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/settings/profile?github_linked=true`);
         }
 
-        // Check if user exists
+        // Check if user exists by GitHub ID or email
         let result = await query(
-            'SELECT * FROM users WHERE email = $1 OR github_id = $2',
-            [primaryEmail, userData.id]
+            'SELECT * FROM users WHERE github_id = $1 OR email = $2',
+            [userData.id, primaryEmail]
         );
 
         let user;
 
         if (result.rows.length === 0) {
-            // Redirect to registration form with GitHub data
+            // New user - redirect to registration
             const githubData = {
                 github_id: userData.id,
                 email: primaryEmail,
                 username: userData.login,
                 full_name: userData.name || userData.login,
                 avatar_url: userData.avatar_url,
+                access_token: tokenData.access_token
             };
-            
+
             const encoded = Buffer.from(JSON.stringify(githubData)).toString('base64');
             return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/register?github_data=${encoded}`);
         } else {
@@ -92,10 +95,12 @@ export async function GET(request) {
             // Update existing user
             await query(
                 `UPDATE users SET 
-          last_login = NOW(),
-          avatar = COALESCE($1, avatar)
-        WHERE id = $2`,
-                [userData.avatar_url, user.id]
+                last_login = NOW(),
+                github_access_token = $1,
+                github_username = COALESCE(github_username, $2),
+                avatar = COALESCE(NULLIF($3, ''), avatar)
+                WHERE id = $4`,
+                [tokenData.access_token, userData.login, userData.avatar_url, user.id]
             );
         }
 
@@ -106,6 +111,7 @@ export async function GET(request) {
             username: user.username,
             fullName: user.full_name,
             avatar: user.avatar,
+            githubUsername: user.github_username,
             exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
         }, SECRET_KEY);
 
