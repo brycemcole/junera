@@ -110,61 +110,61 @@ const processJobPostings = (jobs) => {
 };
 
 export async function GET(req, { params }) {
-    const companyName = decodeURIComponent(params.name);
-    const url = new URL(req.url);
-    const page = parseInt(url.searchParams.get('page')) || 1;
-    const limit = parseInt(url.searchParams.get('limit')) || 30;
-    const offset = (page - 1) * limit;
+  const companyName = decodeURIComponent(params.name);
+  const url = new URL(req.url);
+  const page = parseInt(url.searchParams.get('page')) || 1;
+  const limit = parseInt(url.searchParams.get('limit')) || 30;
+  const offset = (page - 1) * limit;
 
-    try {
-        // 1) First, check if a row exists in the `companies` table:
-        let companyResult = await query(
-            `
+  try {
+    // 1) First, check if a row exists in the `companies` table:
+    let companyResult = await query(
+      `
         SELECT id, company_name, hiring_url, hiring_url2, hiring_url3
         FROM companies
         WHERE company_name = $1
       `,
-            [companyName]
-        );
+      [companyName]
+    );
 
-        let companyRow = companyResult.rows.length > 0 ? companyResult.rows[0] : null;
+    let companyRow = companyResult.rows.length > 0 ? companyResult.rows[0] : null;
 
-        // 2) Check if there are job postings for the given name:
-        const postingsResult = await query(
-            `
+    // 2) Check if there are job postings for the given name:
+    const postingsResult = await query(
+      `
         SELECT DISTINCT company
         FROM jobPostings
         WHERE company = $1
       `,
-            [companyName]
-        );
+      [companyName]
+    );
 
-        const hasJobPostings = postingsResult.rows.length > 0;
+    const hasJobPostings = postingsResult.rows.length > 0;
 
-        // 3) If the company does not exist in `companies` but has job postings, create a row:
-        if (!companyRow && hasJobPostings) {
-            const insertResult = await query(
-                `
+    // 3) If the company does not exist in `companies` but has job postings, create a row:
+    if (!companyRow && hasJobPostings) {
+      const insertResult = await query(
+        `
           INSERT INTO companies (company_name)
           VALUES ($1)
           RETURNING id, company_name, hiring_url, hiring_url2, hiring_url3
         `,
-                [companyName]
-            );
-            companyRow = insertResult.rows[0];
-        }
+        [companyName]
+      );
+      companyRow = insertResult.rows[0];
+    }
 
-        // If we have job postings, fetch and paginate them
-        let jobPostings = [];
-        let total = 0;
-        let totalPages = 0;
+    // If we have job postings, fetch and paginate them
+    let jobPostings = [];
+    let total = 0;
+    let totalPages = 0;
 
-        if (hasJobPostings) {
-            // Get paginated job postings using the actual name
-            const jobPostingsResult = await query(
-                `
+    if (hasJobPostings) {
+      // Get paginated job postings using the actual name
+      const jobPostingsResult = await query(
+        `
           SELECT 
-              job_id as id,
+              job_id,
               title,
               company,
               location,
@@ -179,59 +179,59 @@ export async function GET(req, { params }) {
           ORDER BY created_at DESC
           LIMIT $2 OFFSET $3
         `,
-                [companyName, limit, offset]
-            );
+        [companyName, limit, offset]
+      );
 
-            jobPostings = jobPostingsResult.rows;
+      jobPostings = jobPostingsResult.rows;
 
-            // Get total count for pagination
-            const countResult = await query(
-                `
+      // Get total count for pagination
+      const countResult = await query(
+        `
           SELECT COUNT(*) as total
           FROM jobPostings
           WHERE company = $1
         `,
-                [companyName]
-            );
-            total = parseInt(countResult.rows[0].total, 10);
-            totalPages = Math.ceil(total / limit);
-        }
-
-        // 4) Construct the `company` object to return
-        //    - If companyRow exists, spread it in; else just create a basic object
-        const company = companyRow
-            ? {
-                ...companyRow,
-                logo: `https://logo.clearbit.com/${encodeURIComponent(
-                    companyRow.company_name.replace(/\s+/g, '').toLowerCase()
-                )}.com`,
-            }
-            : {
-                company_name: companyName,
-                logo: `https://logo.clearbit.com/${encodeURIComponent(
-                    companyName.replace(/\s+/g, '').toLowerCase()
-                )}.com`,
-            };
-
-        return NextResponse.json({
-            success: true,
-            company,
-            jobPostings: processJobPostings(jobPostings),
-            pagination: {
-                current_page: page,
-                total_pages: totalPages,
-                total_items: total,
-                items_per_page: limit,
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching company details:', error);
-        return NextResponse.json(
-            {
-                error: 'Failed to fetch company details',
-                message: error.message,
-            },
-            { status: 500 }
-        );
+        [companyName]
+      );
+      total = parseInt(countResult.rows[0].total, 10);
+      totalPages = Math.ceil(total / limit);
     }
+
+    // 4) Construct the `company` object to return
+    //    - If companyRow exists, spread it in; else just create a basic object
+    const company = companyRow
+      ? {
+        ...companyRow,
+        logo: `https://logo.clearbit.com/${encodeURIComponent(
+          companyRow.company_name.replace(/\s+/g, '').toLowerCase()
+        )}.com`,
+      }
+      : {
+        company_name: companyName,
+        logo: `https://logo.clearbit.com/${encodeURIComponent(
+          companyName.replace(/\s+/g, '').toLowerCase()
+        )}.com`,
+      };
+
+    return NextResponse.json({
+      success: true,
+      company,
+      jobPostings: processJobPostings(jobPostings),
+      pagination: {
+        current_page: page,
+        total_pages: totalPages,
+        total_items: total,
+        items_per_page: limit,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching company details:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch company details',
+        message: error.message,
+      },
+      { status: 500 }
+    );
+  }
 }
