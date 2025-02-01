@@ -29,12 +29,14 @@ function extractSalary(text) {
 
   // Define regex patterns in order of priority
   const patterns = [
+    // New pattern to match decimal hourly ranges without a suffix (e.g. "$30.94 - $47.77")
+    /\$\s*(\d+(?:\.\d+)?)\s*[-–—]\s*\$\s*(\d+(?:\.\d+)?)/gi,
     // 1. Hourly rates (highest priority)
     /\$\s*(\d+\.?\d*)\s*(per\s*hour|hourly|per\s*hr|hr|h|\/ hour|\/hour|\/hr)\b/gi,
-    
+
     // 2. Hourly ranges
     /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
-    
+
     // 3. Salary ranges with dashes
     /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
 

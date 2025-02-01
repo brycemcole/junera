@@ -709,7 +709,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
             <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </div>
-        <div className="mb-4 flex flex-col gap-y-2 text-sm text-foreground items-start">
+        <div className="mb-4 flex flex-col gap-y-2 text-md text-foreground items-start">
           {jobPosting?.salary ? (
             <div className="flex items-center gap-2">
               <BriefcaseBusiness className="h-3 w-3 text-foreground" />

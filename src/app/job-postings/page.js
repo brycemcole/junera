@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
+import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense, useTransition } from 'react';
 import { JobList } from "@/components/JobPostings";
 import { unstable_cache } from 'next/cache'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -596,9 +596,10 @@ export default function JobPostingsPage() {
   const [pageLoading, setPageLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(true); // Added state to track if there are more items
   const lastRequestRef = useRef(null);
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [isTransitionPending, startTransition] = useTransition();
 
   // Add new state for tracking data freshness
   const [dataTimestamp, setDataTimestamp] = useState(null);
@@ -1008,6 +1009,8 @@ export default function JobPostingsPage() {
     const [loading, setLoading] = useState(false);
     const [timer, setTimer] = useState(null);
     const isFirstRender = useRef(true);
+    const inputRef = useRef(null);
+    const [isFocused, setIsFocused] = useState(false);
 
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
@@ -1063,13 +1066,22 @@ export default function JobPostingsPage() {
       setSearchValue(value || "");
     }, [value]);
 
+    useEffect(() => {
+      if (isFocused && inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, [searchValue, isFocused]);
+
     return (
       <div className="space-y-2 mb-2">
         <div className="relative">
           <Input
             id="input-26"
+            ref={inputRef} // Added ref
             className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
             placeholder={"Search for a job title"}
+            onFocus={() => setIsFocused(true)}   // Track focus
+            onBlur={() => setIsFocused(false)}     // Track blur
             onKeyDown={handleKeyDown}
             type="search"
             value={searchValue}
@@ -1310,7 +1322,9 @@ export default function JobPostingsPage() {
         } else {
           const jobData = await fetchJobData(route, params);
           await storeResponseInLocalStorage(route, jobData);
-          updateJobDataState(jobData);
+          startTransition(() => {
+            updateJobDataState(jobData);
+          });
         }
 
         if (currentPage === 1) {
@@ -1460,7 +1474,31 @@ export default function JobPostingsPage() {
     };
   }, []);
 
+  // Add new state for salary range
+  const [salaryRange, setSalaryRange] = useState(null);
 
+  // Fetch salary range when search parameters change
+  useEffect(() => {
+    const abortController = new AbortController();
+    const params = new URLSearchParams();
+    if (title) params.append('title', title);
+    if (location) params.append('location', location);
+    if (experienceLevel) params.append('experienceLevel', experienceLevel);
+    if (company) params.append('company', company);
+    
+    fetch(`/api/job-postings/salary-range?${params.toString()}`, { signal: abortController.signal })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          setSalaryRange(data);
+        } else {
+          setSalaryRange(null);
+        }
+      })
+      .catch(err => console.error("Salary range fetch error:", err));
+      
+    return () => abortController.abort();
+  }, [title, location, experienceLevel, company]);
 
   return (
     <>
@@ -1495,11 +1533,17 @@ export default function JobPostingsPage() {
             </Suspense>
           )}
           <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
+            <MemoizedInput26 onSearch={handleTitleSearch} value={title} userPreferredTitle={user?.jobPrefsTitle} />
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
+
+          {salaryRange && (
+            <div className="text-sm text-muted-foreground mt-2">
+              Salary Range: {salaryRange.min_salary || 'N/A'} - {salaryRange.max_salary || 'N/A'}
+            </div>
+          )}
 
           <TabComponent
             savedSearches={savedSearches}
