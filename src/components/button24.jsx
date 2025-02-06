@@ -3,22 +3,37 @@
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Bookmark } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from '@/hooks/use-toast';
+
+// New custom hook to detect if element is on screen
+function useOnScreen(ref) {
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(entry.isIntersecting);
+    });
+    observer.observe(ref.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+  return isVisible;
+}
 
 export default function Button24({ jobId }) {
     const [bookmarked, setBookmarked] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const { user } = useAuth();
     const { toast } = useToast();
+    const containerRef = useRef(null);
+    const isVisible = useOnScreen(containerRef);
 
     useEffect(() => {
         const checkBookmarkStatus = async () => {
-            if (!jobId) return;
-            if (!user) return;
-            if (!user?.token) return;
-            
+            if (!jobId || !user || !user?.token) return;
             try {
                 const response = await fetch(`/api/bookmarks?jobId=${jobId}`, {
                     headers: {
@@ -32,8 +47,10 @@ export default function Button24({ jobId }) {
             }
         };
 
-        checkBookmarkStatus();
-    }, [jobId, user?.token, user]);
+        if (isVisible) {
+            checkBookmarkStatus();
+        }
+    }, [jobId, user?.token, user, isVisible]);
 
     const handleToggle = async (pressed) => {
         if (!user) {
@@ -94,34 +111,36 @@ export default function Button24({ jobId }) {
 
     if (!user) return null;
     return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
-                        className="text-foreground"
-                    >
-                        <Toggle
-                            className="group size-9 border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
-                            aria-label="Bookmark this"
-                            pressed={bookmarked || isHovered}
-                            onPressedChange={handleToggle}
-                            onClick={handleClick}  // Add this line
+        <div ref={containerRef}>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                            className="text-foreground"
                         >
-                            <Bookmark 
-                                size={16} 
-                                strokeWidth={2} 
-                                aria-hidden="true"
-                                className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}
-                            />
-                        </Toggle>
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent className="border border-input bg-popover px-2 py-1 text-xs text-muted-foreground">
-                    <p>{bookmarked ? "Remove bookmark" : "Bookmark this"}</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+                            <Toggle
+                                className="group size-9 border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
+                                aria-label="Bookmark this"
+                                pressed={bookmarked || isHovered}
+                                onPressedChange={handleToggle}
+                                onClick={handleClick}
+                            >
+                                <Bookmark 
+                                    size={16} 
+                                    strokeWidth={2} 
+                                    aria-hidden="true"
+                                    className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}
+                                />
+                            </Toggle>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="border border-input bg-popover px-2 py-1 text-xs text-muted-foreground">
+                        <p>{bookmarked ? "Remove bookmark" : "Bookmark this"}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </div>
     );
 }

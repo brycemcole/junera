@@ -95,31 +95,25 @@ export default function JobHistoryPage() {
   return (
     <div className="container mx-auto py-0 p-6 max-w-4xl">
       <section className="mb-4">
-        <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
+        <h1 className="text-lg mb-6 font-[family-name:var(--font-geist-sans)] font-medium mb-1">
           Job History
         </h1>
-        <p className="text-sm text-muted-foreground mb-4">
-          View your job application history, saved jobs, and recently viewed positions.
-        </p>
 
-        <Tabs defaultValue="applied" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+        <Tabs defaultValue="applied" className="max-w-md w-full" onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3 mx-auto">
             <TabsTrigger value="applied">
               Applied
-              {!isLoadingApplied && <span className="ml-2 text-xs text-muted-foreground">({appliedJobs.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="saved">
               Saved
-              {!isLoadingSaved && <span className="ml-2 text-xs text-muted-foreground">({savedJobs.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="viewed">
               Viewed
-              {!isLoadingViewed && <span className="ml-2 text-xs text-muted-foreground">({viewedJobs.length})</span>}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="applied" className="mt-0">
-            <Card className="p-4">
+            <Card className="p-4 border-0">
               <JobList
                 data={appliedJobs}
                 loading={isLoadingApplied}
@@ -130,7 +124,7 @@ export default function JobHistoryPage() {
           </TabsContent>
 
           <TabsContent value="saved" className="mt-0">
-            <Card className="p-4">
+            <Card className="p-4 border-0">
               <JobList
                 data={savedJobs}
                 loading={isLoadingSaved}
@@ -141,7 +135,7 @@ export default function JobHistoryPage() {
           </TabsContent>
 
           <TabsContent value="viewed" className="mt-0">
-            <Card className="p-4">
+            <Card className="p-4 border-0">
               <JobList
                 data={viewedJobs}
                 loading={isLoadingViewed}
