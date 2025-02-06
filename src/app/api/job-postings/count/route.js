@@ -1,83 +1,42 @@
 import { query } from "@/lib/pgdb";
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
-import jwt from 'jsonwebtoken';
-
-const SECRET_KEY = process.env.SESSION_SECRET;
+import { getCached, setCached } from '@/lib/cache';
 
 export async function GET(req) {
+  const { signal } = req;
+  const url = req.url;
+  const { searchParams } = new URL(url);
+
+  // Create cache key from search params
+  const cacheKey = `jobCount:${searchParams.toString()}`;
+
   try {
-    // Get auth header and validate user
-    const authHeader = req.headers.get('Authorization');
-    let token = '';
-    let user = null;
-    let userPreferredTitles = [];
-    let userPreferredLocations = [];
-
-    if (authHeader) {
-      token = authHeader.split(' ')[1];
-      if (token) {
-        try {
-          const decoded = jwt.verify(token, SECRET_KEY);
-          user = decoded;
-          userPreferredTitles = user.jobPrefsTitle || [];
-          userPreferredLocations = user.jobPrefsLocation || [];
-        } catch (error) {
-          console.error('Error decoding token:', error);
-        }
-      }
+    // Check cache first
+    const cachedCount = await getCached(cacheKey);
+    if (cachedCount) {
+      return Response.json({ count: parseInt(cachedCount), ok: true }, { status: 200 });
     }
 
-    const { searchParams } = new URL(req.url);
-
-    // Extract and sanitize search filters
-    let title = searchParams.get("title")?.trim() || "";
-    let location = (searchParams.get("location")?.trim() || "").toLowerCase();
-    const company = searchParams.get("company")?.trim() || "";
+    // Extract query params
+    let title = (searchParams.get("title") || "").trim();
+    let location = (searchParams.get("location") || "").trim().toLowerCase();
+    const company = (searchParams.get("company") || "").trim();
     let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
-    if (experienceLevel === 'entry level') {
-      experienceLevel = 'entry';
-    }
 
-    // Handle job preferences
-    const applyPrefsParam = searchParams.get('applyJobPrefs');
-    let applyJobPrefs = false;
+    // Get title group if title provided
+    let titleGroup = title ? findJobTitleGroup(title) : [];
 
-    if (user && (applyPrefsParam === 'true' || applyPrefsParam === null)) {
-      applyJobPrefs = true;
-    }
-
-    // Apply preferences if enabled
-    if (applyJobPrefs) {
-      if (!title && userPreferredTitles.length > 0) {
-        title = userPreferredTitles[0];
-      }
-      if (!location && userPreferredLocations.length > 0) {
-        location = userPreferredLocations[0].toLowerCase();
-      }
-    }
-
-    // Clear these if we're not applying preferences
-    if (!applyJobPrefs) {
-      userPreferredTitles = [];
-      userPreferredLocations = [];
-    }
-
-    // Get the entire group of related titles if a title search is provided
-    const titleGroup = title ? findJobTitleGroup(title) : [];
-
-    // Prepare query parameters
-    const params = [];
+    // Use materialized view or indexed subquery for faster counting
+    let queryText = `
+      SELECT COUNT(*) OVER() as total_count 
+      FROM jobPostings 
+      WHERE 1=1
+    `;
+    let params = [];
     let paramIndex = 1;
 
-    // Build the count query with relevance calculation for better consistency
-    let queryText = `
-      SELECT COUNT(*) AS totalJobs
-      FROM jobPostings
-      WHERE 1 = 1
-    `;
-
-    // Title search using title group
-    if (title) {
+    // Add filters using the same logic as the main route
+    if (titleGroup.length > 0) {
       const titleConditions = titleGroup.map((t, i) => {
         const idx = paramIndex + i;
         return `title_vector @@ to_tsquery('english', $${idx})`;
@@ -87,34 +46,42 @@ export async function GET(req) {
       paramIndex += titleGroup.length;
     }
 
-    // Experience level filter
-    if (experienceLevel) {
-      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
-      params.push(experienceLevel);
-      paramIndex++;
-    }
-
-    // Location filter
     if (location) {
-      queryText += ` AND location_vector @@ plainto_tsquery('simple', $${paramIndex})`;
-      params.push(location);
+      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
+      params.push(location.replace(/\s+/g, ' & '));
       paramIndex++;
     }
 
-    // Company filter
     if (company) {
       queryText += ` AND company = $${paramIndex}`;
       params.push(company);
       paramIndex++;
     }
 
-    // Execute the query
-    const result = await query(queryText, params);
-    const totalJobs = result.rows[0]?.totaljobs || 0;
+    if (experienceLevel) {
+      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
+      params.push(experienceLevel);
+    }
 
-    return Response.json({ totalJobs }, { status: 200 });
+    // Optimize by limiting to 1 row since we just need the count
+    queryText += ` LIMIT 1`;
+
+    // Execute query
+    const result = await query(queryText, params);
+    const count = parseInt(result.rows[0]?.total_count || 0);
+
+    // Cache the count for 5 minutes
+    await setCached(cacheKey, count, 300);
+
+    return Response.json({ count, ok: true }, { status: 200 });
+
   } catch (error) {
-    console.error("Error fetching total jobs:", error);
-    return Response.json({ error: "Error fetching total jobs" }, { status: 500 });
+    if (error.message === 'Request aborted') {
+      return Response.json({ error: 'Request was aborted', ok: false }, { status: 499 });
+    }
+    console.error("Error fetching job posting count:", error);
+    return Response.json({ error: "Error fetching job posting count", ok: false }, { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic';

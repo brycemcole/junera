@@ -1,6 +1,8 @@
 "use client";
 import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
+import { unstable_cache } from 'next/cache'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
   Avatar,
@@ -22,7 +24,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,15 +35,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -67,11 +60,105 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FixedSizeList as List } from 'react-window';
 import SearchParamsHandler from '@/components/SearchParamsHandler';
+import { set } from 'date-fns';
+import { throttle } from 'lodash';
+import { is } from 'date-fns/locale';
 
+// Add encryption utilities
+const encryptData = (data) => {
+  try {
+    // Simple XOR encryption with a random key
+    const key = Math.random().toString(36).substring(2);
+    const encrypted = JSON.stringify(data).split('').map((char, i) =>
+      String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+    ).join('');
+    return { encrypted, key };
+  } catch (error) {
+    console.error('Encryption error:', error);
+    return null;
+  }
+};
+
+const decryptData = (encrypted, key) => {
+  try {
+    const decrypted = encrypted.split('').map((char, i) =>
+      String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))
+    ).join('');
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error('Decryption error:', error);
+    return null;
+  }
+};
+
+// Add compression utilities at the top with the other utility functions
+const compressData = async (data) => {
+  try {
+    // Check if CompressionStream is available
+    if ('CompressionStream' in window) {
+      const jsonString = JSON.stringify(data);
+      const encodedData = new TextEncoder().encode(jsonString);
+      const compressedStream = new Blob([encodedData]).stream().pipeThrough(new CompressionStream('gzip'));
+      const compressedData = await new Response(compressedStream).arrayBuffer();
+      return new Uint8Array(compressedData);
+    } else {
+      // Fallback compression using base64 and simple RLE
+      const jsonString = JSON.stringify(data);
+      let compressed = '';
+      let count = 1;
+
+      for (let i = 0; i < jsonString.length; i++) {
+        if (jsonString[i] === jsonString[i + 1]) {
+          count++;
+        } else {
+          compressed += (count > 1 ? count : '') + jsonString[i];
+          count = 1;
+        }
+      }
+
+      return btoa(compressed);
+    }
+  } catch (error) {
+    console.error('Compression error:', error);
+    return null;
+  }
+};
+
+const decompressData = async (compressed) => {
+  try {
+    // Check if CompressionStream is available
+    if ('CompressionStream' in window && compressed instanceof Uint8Array) {
+      const decompressedStream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const decompressedData = await new Response(decompressedStream).arrayBuffer();
+      const decoded = new TextDecoder().decode(new Uint8Array(decompressedData));
+      return JSON.parse(decoded);
+    } else {
+      // Fallback decompression
+      const decompressed = atob(compressed);
+      let result = '';
+      let i = 0;
+
+      while (i < decompressed.length) {
+        let count = '';
+        while (/\d/.test(decompressed[i])) {
+          count += decompressed[i++];
+        }
+        result += decompressed[i].repeat(count ? parseInt(count) : 1);
+        i++;
+      }
+
+      return JSON.parse(result);
+    }
+  } catch (error) {
+    console.error('Decompression error:', error);
+    return null;
+  }
+};
 
 const states = {
   "null": "Any",
   "remote": "Remote",
+  "new york": "New York",
   "new york": "New York",
   "california": "California",
   "texas": "Texas",
@@ -150,7 +237,7 @@ function SavedSearchButton({ name, title, experienceLevel, location }) {
   return (
     <Badge
       variant="outline"
-      className="gap-1.5 cursor-pointer hover:bg-accent"
+      className="gap-1.5 px-2 cursor-pointer hover:bg-accent"
       onClick={redirectToSearch}
     >
       <span
@@ -427,7 +514,7 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
 const JobCount = memo(function JobCount({ count, className }) {
   return (
     <span className={className}>
-      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-mono text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-[family-name:var(--font-geist-mono)] text-muted-foreground">
         <span>{count} jobs</span>
       </div>
     </span>
@@ -435,13 +522,10 @@ const JobCount = memo(function JobCount({ count, className }) {
 });
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, companies }) {
-  console.log(company); // name of selected company
-  console.log(companies); // array of companies {id, name, logo}
   if (!company) return null;
   if (!companies) return null;
   const companyObject = companies.find(c => c.name === company);
   if (!companyObject) return null;
-  console.log(companyObject); // object of selected company
 
   return (
     <div className="z-[100] max-w-[400px] mb-4 rounded-xl border border-emerald-700/20 bg-emerald-500/20 px-2 py-2">
@@ -486,19 +570,18 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
-
 export default function JobPostingsPage() {
-  const { user, authLoading } = useAuth();
+  const { user, loading, authLoading } = useAuth();
   const router = useRouter();
   const enabled = false;
 
   const [data, setData] = useState([]);
   const [title, setTitle] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
+  const [saved, setSaved] = useState(false);
   const [location, setLocation] = useState("");
   const [company, setCompany] = useState("");
   const [strictSearch, setStrictSearch] = useState(true);
-  const [applyJobPrefs, setApplyJobPrefs] = useState(true);
   const [count, setCount] = useState(0);
   const limit = 30;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -511,23 +594,41 @@ export default function JobPostingsPage() {
   const [companies, setCompanies] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const lastRequestRef = useRef(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
-  const predefinedQuestions = [
-    "How can I improve my resume?",
-    "What skills are in high demand?",
-    "How to prepare for a job interview?",
-  ];
+  // Add new state for tracking data freshness
+  const [dataTimestamp, setDataTimestamp] = useState(null);
 
-  useEffect(() => {
-    const currentParams = {
-      title,
-      experienceLevel,
-      location,
-      company,
-      currentPage
+  // Modify the data storage to include timestamp
+  const storeDataInSession = (data, page, params) => {
+    const timestamp = Date.now();
+    const storageData = {
+      data,
+      page,
+      params,
+      timestamp
     };
-    sessionStorage.setItem('jobSearchParams', JSON.stringify(currentParams));
-  }, [title, experienceLevel, location, company, currentPage]);
+
+    const { encrypted, key } = encryptData(storageData);
+    if (!encrypted || !key) return;
+
+    sessionStorage.setItem('jobListingsState', JSON.stringify({
+      data: encrypted,
+      key,
+      timestamp
+    }));
+    setDataTimestamp(timestamp);
+  };
+
+  // Add this function to check if stored data is still fresh (less than 10 mins old)
+  const isDataFresh = (timestamp) => {
+    const TEN_MINUTES = 10 * 60 * 1000;
+    return Date.now() - timestamp < TEN_MINUTES;
+  };
 
   const FilterPopover = ({ experienceLevel, location, company }) => {
     return (
@@ -589,12 +690,13 @@ export default function JobPostingsPage() {
                 </Suspense>
               </div>
 
-              {(title || experienceLevel || location || company) && (
+              {(title || experienceLevel || location || company || saved) && (
                 <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
                   setCompanyData([]);
                   setCompany("");
                   setTitle("");
                   setExperienceLevel("");
+                  setSaved(false);
                   setLocation("");
                   setCurrentPage(1);
                   router.push(`/job-postings`);
@@ -609,21 +711,122 @@ export default function JobPostingsPage() {
     );
   }
 
-  const fetchWithCancel = useCallback((url, options = {}) => {
-    const controller = new AbortController();
-    const signal = controller.signal;
+  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
+    const [activeTab, setActiveTab] = useState('all');
+    const router = useRouter();
 
-    const fetchData = async () => {
-      const response = await fetch(url, { ...options, signal });
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+    // Memoize the tab click handler
+    const handleTabClick = useCallback((searchId, criteria = null) => {
+      if (searchId === 'saved') {
+        // Handle saved jobs tab
+        setActiveTab('saved');
+        router.push('/job-postings?saved=true');
+        return;
       }
-      return response.json();
-    };
 
-    const promise = fetchData();
-    return { promise, controller };
-  }, []);
+      if (searchId === 'preferences') {
+        // Handle preferences tab
+        setActiveTab('preferences');
+        const params = new URLSearchParams({
+          title: user.jobPrefsTitle,
+          location: user.jobPrefsLocation,
+          explevel: user.jobPrefsLevel
+        });
+        router.push(`/job-postings?${params.toString()}`);
+        return;
+      }
+
+      if (searchId === 'all') {
+        // Handle all jobs tab
+        setActiveTab('all');
+        router.push('/job-postings');
+        return;
+      }
+
+      // Handle saved search tab
+      if (criteria) {
+        setActiveTab(searchId);
+        const params = new URLSearchParams({
+          ...(criteria.title && { title: criteria.title }),
+          ...(criteria.experienceLevel && { explevel: criteria.experienceLevel }),
+          ...(criteria.location && { location: criteria.location })
+        });
+        router.push(`/job-postings?${params.toString()}`);
+      }
+    }, [router]);
+
+    // Update active tab based on URL params
+    useEffect(() => {
+      if (currentSearchParams.saved) {
+        setActiveTab('saved');
+      } else if (!currentSearchParams.title && !currentSearchParams.explevel && !currentSearchParams.location) {
+        setActiveTab('all');
+      } else if (currentSearchParams.location === 'remote') {
+        setActiveTab('remote');
+      } else if (user && (user.jobPrefsTitle && user.jobPrefsTitle.includes(currentSearchParams.title) && user.jobPrefsLocation && user.jobPrefsLocation.includes(currentSearchParams.location) && user.jobPrefsLevel && user.jobPrefsLevel.includes(currentSearchParams.explevel))) {
+        setActiveTab('preferences');
+      }
+      else {
+        const matchingSavedSearch = savedSearches?.find(search => {
+          const criteria = search.search_criteria;
+          return (
+            criteria.title === currentSearchParams.title &&
+            criteria.experienceLevel === currentSearchParams.explevel &&
+            criteria.location === currentSearchParams.location
+          );
+        });
+        if (matchingSavedSearch) {
+          setActiveTab(matchingSavedSearch.id);
+        }
+      }
+    }, [currentSearchParams, savedSearches]);
+
+    return (
+      <Tabs value={activeTab}>
+        <TabsList className="bg-transparent p-0 mb-4">
+          <TabsTrigger
+            value="all"
+            onClick={() => handleTabClick('all')}
+            className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+          >
+            All
+          </TabsTrigger>
+
+          {!loading && user && (
+            <>
+              <TabsTrigger
+                value="preferences"
+                onClick={() => handleTabClick('preferences')}
+                className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+              >
+                <SparkleIcon size={16} strokeWidth={2} className="shrink-0" />
+              </TabsTrigger>
+            </>
+          )}
+
+
+          <TabsTrigger
+            value="remote"
+            onClick={() => handleTabClick('remote', { location: 'remote' })}
+            className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+          >
+            Remote
+          </TabsTrigger>
+
+          {savedSearches?.map((search) => (
+            <TabsTrigger
+              key={search.id}
+              value={search.id}
+              onClick={() => handleTabClick(search.id, search.search_criteria)}
+              className="h-8 data-[state=active]:bg-muted data-[state=active]:shadow-none"
+            >
+              {search.search_name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    );
+  }
 
   const resetCompanyData = () => {
     setCompanyData([]);
@@ -651,219 +854,29 @@ export default function JobPostingsPage() {
     }
   };
 
-  function JobPostingsPagination({ currentPage, count, limit }) {
-    const totalPages = Math.ceil(count / limit);
+  const fetchBookmarkedJobs = useCallback(async () => {
+    if (!user) return;
 
-    const handlePageChange = (pageNumber) => {
-      if (pageNumber >= 1 && pageNumber <= totalPages && pageNumber !== currentPage) {
-        //Scroll to the top of the page when a new page is presented
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth',
-        });
-        setPageLoading(true);
-        router.push(buildHref(pageNumber));
-      }
-    };
+    setDataLoading(true);
+    try {
+      const response = await fetch('/api/dashboard/bookmarked-jobs', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+        cache: 'force-cache',
+      });
 
-    return (
-      <Pagination>
-        <PaginationContent className="w-full justify-between">
-          <PaginationItem>
-            <PaginationLink
-              className={cn(
-                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
-                buttonVariants({
-                  variant: "outline",
-                }),
-              )}
-              href={buildHref(currentPage - 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(currentPage - 1);
-              }}
-              aria-label="Go to previous page"
-              aria-disabled={currentPage === 1}
-              role={currentPage === 1 ? "link" : undefined}
-            >
-              <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
-            </PaginationLink>
-          </PaginationItem>
-
-          <PaginationItem>
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-              Page <span className="text-foreground">{currentPage}</span> of{" "}
-              <span className="text-foreground">{totalPages}</span>
-            </p>
-          </PaginationItem>
-
-          <PaginationItem>
-            <PaginationLink
-              className={cn(
-                "aria-disabled:pointer-events-none aria-disabled:opacity-50",
-                buttonVariants({
-                  variant: "outline",
-                }),
-              )}
-              href={buildHref(currentPage + 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(currentPage + 1);
-              }}
-              aria-label="Go to next page"
-              aria-disabled={currentPage === totalPages}
-              role={currentPage === totalPages ? "link" : undefined}
-            >
-              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-            </PaginationLink>
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  }
-
-  function buildHref(pageNumber) {
-    const params = {
-      title,
-      explevel: experienceLevel,
-      location,
-      strictSearch,
-      company,
-      // We still include applyJobPrefs in the URL for consistency across pagination:
-      applyJobPrefs: applyJobPrefs.toString(),
-      page: pageNumber.toString()
-    };
-    const newParams = new URLSearchParams(params);
-    return `/job-postings?${newParams.toString()}`;
-  }
-
-  useEffect(() => {
-    if (!dataLoading) {
-      const cacheKey = `jobPostings_${currentPage}_${title}_${experienceLevel}_${location}_${company}_${strictSearch}_${applyJobPrefs}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheExpiry = 3 * 60 * 1000;
-      const now = Date.now();
-
-      const fetchControllers = [];
-      const cancelFetches = () => {
-        fetchControllers.forEach(controller => controller.abort());
-      };
-
-      async function fetchCompanies() {
-        try {
-          const result = fetchWithCancel(`/api/companies`);
-          fetchControllers.push(result.controller);
-          const companiesResult = await result.promise;
-          setCompanies(companiesResult || []);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching companies:", error);
-          }
-        }
-      }
-
-      fetchCompanies();
-
-      async function fetchCompanyData() {
-        try {
-          const result = fetchWithCancel(`/api/companies/${company}`);
-          fetchControllers.push(result.controller);
-          const companyDataResult = await result.promise;
-          setCompanyData(companyDataResult);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching company data:", error);
-          }
-        }
-      }
-      if (company) {
-        fetchCompanyData();
-      }
-
-      const isCacheValid = (key) => {
-        const cacheTimestamp = sessionStorage.getItem(`${key}_timestamp`);
-        return cacheTimestamp && now - parseInt(cacheTimestamp, 10) < cacheExpiry;
-      };
-
-      async function fetchData() {
-        try {
-          setPageLoading(true);
-          const result = fetchWithCancel(
-            `/api/job-postings?page=${currentPage}&limit=${limit}&title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${user?.token}`,
-              },
-            }
-          );
-          fetchControllers.push(result.controller);
-          const dataResult = await result.promise;
-          setData(dataResult.jobPostings || []);
-          sessionStorage.setItem(cacheKey, JSON.stringify(dataResult.jobPostings));
-          sessionStorage.setItem(`${cacheKey}_timestamp`, now);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching job postings:", error);
-          }
-        } finally {
-          setPageLoading(false);
-        }
-      }
-
-      async function fetchJobCount() {
-        try {
-          const result = fetchWithCancel(
-            `/api/job-postings/count?title=${encodeURIComponent(title)}&experienceLevel=${encodeURIComponent(experienceLevel)}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&strictSearch=${strictSearch}&applyJobPrefs=${applyJobPrefs}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${user?.token}`,
-              },
-            }
-          );
-          fetchControllers.push(result.controller);
-          const countResult = await result.promise;
-          setCount(countResult.totalJobs || 0);
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error("Error fetching job count:", error);
-          }
-        }
-      }
-
-      if (isCacheValid(cacheKey) && cachedData) {
-        try {
-          const parsedData = JSON.parse(cachedData);
-          setData(parsedData);
-          setPageLoading(false);
-          fetchJobCount();
-        } catch (error) {
-          console.error("Error parsing cached job postings:", error);
-          fetchData();
-          fetchJobCount();
-        }
-      } else {
-        fetchData();
-        fetchJobCount();
-      }
-
-      return () => {
-        cancelFetches();
-      };
+      if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
+      const bookmarkedJobs = await response.json();
+      setData(bookmarkedJobs);
+      setCount(bookmarkedJobs.length);
+    } catch (err) {
+      console.error('Error fetching bookmarked jobs:', err);
+    } finally {
+      setDataLoading(false);
+      setPageLoading(false);
     }
-  }, [
-    user,
-    authLoading,
-    dataLoading,
-    currentPage,
-    title,
-    experienceLevel,
-    location,
-    company,
-    strictSearch,
-    applyJobPrefs,
-    fetchWithCancel
-  ]);
+  }, [user]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -871,6 +884,7 @@ export default function JobPostingsPage() {
         headers: {
           'Authorization': `Bearer ${user.token}`,
         },
+        cache: 'force-cache',
       })
         .then(response => response.json())
         .then(data => setSavedSearches(data.savedSearches))
@@ -880,19 +894,29 @@ export default function JobPostingsPage() {
 
   const applySavedSearch = (searchParamsStr) => {
     const params = JSON.parse(searchParamsStr);
-    const newTitle = params.jobTitle || '';
-    const newExp = params.explevel || '';
+    const newTitle = params.jobTitle || params.title || '';
+    const newExp = params.explevel || params.experienceLevel || '';
     const newLoc = params.location || '';
+    const saved = params.saved || false;
+
+    if (saved) {
+      const newUrl = `/job-postings?saved=true`;
+      if (newUrl !== router.asPath) {
+        router.push(newUrl);
+      }
+      return;
+    }
     setTitle(newTitle);
     setExperienceLevel(newExp);
     setLocation(newLoc);
     setCurrentPage(1);
 
     const newParams = {
-      title: newTitle,
-      explevel: newExp,
-      location: newLoc,
-      page: '1'
+      ...(newTitle && { title: newTitle }),
+      ...(newExp && { explevel: newExp }),
+      ...(newLoc && { location: newLoc }),
+      page: '1',
+      saved: false,
     };
     const qs = new URLSearchParams(newParams).toString();
     const newUrl = `/job-postings?${qs}`;
@@ -901,20 +925,18 @@ export default function JobPostingsPage() {
     }
   };
 
-  const handleSearch = useCallback(
+  const handleTitleSearch = useCallback(
     (val) => {
       if (val !== title) {
         setTitle(val);
         setCurrentPage(1);
         const params = {
+          ...Object.fromEntries(new URLSearchParams(window.location.search)),
           title: val,
-          explevel: experienceLevel,
-          location,
-          company,
-          strict: strictSearch,
-          applyJobPrefs: applyJobPrefs.toString(),
           page: '1'
         };
+        // Remove empty params
+        Object.keys(params).forEach(key => !params[key] && delete params[key]);
         const newParams = new URLSearchParams(params);
         const newUrl = `/job-postings?${newParams.toString()}`;
         if (newUrl !== router.asPath) {
@@ -922,7 +944,29 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [experienceLevel, location, company, router, title, strictSearch, applyJobPrefs]
+    [router, title]
+  );
+
+  const handleLocationSearch = useCallback(
+    (val) => {
+      if (val !== location) {
+        setLocation(val);
+        setCurrentPage(1);
+        const params = {
+          ...Object.fromEntries(new URLSearchParams(window.location.search)),
+          location: val,
+          page: '1'
+        };
+        // Remove empty params
+        Object.keys(params).forEach(key => !params[key] && delete params[key]);
+        const newParams = new URLSearchParams(params);
+        const newUrl = `/job-postings?${newParams.toString()}`;
+        if (newUrl !== router.asPath) {
+          router.push(newUrl);
+        }
+      }
+    },
+    [router, location]
   );
 
   const handleSaveSearch = async () => {
@@ -952,90 +996,6 @@ export default function JobPostingsPage() {
     } catch (error) {
       console.error('Error saving search:', error);
       // toast destructive if needed
-    }
-  };
-
-  const handlePredefinedQuestion = async (question) => {
-    if (!user) return;
-
-    if (!userProfile) {
-      setLlmResponse("Loading user profile...");
-      return;
-    }
-
-    const technicalSkills = userProfile.user.technical_skills || 'None specified';
-    const softSkills = userProfile.user.soft_skills || 'None specified';
-    const otherSkills = userProfile.user.other_skills || 'None specified';
-
-    const systemMessage = {
-      role: "system",
-      content: `
-You are a helpful career assistant. You are talking to ${userProfile.user.username}.
-Here is their profile:
-
-### Professional Summary
-${userProfile.user.professionalSummary || 'No summary available.'}
-
-### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.companyName}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-- **Location**: ${exp.location || 'Not specified'}
-- **Description**: ${exp.description || 'No description available'}
-- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'
-        }
-
-### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-- **Grade**: ${edu.grade || 'Not specified'}
-- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'
-        }
-
-### Skills
-- **Technical Skills**: ${technicalSkills}
-- **Soft Skills**: ${softSkills}
-- **Other Skills**: ${otherSkills}
-
-### Job Preferences
-- **Desired Job Title**: ${userProfile.user.desired_job_title || 'Not specified'}
-- **Preferred Location**: ${userProfile.user.desired_location || 'Any location'}
-- **Preferred Salary**: $${userProfile.user.jobPreferredSalary || 'Not specified'}
-- **Employment Type**: ${userProfile.user.employment_type || 'Not specified'}
-- **Preferred Industries**: ${userProfile.user.preferred_industries || 'Not specified'}
-- **Willing to Relocate**: ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
-
-Please provide relevant career advice and job search assistance based on their profile.
-      `,
-    };
-
-    const userMessage = { role: "user", content: question };
-    const newMessages = [systemMessage, userMessage];
-    setLlmResponse("Loading...");
-
-    try {
-      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "qwen2-0.5b-instruct",
-          messages: newMessages,
-          temperature: 0.7,
-          max_tokens: 500,
-          stream: false,
-        }),
-      });
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || "No response.";
-      setLlmResponse(content);
-    } catch (error) {
-      console.error("Error fetching LLM response:", error);
-      setLlmResponse("Failed to get a response. Please try again.");
     }
   };
 
@@ -1108,50 +1068,13 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="relative">
           <Input
             id="input-26"
-            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
-            placeholder={userPreferredTitle && applyJobPrefs ? `Showing jobs for ${userPreferredTitle}` : "Search for a job title"}
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
+            placeholder={"Search for a job title"}
             onKeyDown={handleKeyDown}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
           />
-          <Suspense fallback={<div>Loading...</div>}>
-            {user && (
-              <div className="absolute top-1/2 -translate-y-1/2 right-10 mr-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // Toggle job prefs and push new URL, same style as title/experience
-                    const newValue = !applyJobPrefs;
-                    setApplyJobPrefs(newValue);
-                    setCurrentPage(1);
-                    const params = {
-                      title,
-                      explevel: experienceLevel,
-                      location,
-                      company,
-                      strict: strictSearch,
-                      applyJobPrefs: newValue.toString(),
-                      page: '1'
-                    };
-                    const newParams = new URLSearchParams(params);
-                    const newUrl = `/job-postings?${newParams.toString()}`;
-                    if (newUrl !== router.asPath) {
-                      router.push(newUrl);
-                    }
-                  }}
-                  className={cn(
-                    "relative h-8 w-8 rounded-lg",
-                    applyJobPrefs &&
-                    "text-blue-600 bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-600/30 dark:text-blue-300"
-                  )}
-                >
-                  <SparkleIcon size={14} className="" />
-                </Button>
-              </div>
-            )}
-          </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
               <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
@@ -1167,14 +1090,10 @@ Please provide relevant career advice and job search assistance based on their p
     );
   }
 
-  function LocationSearch({ location, setLocation, userPreferredLocation = "", applyJobPrefs }) {
+  function LocationSearch({ location, setLocation }) {
     const [searchValue, setSearchValue] = useState(location || "");
     const [timer, setTimer] = useState(null);
 
-    // if userPreferredLocation is an array, use the first element
-    if (Array.isArray(userPreferredLocation)) {
-      userPreferredLocation = userPreferredLocation[0];
-    }
 
     const handleInputChange = (e) => {
       const newValue = e.target.value;
@@ -1229,8 +1148,8 @@ Please provide relevant career advice and job search assistance based on their p
         <div className="relative">
           <Input
             id="input-26"
-            className="peer pr-24 z-1 ps-9 h-10 rounded-xl text-[16px]"
-            placeholder={userPreferredLocation && applyJobPrefs ? `Showing jobs in ${userPreferredLocation}` : "Search for a location"}
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
+            placeholder={"Search for a location"}
             type="search"
             value={searchValue}
             onChange={handleInputChange}
@@ -1246,25 +1165,6 @@ Please provide relevant career advice and job search assistance based on their p
 
   const MemoizedInput26 = memo(Input26);
   const MemoizedLocationSearch = memo(LocationSearch);
-  useEffect(() => {
-    async function fetchUserProfile() {
-      if (user) {
-        try {
-          const response = await fetch('/api/user/profile', {
-            headers: {
-              'Authorization': `Bearer ${user.token}`,
-            },
-          });
-          const profile = await response.json();
-          setUserProfile(profile);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      }
-    }
-
-    fetchUserProfile();
-  }, [user]);
 
   const activeFilters = [
     { label: 'Title', value: title },
@@ -1279,142 +1179,335 @@ Please provide relevant career advice and job search assistance based on their p
     : 'Job Postings';
 
 
+  const handleScroll = useCallback(() => {
+    if (!hasMore || dataLoading || isLoading) return;
+
+    const scrollPosition = window.innerHeight + document.documentElement.scrollTop;
+    const scrollThreshold = document.documentElement.offsetHeight - 800;
+
+    if (scrollPosition > scrollThreshold) {
+      setIsLoading(true); // Set loading state before incrementing page
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [hasMore, dataLoading, isLoading]);
+
+  useEffect(() => {
+    const throttledScrollHandler = throttle(handleScroll, 200); // Reduce throttle time
+    window.addEventListener('scroll', throttledScrollHandler);
+
+    return () => {
+      window.removeEventListener('scroll', throttledScrollHandler);
+      throttledScrollHandler.cancel();
+    };
+  }, [handleScroll]);
+
+  const isFirstRenderRef = useRef(true);
+
+  useEffect(() => {
+    let isFirstRender = true;
+    const controller = new AbortController();
+    lastRequestRef.current = controller;
+
+    async function storeResponseInLocalStorage(route_location, route_response) {
+      try {
+        // Purge old data from localStorage
+        Object.keys(localStorage).forEach(key => {
+          try {
+            const item = JSON.parse(localStorage.getItem(key));
+            if (item.timestamp && Date.now() - item.timestamp > 60 * 60 * 1000) { // 1 hour
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            // Skip non-JSON items
+          }
+        });
+
+        const compressed = await compressData(route_response);
+        if (!compressed) return;
+
+        const { encrypted, key } = encryptData(compressed);
+        if (!encrypted || !key) return;
+
+        localStorage.setItem(route_location, JSON.stringify({
+          data: encrypted,
+          key,
+          compressed: true,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          // console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
+        } else {
+          console.error("Error storing encrypted response in local storage:", error);
+        }
+      }
+    }
+
+    async function isDataInLocalStorage(route_location) {
+      try {
+        const storedData = localStorage.getItem(route_location);
+        if (!storedData) return null;
+
+        const { data: encrypted, key, compressed, timestamp } = JSON.parse(storedData);
+        if (!encrypted || !key) return null;
+
+        // Check if data is older than 1 hour
+        if (Date.now() - timestamp > 60 * 60 * 1000) {
+          localStorage.removeItem(route_location);
+          return null;
+        }
+
+        const decrypted = decryptData(encrypted, key);
+        if (!decrypted) return null;
+
+        return compressed ? await decompressData(decrypted) : decrypted;
+      } catch (error) {
+        console.error("Error checking encrypted local storage:", error);
+        return null;
+      }
+    }
+
+    async function fetchData() {
+      if (currentPage === 1) {
+        setData([]);
+        setInitialLoading(true);
+      }
+      setDataLoading(true);
+
+      try {
+        if (saved) {
+          await fetchBookmarkedJobs();
+          return;
+        }
+
+        const params = buildQueryParams();
+        const route = `/api/job-postings?${params.toString()}`;
+        const cachedData = await isDataInLocalStorage(route);
+
+        if (isCacheValid(cachedData)) {
+          // Check for cached data from multiple pages
+          const cachedPages = [];
+          let pageNum = 1;
+
+          while (true) {
+            const pageParams = new URLSearchParams(params);
+            pageParams.set('page', pageNum.toString());
+            const pageRoute = `/api/job-postings?${pageParams.toString()}`;
+            const pageData = await isDataInLocalStorage(pageRoute);
+
+            if (!pageData || !isCacheValid(pageData)) {
+              break;
+            }
+
+            cachedPages.push(...pageData.jobPostings);
+            if (!pageData.hasMore) break;
+            pageNum++;
+          }
+
+          setData(cachedPages);
+          setHasMore(cachedPages.length >= pageNum * limit);
+          setCurrentPage(pageNum);
+        } else {
+          const jobData = await fetchJobData(route, params);
+          await storeResponseInLocalStorage(route, jobData);
+          updateJobDataState(jobData);
+        }
+
+        if (currentPage === 1) {
+          fetchAdditionalData(params);
+        }
+
+        setDataLoading(false);
+      } catch (err) {
+        if (err.name !== "AbortError") console.error("Error:", err);
+      } finally {
+        setInitialLoading(false);
+        setIsLoading(false);
+      }
+    }
+
+    function buildQueryParams() {
+      return new URLSearchParams({
+        ...(title || user?.jobPrefsTitle ? { title: title || user?.jobPrefsTitle[0] } : {}),
+        ...(experienceLevel && { experienceLevel }),
+        ...(location || user?.jobPrefsLocation ? { location: (location || user?.jobPrefsLocation[0] || '').toLowerCase() } : {}),
+        ...(company && { company }),
+        strictSearch,
+        page: currentPage.toString(),
+        limit: limit.toString()
+      });
+    }
+
+    function isCacheValid(cachedData) {
+      return cachedData && Date.now() - cachedData.timestamp < 15 * 60 * 1000;
+    }
+
+    async function fetchJobData(route, params) {
+      const response = await fetch(route, {
+        signal: controller.signal,
+        cache: 'force-cache',
+      });
+      if (!response.ok) throw new Error("Network response was not ok");
+      const data = await response.json();
+      data.timestamp = Date.now();
+      data.hasMore = data.jobPostings.length === limit;
+      return data;
+    }
+
+    function updateJobDataState(jobData) {
+      const newJobs = jobData?.jobPostings || [];
+      setHasMore(newJobs.length === limit);
+      setData(prevData => {
+        if (currentPage === 1) {
+          return newJobs;
+        }
+        const existingIds = new Set(prevData.map(job => job.id));
+        const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
+        return [...prevData, ...uniqueNewJobs];
+      });
+    }
+
+    function fetchAdditionalData(params) {
+      Promise.all([
+        fetch(`/api/job-postings/count?${params.toString()}`, { cache: 'force-cache' }),
+        fetch(`/api/companies`, { cache: 'force-cache' })
+      ])
+        .then(([countRes, compRes]) => Promise.all([countRes.json(), compRes.json()]))
+        .then(([countData, companiesData]) => {
+          console.log(countData);
+          setCount(countData?.count || countData.totalJobs || 0);
+          setCompanies(companiesData || []);
+        })
+        .catch(console.error);
+    }
+
+    const restoreFromSession = () => {
+      try {
+        const storedState = sessionStorage.getItem('jobListingsState');
+        if (!storedState) return false;
+
+        const { data: storedData, page, params, timestamp } = JSON.parse(storedState);
+        console.log(storedData);
+        console.log('ATTEMPTING TO RESTORE SESSION DATA');
+
+        // Check if data is still fresh
+        if (!isDataFresh(timestamp)) {
+          sessionStorage.removeItem('jobListingsState');
+          return false;
+        }
+
+        // Check if params match current state
+        if (
+          params.title === title &&
+          params.experienceLevel === experienceLevel &&
+          params.location === location &&
+          params.company === company &&
+          params.saved === saved
+        ) {
+          console.log('Restoring from session');
+          setData(storedData);
+          console.log(storedData);
+          return true;
+        }
+      } catch (error) {
+        console.error('Error restoring session data:', error);
+        sessionStorage.removeItem('jobListingsState');
+      }
+      return false;
+    };
+
+
+
+    fetchData();
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    user,
+    authLoading,
+    currentPage,
+    title,
+    experienceLevel,
+    location,
+    company,
+    strictSearch,
+    saved,
+    fetchBookmarkedJobs
+  ]);
+
+  // Clear stored data when search parameters change
+  useEffect(() => {
+    if (currentPage === 1) {
+      sessionStorage.removeItem('jobListingsState');
+      setDataTimestamp(null);
+    }
+  }, [title, experienceLevel, location, company, saved]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      sessionStorage.setItem('jobListingsScrollPos', window.scrollY.toString());
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Also save on page hide (mobile browsers)
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, []);
+
+
+
   return (
     <>
-      <title>{`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | ${count} jobs`}</title>
-      <meta name="description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
-      <meta name="robots" content="index, follow" />
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content={`junera ${title ? `| ${title}` : ''} ${location ? `in ${location}` : ''} ${company ? `at ${company}` : ''} | jobs`} />
-      <meta property="og:description" content={`Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through job listings and apply today!`} />
-      <meta property="og:url" content={`https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "JobPosting",
-            "mainEntityOfPage": {
-              "@type": "WebPage",
-              "@id": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
-            },
-            "name": `${title || 'junera'} ${location ? `in ${location}` : ''} ${company ? `at ${company} | jobs` : ''}`,
-            "description": `Find ${title || ''} jobs ${location ? 'in ' + location : ''} ${company ? 'at ' + company : ''}. Browse through our comprehensive job listings.`,
-            "datePosted": new Date().toISOString(),
-            "jobLocation": {
-              "@type": "Place",
-              "address": {
-                "@type": "PostalAddress",
-                "addressRegion": location || "Multiple Locations"
-              }
-            },
-            "hiringOrganization": company ? {
-              "@type": "Organization",
-              "name": company
-            } : undefined,
-            "employmentType": experienceLevel ? experienceLevel.toUpperCase() : "FULL_TIME",
-            "numberOfPositions": count?.toString() || "multiple",
-            "applicationContact": {
-              "@type": "ContactPoint",
-              "contactType": "jobs",
-              "url": `https://junera.us/job-postings${title ? `?title=${title}` : ''}${experienceLevel ? `&experienceLevel=${experienceLevel}` : ''}${location ? `&location=${location}` : ''}${company ? `&company=${company}` : ''}`
-            }
-          }, null, 2),
-        }}
-      />
-      <div className="container mx-auto py-0 md:py-10 px-4 max-w-4xl sm:px-8 lg:px-0 overflow-x-hidden w-full max-w-full md:max-w-4xl">
+      <div className="container mx-auto py-0 p-6 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
             setExperienceLevel={setExperienceLevel}
             setLocation={setLocation}
             setCompany={setCompany}
+            setSaved={setSaved}
             setCurrentPage={setCurrentPage}
-            setApplyJobPrefs={setApplyJobPrefs}
           />
         </Suspense>
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-4">{headerTitle}</h1>
+              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">{headerTitle}</h1>
+              <p className="text-sm text-muted-foreground">
+                <small className="text-sm text-muted-foreground">
+                  {count} results
+                </small>
+              </p>
 
-              {activeFilters.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {activeFilters.filter(filter => filter.label !== 'Company').map(filter => (
-                    <Badge key={filter.label} variant="outline" className="flex items-center space-x-1 rounded-md px-2 py-1">
-                      <span className="font-medium">{filter.label}:</span>
-                      <span>{filter.value}</span>
-                      <button
-                        className="ml-1 inline-flex items-center justify-center rounded-full p-0.5 opacity-60 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        onClick={() => onRemoveFilter && onRemoveFilter(filter.type)}
-                        aria-label={`Remove ${filter.label} filter`}
-                      >
-                        <X size={14} strokeWidth={2} aria-hidden="true" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
 
-              {/* Optional: Display default suggestions when no filters are applied */}
-              {!activeFilters.length && (
-                <div className="flex flex-col space-y-2 text-sm text-gray-500">
-                  <div>Explore roles like Software Engineer</div>
-                  <div>Find opportunities at various experience levels</div>
-                  <div>Discover jobs in locations such as New York</div>
-                </div>
-              )}
             </div>
           </Suspense>
 
-
-          <Suspense>
-            <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
-          </Suspense>
-          <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedInput26 onSearch={handleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
-          </Suspense>
-          <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedLocationSearch location={location} setLocation={setLocation} userPreferredLocation={user?.jobPrefsLocation} applyJobPrefs={applyJobPrefs} />
-          </Suspense>
-
-          <Suspense fallback={<div>Loading...</div>}>
-            {user && (
-              <div className="flex w-full gap-3 justify-between items-center pb-2 md:pb-0 ">
-                <h3 className="text-sm text-muted-foreground font-medium">
-                  Saved Searches
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {count} results
-                </p>
-              </div>
-            )}
-          </Suspense>
-          {user && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <ScrollArea>
-                <div className="flex flex-row items-center gap-4 mb-3">
-                  {!dataLoading && user && savedSearches && savedSearches.length > 0 && (
-                    savedSearches.map((search) => (
-                      <SavedSearchButton
-                        key={search.id}
-                        name={search.search_name}
-                        title={search.search_criteria.title}
-                        experienceLevel={search.search_criteria.experienceLevel}
-                        location={search.search_criteria.location}
-                      />
-                    ))
-                  )}
-                  {user && (
-                    <Button variant="ghost" type="button" size="smicon" onClick={userSavedSearches}>
-                      <Plus size={16} strokeWidth={1.5} />
-                    </Button>
-                  )}
-                </div>
-                <ScrollBar className="w-full" />
-              </ScrollArea>
+          {company && (
+            <Suspense>
+              <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
             </Suspense>
           )}
+          <Suspense fallback={<div>Loading...</div>}>
+            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
+          </Suspense>
+
+          <TabComponent
+            savedSearches={savedSearches}
+            applySavedSearch={applySavedSearch}
+            currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
+          />
+
+
         </div>
 
         <Suspense fallback={<div>Loading...</div>}>
@@ -1431,41 +1524,8 @@ Please provide relevant career advice and job search assistance based on their p
           )}
 
 
-          {llmResponse && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <div className="mb-6 p-4 border rounded-md bg-gray-100">
-                <div dangerouslySetInnerHTML={{ __html: llmResponse }} />
-              </div>
-            </Suspense>
-          )}
-
           <div>
-            {pageLoading ? (
-              <div className="space-y-4">
-                {[...Array(limit)].map((_, i) => (
-                  <div key={i} className="p-4 border rounded-lg animate-pulse">
-                    <div className="h-6 bg-accent rounded w-3/4 mb-2"></div>
-                    <div className="h-4 bg-accent rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : data && data.length > 0 ? (
-              <div key="job-postings">
-                <JobList data={data} loading={pageLoading} error={null} />
-              </div>
-            ) : (
-              <p>No job postings found. Adjust your search criteria.</p>
-            )}
-          </div>
-
-          <div className="flex justify-between mt-4">
-            <Suspense fallback={<div>Loading...</div>}>
-              <JobPostingsPagination
-                currentPage={currentPage}
-                count={count}
-                limit={limit}
-              />
-            </Suspense>
+            <JobList data={data} loading={dataLoading} error={null} />
           </div>
         </Suspense>
       </div>

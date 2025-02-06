@@ -8,7 +8,7 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   images: {
     domains: ['corestore.blob.core.windows.net', 'logo.clearbit.com'],
-  },
+  }
 };
 
 module.exports = withPWA(nextConfig);

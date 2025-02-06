@@ -30,7 +30,7 @@ export default function SavedPage() {
 
                     if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
                     const data = await response.json();
-                    setBookmarkedJobs(data.bookmarkedJobs);
+                    setBookmarkedJobs(data);
                 } catch (err) {
                     setError(err.message);
                 } finally {
@@ -51,8 +51,15 @@ export default function SavedPage() {
     }
 
     return (
-        <div className="container mx-auto py-10 px-4 max-w-4xl">
-            <h1 className="text-3xl font-bold mb-6">Saved Jobs</h1>
+        <div className="container mx-auto px-4 max-w-4xl">
+            <section className="mb-4">
+                <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
+                    Saved
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                    View all the jobs you&apos;ve saved for later. Click on a job to view more details.
+                </p>
+            </section>
             <BookmarkedJobs
                 jobs={bookmarkedJobs}
                 loading={loading}

@@ -18,7 +18,8 @@ export async function GET(request) {
     console.log('Fetching bookmarked jobs for user:', userId);
 
     // Check cache first - now properly awaited and using userId
-    const cachedBookmarkedJobs = await getCached('bookmarked-jobs', userId);
+    const cacheKey = `bookmarked-jobs:${userId}`;
+    const cachedBookmarkedJobs = await getCached(cacheKey);
     if (cachedBookmarkedJobs) {
       console.log('Cache hit for user:', userId);
       return NextResponse.json(cachedBookmarkedJobs);
@@ -52,7 +53,7 @@ export async function GET(request) {
     }));
 
     // Cache the results with userId instead of token
-    await setCached('bookmarked-jobs', userId, bookmarkedJobs, 300); // 5 minute TTL
+    await setCached(cacheKey, bookmarkedJobs, 300);
 
     return NextResponse.json(bookmarkedJobs);  // Return directly without nesting
   } catch (error) {

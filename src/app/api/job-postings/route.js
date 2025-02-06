@@ -11,6 +11,60 @@ import jwt from 'jsonwebtoken';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
+const stateMap = {
+  'remote': 'N/A',
+  'alabama': 'AL',
+  'alaska': 'AK',
+  'arizona': 'AZ',
+  'arkansas': 'AR',
+  'california': 'CA',
+  'colorado': 'CO',
+  'connecticut': 'CT',
+  'delaware': 'DE',
+  'florida': 'FL',
+  'georgia': 'GA',
+  'hawaii': 'HI',
+  'idaho': 'ID',
+  'illinois': 'IL',
+  'indiana': 'IN',
+  'iowa': 'IA',
+  'kansas': 'KS',
+  'kentucky': 'KY',
+  'louisiana': 'LA',
+  'maine': 'ME',
+  'maryland': 'MD',
+  'massachusetts': 'MA',
+  'michigan': 'MI',
+  'minnesota': 'MN',
+  'mississippi': 'MS',
+  'missouri': 'MO',
+  'montana': 'MT',
+  'nebraska': 'NE',
+  'nevada': 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  'ohio': 'OH',
+  'oklahoma': 'OK',
+  'oregon': 'OR',
+  'pennsylvania': 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  'tennessee': 'TN',
+  'texas': 'TX',
+  'utah': 'UT',
+  'vermont': 'VT',
+  'virginia': 'VA',
+  'washington': 'WA',
+  'west virginia': 'WV',
+  'wisconsin': 'WI',
+  'wyoming': 'WY',
+};
+
 // Utility function to scan keywords
 function scanKeywords(text) {
   if (!text) return [];
@@ -65,123 +119,123 @@ function extractSalary(text) {
 
   // Step 3: Normalize HTML entities and special characters
   const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
-    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
-    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
+    .replace(/\u00a0/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .trim();
 
-  // Define regex patterns
+  // Define regex patterns in order of priority
   const patterns = [
-    // 1. Salary ranges with dashes (e.g., "$128,000—$152,000 USD")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+    // New pattern to match decimal hourly ranges without a suffix (e.g. "$30.94 - $47.77")
+    /\$\s*(\d+(?:\.\d+)?)\s*[-–—]\s*\$\s*(\d+(?:\.\d+)?)/gi,
+    // 1. Hourly rates (highest priority)
+    /\$\s*(\d+\.?\d*)\s*(per\s*hour|hourly|per\s*hr|hr|h|\/ hour|\/hour|\/hr)\b/gi,
 
-    // 2. Salary ranges with 'to' wording (e.g., "$35,000 to $45,000 per year")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 3. k-based salary ranges (e.g., "$100k—$120k")
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 4. Hourly ranges (e.g., "55/hr - 65/hr")
+    // 2. Hourly ranges
     /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
 
-    // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
+    // 3. Salary ranges with dashes
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+
+    // 4. Salary ranges with 'to' wording
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+
+    // 5. k-based salary ranges
+    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
+
+    // 6. Monthly salaries
     /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
 
-    // **6. Single salary mentions with 'per hour' or similar (e.g., "$35.00 per hour")**
-    /\$\s*\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(per\s*hour|hourly|per\s*hr|hr|h)\b/gi,
-
-    // 7. Single salary mentions (e.g., "$85,000")
+    // 7. Single salary mentions (lowest priority)
     /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
   ];
 
-  let matchesWithDollar = [];
-  let matchesWithoutDollar = [];
-
-  // Iterate through each pattern and collect matches
+  // Find the first match in order of priority
   for (const pattern of patterns) {
-    const matches = Array.from(normalizedText.matchAll(pattern));
-    for (const match of matches) {
-      if (pattern.source.includes('\\$')) {
-        // Patterns that require '$' are stored in matchesWithDollar
-        matchesWithDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      } else {
-        // Patterns that do NOT require '$' are stored in matchesWithoutDollar
-        matchesWithoutDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      }
+    const matches = normalizedText.match(pattern);
+    if (matches && matches.length > 0) {
+      return matches[0].trim();
     }
   }
 
-  // Function to find the match with the highest index
-  const getLastMatch = (matches) => {
-    return matches.reduce((prev, current) => {
-      return (prev.index > current.index) ? prev : current;
-    }, matches[0]);
-  };
-
-  // Prioritize matches with '$'
-  if (matchesWithDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithDollar);
-    return lastMatch.text;
-  }
-  // If no matches with '$', consider matches without '$'
-  else if (matchesWithoutDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithoutDollar);
-    return lastMatch.text;
-  }
-
-  // Return empty string if no matches found
   return "";
 }
-
 // Add shared utility functions at the top of the file
 const processJobPostings = (jobs) => {
   return jobs.map((job) => {
-    const keywords = scanKeywords(job.description);
-    const remoteKeyword = job.location?.toLowerCase().includes('remote') ? 'Remote' : "";
-    const salary = extractSalary(job.description);
+    const keywords = scanKeywords(job.description || "");
+    const remoteKeyword = (job.location || "").toLowerCase().includes('remote') ? 'Remote' : "";
+    const salary = extractSalary(job.description || "");
 
     return {
-      id: job.job_id,
+      id: job.job_id || "",
       title: job.title || "",
       company: job.company || "",
-      companyLogo: `https://logo.clearbit.com/${encodeURIComponent(job.company?.replace('.com', ''))}.com`,
+      companyLogo: job.company ? `https://logo.clearbit.com/${encodeURIComponent(job.company.replace('.com', ''))}.com` : "",
       experienceLevel: job.experiencelevel || "",
-      description: job.description || "",
+      summary: job.summary || "",
+      description: "",
       location: job.location || "",
-      salary: salary,
+      salary: salary || "",
       postedDate: job.created_at ? job.created_at.toISOString() : "",
-      remoteKeyword: remoteKeyword,
-      keywords: keywords,
+      remoteKeyword: remoteKeyword || "",
+      keywords: keywords || [],
     };
   });
 };
 
+// Add query timeout error handling
+const QUERY_TIMEOUT_MS = 10000;
+
+// Add this function at the top
+const executeQueryWithTimeout = async (queryText, params) => {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('Query timeout'));
+    }, QUERY_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      query(queryText, params),
+      timeoutPromise
+    ]);
+  } catch (error) {
+    if (error.message === 'Query timeout') {
+      throw new Error('Query timed out');
+    }
+    throw error;
+  }
+};
+
 export async function GET(req) {
+  console.log('Fetching job postings...');
   const authHeader = req.headers.get('Authorization');
   let token = '';
   let user = null;
   let userPreferredTitles = [];
   let userPreferredLocations = [];
 
-  if (authHeader) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
-    if (token) {
+    if (token && token !== 'undefined' && token !== 'null') {
       try {
+        if (!SECRET_KEY) {
+          console.warn('SESSION_SECRET is not configured');
+          return;
+        }
         const decoded = jwt.verify(token, SECRET_KEY);
         user = decoded;
         userPreferredTitles = user.jobPrefsTitle || [];
         userPreferredLocations = user.jobPrefsLocation || [];
       } catch (error) {
-        console.error('Error decoding token:', error);
+        // Token verification failed, but we can continue without user preferences
+        console.debug('Token verification failed:', error.message);
+        user = null;
+        userPreferredTitles = [];
+        userPreferredLocations = [];
       }
     }
   }
@@ -196,8 +250,13 @@ export async function GET(req) {
   const strictParam = searchParams.get("strictSearch");
   const strict = strictParam !== 'false'; // default true
 
-  if (page < 1 || limit < 1) {
-    return Response.json({ error: "Invalid page or limit" }, { status: 400 });
+  // New: Sort parameter
+  const sortParam = searchParams.get("sort");
+  const allowedSortValues = ['relevancy', 'recent'];
+  const sort = allowedSortValues.includes(sortParam) ? sortParam : 'relevancy';
+
+  if (page < 1) {
+    return Response.json({ error: "Invalid page" }, { status: 400 });
   }
   if (limit > 50) {
     return Response.json({ error: "Limit exceeds maximum value" }, { status: 400 });
@@ -265,59 +324,6 @@ export async function GET(req) {
   // (If everything is empty, titleGroup will just be [])
 
   // State name -> abbreviation
-  const stateMap = {
-    'remote': 'N/A',
-    'alabama': 'AL',
-    'alaska': 'AK',
-    'arizona': 'AZ',
-    'arkansas': 'AR',
-    'california': 'CA',
-    'colorado': 'CO',
-    'connecticut': 'CT',
-    'delaware': 'DE',
-    'florida': 'FL',
-    'georgia': 'GA',
-    'hawaii': 'HI',
-    'idaho': 'ID',
-    'illinois': 'IL',
-    'indiana': 'IN',
-    'iowa': 'IA',
-    'kansas': 'KS',
-    'kentucky': 'KY',
-    'louisiana': 'LA',
-    'maine': 'ME',
-    'maryland': 'MD',
-    'massachusetts': 'MA',
-    'michigan': 'MI',
-    'minnesota': 'MN',
-    'mississippi': 'MS',
-    'missouri': 'MO',
-    'montana': 'MT',
-    'nebraska': 'NE',
-    'nevada': 'NV',
-    'new hampshire': 'NH',
-    'new jersey': 'NJ',
-    'new mexico': 'NM',
-    'new york': 'NY',
-    'north carolina': 'NC',
-    'north dakota': 'ND',
-    'ohio': 'OH',
-    'oklahoma': 'OK',
-    'oregon': 'OR',
-    'pennsylvania': 'PA',
-    'rhode island': 'RI',
-    'south carolina': 'SC',
-    'south dakota': 'SD',
-    'tennessee': 'TN',
-    'texas': 'TX',
-    'utah': 'UT',
-    'vermont': 'VT',
-    'virginia': 'VA',
-    'washington': 'WA',
-    'west virginia': 'WV',
-    'wisconsin': 'WI',
-    'wyoming': 'WY',
-  };
 
   // Reverse map abbr -> full name
   const abbrMap = {};
@@ -341,7 +347,7 @@ export async function GET(req) {
   }
 
   // Prepare caching
-  const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}`;
+  const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}:sort-${sort}`;
   const timings = {};
   const overallStart = performance.now();
 
@@ -350,19 +356,28 @@ export async function GET(req) {
       throw new Error('Request aborted');
     }
 
-    // Check the cache first
+    // Create cache key based on search parameters
+    const cacheKeyObject = {
+      page,
+      limit,
+      title,
+      location,
+      company,
+      experienceLevel,
+      strict,
+      sort,
+      applyJobPrefs: applyJobPrefs ? true : false // don't include actual prefs in key
+    };
+    const cacheKeyString = JSON.stringify(cacheKeyObject);
+
+    // Only use user-specific caching if we're applying job preferences
+    const cacheKey = applyJobPrefs ? `${cacheKeyString}:user:${user?.id}` : cacheKeyString;
+
+    // Check cache
     const cachedData = await getCached(cacheKey);
     if (cachedData) {
-      const parsedData =
-        typeof cachedData === 'string' ? JSON.parse(cachedData) : cachedData;
-      return Response.json(
-        {
-          jobPostings: parsedData.jobPostings,
-          timings: { ...parsedData.timings, fromCache: true },
-          ok: true,
-        },
-        { status: 200 }
-      );
+      console.log('Cache hit for key:', cacheKey);
+      return Response.json(JSON.parse(cachedData), { status: 200 });
     }
 
     // For building query
@@ -379,10 +394,11 @@ export async function GET(req) {
         job_id,
         title,
         company,
-        location,
         description,
+        location,
         experiencelevel,
-        created_at
+        created_at,
+        summary
     `;
 
     //
@@ -515,127 +531,55 @@ export async function GET(req) {
       WHERE 1 = 1
     `;
 
-    //
-    // Strict vs. Non-Strict Filtering
-    //
-    // The difference is whether we chain conditions by AND or by OR.
-    //
-    if (strict) {
-      // Strict mode: all typed conditions must match
-      //  1) Title
-      //  2) Experience
-      //  3) Location
-      //  4) Company
+    // Build WHERE conditions
 
-      // For the Title:
-      // We build OR conditions for each item in titleGroup, then wrap them in parentheses
-      if (titleGroup.length > 0) {
-        const titleConditions = titleGroup.map((t, i) => {
-          const idx = paramIndex + i;
-          return `title_vector @@ to_tsquery('english', $${idx})`;
-        });
-        queryText += ` AND (${titleConditions.join(' OR ')})`;
-        filterParams.push(
-          ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
-        );
-        paramIndex += titleGroup.length;
-      }
-
-      // 2) Experience
-      if (experienceLevel) {
-        queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
-        filterParams.push(experienceLevel);
-        paramIndex++;
-      }
-
-      // 3) Location
-      if (locationSearchTerms.length > 0) {
-        const escapedTerms = locationSearchTerms.map((term) =>
-          term.replace(/'/g, "''")
-        );
-        const tsquery = escapedTerms
-          .map((term) =>
-            term.includes(' ') ? term.split(' ').join(' & ') : term
-          )
-          .join(' | ');
-        queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
-        filterParams.push(tsquery);
-        paramIndex++;
-      }
-
-      // 4) Company
-      if (company) {
-        queryText += ` AND company = $${paramIndex}`;
-        filterParams.push(company);
-        paramIndex++;
-      }
-
-      // order by relevance desc, then created_at desc
-      queryText += `
-        ORDER BY 
-          relevance DESC,
-          created_at DESC
-      `;
-    } else {
-      // Non-strict mode: ANY typed condition can match (OR).
-      const conditions = [];
-
-      // 1) Title
-      if (titleGroup.length > 0) {
-        const titleConditions = titleGroup.map((t, i) => {
-          const idx = paramIndex + i;
-          return `title_vector @@ to_tsquery('english', $${idx})`;
-        });
-        conditions.push(`(${titleConditions.join(' OR ')})`);
-        filterParams.push(
-          ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
-        );
-        paramIndex += titleGroup.length;
-      }
-
-      // 2) Experience
-      if (experienceLevel) {
-        conditions.push(`LOWER(experiencelevel) = $${paramIndex}`);
-        filterParams.push(experienceLevel);
-        paramIndex++;
-      }
-
-      // 3) Location
-      if (locationSearchTerms.length > 0) {
-        const escapedTerms = locationSearchTerms.map((term) =>
-          term.replace(/'/g, "''")
-        );
-        const tsquery = escapedTerms
-          .map((term) =>
-            term.includes(' ') ? term.split(' ').join(' & ') : term
-          )
-          .join(' | ');
-        conditions.push(`location_vector @@ to_tsquery('simple', $${paramIndex})`);
-        filterParams.push(tsquery);
-        paramIndex++;
-      }
-
-      // 4) Company
-      if (company) {
-        conditions.push(`company = $${paramIndex}`);
-        filterParams.push(company);
-        paramIndex++;
-      }
-
-      // If we have typed conditions, combine them into a single OR block
-      if (conditions.length > 0) {
-        queryText += ` AND (${conditions.join(' OR ')})`;
-      }
-
-      // Then order by relevance + created_at
-      queryText += `
-        ORDER BY
-          relevance DESC,
-          created_at DESC
-      `;
+    // 1) Title conditions
+    if (titleGroup.length > 0) {
+      const titleConditions = titleGroup.map((t, i) => {
+        const idx = paramIndex + i;
+        return `title_vector @@ to_tsquery('english', $${idx})`;
+      });
+      queryText += ` AND (${titleConditions.join(' OR ')})`;
+      filterParams.push(
+        ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
+      );
+      paramIndex += titleGroup.length;
     }
 
-    // Finally, add LIMIT / OFFSET
+    // 2) Experience Level - Always include null experience levels
+    if (experienceLevel) {
+      queryText += ` AND (LOWER(experiencelevel) = $${paramIndex} OR experiencelevel IS NULL)`;
+      filterParams.push(experienceLevel);
+      paramIndex++;
+    }
+
+    // 3) Location
+    if (locationSearchTerms.length > 0) {
+      const tsquery = locationSearchTerms
+        .map((term) =>
+          term.includes(' ') ? term.split(' ').join(' & ') : term
+        )
+        .join(' | ');
+      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
+      filterParams.push(tsquery);
+      paramIndex++;
+    }
+
+    // 4) Company
+    if (company) {
+      queryText += ` AND company = $${paramIndex}`;
+      filterParams.push(company);
+      paramIndex++;
+    }
+
+    // Order by relevance and recency
+    queryText += `
+      ORDER BY 
+        relevance DESC,
+        created_at DESC
+    `;
+
+    // Add LIMIT/OFFSET
     queryText += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1};`;
     params.push(...relevanceParams, ...filterParams, limit, offset);
 
@@ -644,7 +588,7 @@ export async function GET(req) {
     const queryExecStart = performance.now();
 
     // Execute query
-    const result = await query(queryText, params /*, { signal }*/);
+    const result = await executeQueryWithTimeout(queryText, params);
 
     const queryExecEnd = performance.now();
     timings.queryExecution = queryExecEnd - queryExecStart;
@@ -654,23 +598,96 @@ export async function GET(req) {
     // Process rows if needed
     const jobPostings = processJobPostings(result.rows);
 
-    // Cache only if result set is not too large
-    const responseData = { jobPostings, timings };
-    if (jobPostings.length <= 50) {
-      try {
-        await setCached(cacheKey, JSON.stringify(responseData), 300);
-      } catch (cacheError) {
-        console.warn('Failed to cache results:', cacheError);
-      }
+    // Cache the response - use different TTL based on whether it's user-specific
+    if (jobPostings.length > 0 && hasSearchCriteria) {
+      await setCached(
+        cacheKey,
+        null, // no need for user ID parameter anymore
+        JSON.stringify({ jobPostings, timings }),
+        applyJobPrefs ? 300 : 1800 // 5 mins for user-specific, 30 mins for general
+      );
     }
 
     const overallEnd = performance.now();
     timings.total = overallEnd - overallStart;
 
-    return Response.json({ jobPostings, timings, ok: true }, { status: 200 });
+    // Function to get jobs with relaxed filters
+    const getJobsWithRelaxedFilters = async (queryText, params, removedFilter) => {
+      // Create new arrays without the removed filter's parameters
+      const newParams = [...params];
+      const filterToRemove = removedFilter === 'title' ?
+        titleGroup.length : // Remove title parameters
+        1; // Remove single parameter for location
+
+      // Remove the filter's parameters
+      newParams.splice(
+        removedFilter === 'title' ?
+          relevanceParams.length : // Title params start after relevance params
+          relevanceParams.length + titleGroup.length, // Location params start after title params
+        filterToRemove
+      );
+
+      // Modify query text to remove the filter condition
+      const modifiedQuery = queryText.replace(
+        removedFilter === 'title' ?
+          /AND \(title_vector @@ to_tsquery\('english', \$\d+\)\)/ :
+          /AND location_vector @@ to_tsquery\('simple', \$\d+\)/,
+        ''
+      );
+
+      return await query(modifiedQuery, newParams);
+    };
+
+    try {
+      // First try with all filters
+      let result = await query(queryText, params);
+      let metadata = {
+        relaxedFilters: {
+          removedTitle: false,
+          removedLocation: false
+        },
+        hasMore: result.rows.length > 0
+      };
+
+      // If no results and we have filters to relax
+      if (result.rows.length === 0 && page === 1) {
+        // Try removing title first if it exists
+        if (title) {
+          console.log('Relaxing title filter...');
+          result = await getJobsWithRelaxedFilters(queryText, params, 'title');
+          metadata.relaxedFilters.removedTitle = true;
+        }
+        // If still no results and we have location, try removing that
+        if (result.rows.length === 0 && location) {
+          console.log('Relaxing location filter...');
+          result = await getJobsWithRelaxedFilters(queryText, params, 'location');
+          metadata.relaxedFilters.removedLocation = true;
+        }
+      }
+
+      const jobPostings = processJobPostings(result.rows);
+
+      return Response.json({
+        jobPostings,
+        metadata,
+        timings,
+        ok: true
+      }, { status: 200 });
+
+    } catch (error) {
+      console.error("Error fetching job postings:", error);
+      return Response.json({ error: "Error fetching job postings" }, { status: 500 });
+    }
+
   } catch (error) {
     if (error.message === 'Request aborted') {
       return Response.json({ error: 'Request was aborted', ok: false }, { status: 499 });
+    }
+    if (error.message === 'Query timed out') {
+      return Response.json({
+        error: 'Request timed out',
+        ok: false
+      }, { status: 408 });
     }
     console.error("Error fetching job postings:", error);
     const overallEnd = performance.now();
@@ -681,10 +698,6 @@ export async function GET(req) {
     );
   }
 }
-
-
-
-
 
 
 export async function PUT(req) {
@@ -740,4 +753,5 @@ export async function PUT(req) {
   }
 }
 
+// Force dynamic to ensure we check cache on each request
 export const dynamic = 'force-dynamic';

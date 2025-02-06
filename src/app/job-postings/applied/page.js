@@ -2,117 +2,150 @@
 import { useState, useEffect } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { JobList } from '@/components/JobPostings';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { LoaderCircle } from "lucide-react";
 
-function AppliedJobs({ jobs }) {
-  if (!Array.isArray(jobs)) {
-    return <p>No applied jobs found.</p>;
-  }
-
-  if (jobs.length === 0) {
-    return <p>You haven&apos;t applied to any jobs yet.</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {jobs.map((job) => (
-        <Link href={`/job-postings/${job.id}`} key={job.id}>
-          <div className="mb-4 group">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={job.companyLogo} alt={job.company} />
-                <AvatarFallback>{job.company?.[0]}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-foreground">{job.company}</span>
-            </div>
-
-            <div className="mt-1">
-              <h3 className="text-foreground font-medium group-hover:underline">
-                <span className="">{job.title}</span>
-                {job.location && <span className="text-muted-foreground text-sm"> in {job.location}</span>}
-              </h3>
-            </div>
-
-            <p className="text-muted-foreground text-xs mt-1">
-              Applied {formatDistanceToNow(new Date(job.appliedAt))} ago
-            </p>
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-export default function AppliedJobsPage() {
+export default function JobHistoryPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("applied");
+
+  // States for different job types
   const [appliedJobs, setAppliedJobs] = useState([]);
-  const [isFetching, setIsFetching] = useState(true);
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [viewedJobs, setViewedJobs] = useState([]);
+
+  // Loading states
+  const [isLoadingApplied, setIsLoadingApplied] = useState(true);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(true);
+  const [isLoadingViewed, setIsLoadingViewed] = useState(true);
+
+  // Error states
+  const [errorApplied, setErrorApplied] = useState(null);
+  const [errorSaved, setErrorSaved] = useState(null);
+  const [errorViewed, setErrorViewed] = useState(null);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
       } else {
-        async function fetchAppliedJobs() {
+        // Fetch applied jobs
+        const fetchAppliedJobs = async () => {
           try {
             const response = await fetch('/api/dashboard/applied-jobs', {
-              headers: {
-                'Authorization': `Bearer ${user.token}`
-              },
+              headers: { 'Authorization': `Bearer ${user.token}` },
             });
             const data = await response.json();
-            setAppliedJobs(data);
+            setAppliedJobs(data.appliedJobs || []);
           } catch (error) {
-            console.error("Error fetching applied jobs:", error);
+            setErrorApplied("Failed to load applied jobs");
           } finally {
-            setIsFetching(false);
+            setIsLoadingApplied(false);
           }
-        }
+        };
+
+        // Fetch saved jobs
+        const fetchSavedJobs = async () => {
+          try {
+            const response = await fetch('/api/dashboard/bookmarked-jobs', {
+              headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+            const data = await response.json();
+            setSavedJobs(data || []);
+          } catch (error) {
+            setErrorSaved("Failed to load saved jobs");
+          } finally {
+            setIsLoadingSaved(false);
+          }
+        };
+
+        // Fetch viewed jobs
+        const fetchViewedJobs = async () => {
+          try {
+            const response = await fetch('/api/dashboard/recently-viewed', {
+              headers: { 'Authorization': `Bearer ${user.token}` },
+            });
+            const data = await response.json();
+            setViewedJobs(data || []);
+          } catch (error) {
+            setErrorViewed("Failed to load viewed jobs");
+          } finally {
+            setIsLoadingViewed(false);
+          }
+        };
+
         fetchAppliedJobs();
+        fetchSavedJobs();
+        fetchViewedJobs();
       }
     }
   }, [user, loading, router]);
 
-  if (loading || isFetching) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <svg
-            className="animate-spin h-10 w-10 text-gray-600 mx-auto"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <LoaderCircle className="animate-spin h-6 w-6" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-10 p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-4">Applied Jobs</h1>
-      <div className="flex flex-col">
-        <AppliedJobs jobs={appliedJobs?.appliedJobs} />
-      </div>
+    <div className="container mx-auto py-0 p-6 max-w-4xl">
+      <section className="mb-4">
+        <h1 className="text-lg mb-6 font-[family-name:var(--font-geist-sans)] font-medium mb-1">
+          Job History
+        </h1>
+
+        <Tabs defaultValue="applied" className="max-w-md w-full" onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3 mx-auto">
+            <TabsTrigger value="applied">
+              Applied
+            </TabsTrigger>
+            <TabsTrigger value="saved">
+              Saved
+            </TabsTrigger>
+            <TabsTrigger value="viewed">
+              Viewed
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="applied" className="mt-0">
+            <Card className="p-4 border-0">
+              <JobList
+                data={appliedJobs}
+                loading={isLoadingApplied}
+                error={errorApplied}
+                emptyMessage="You haven't applied to any jobs yet."
+              />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="saved" className="mt-0">
+            <Card className="p-4 border-0">
+              <JobList
+                data={savedJobs}
+                loading={isLoadingSaved}
+                error={errorSaved}
+                emptyMessage="You haven't saved any jobs yet."
+              />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="viewed" className="mt-0">
+            <Card className="p-4 border-0">
+              <JobList
+                data={viewedJobs}
+                loading={isLoadingViewed}
+                error={errorViewed}
+                emptyMessage="You haven't viewed any jobs yet."
+              />
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </section>
     </div>
   );
 }

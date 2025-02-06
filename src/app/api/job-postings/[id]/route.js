@@ -20,80 +20,47 @@ function extractSalary(text) {
 
   // Step 3: Normalize HTML entities and special characters
   const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')       // Replace non-breaking spaces
-    .replace(/&nbsp;/g, ' ')       // Replace &nbsp;
-    .replace(/&mdash;/g, '—')      // Replace &mdash; with em-dash
-    // .replace(/&amp;/g, '&')        // Replace &amp; with &
-    .replace(/&lt;/g, '<')         // Replace &lt; with <
-    .replace(/&gt;/g, '>')         // Replace &gt; with >
+    .replace(/\u00a0/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .trim();
 
-  // Define regex patterns
+  // Define regex patterns in order of priority
   const patterns = [
-    // 1. Salary ranges with dashes (e.g., "$128,000—$152,000 USD")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+    // New pattern to match decimal hourly ranges without a suffix (e.g. "$30.94 - $47.77")
+    /\$\s*(\d+(?:\.\d+)?)\s*[-–—]\s*\$\s*(\d+(?:\.\d+)?)/gi,
+    // 1. Hourly rates (highest priority)
+    /\$\s*(\d+\.?\d*)\s*(per\s*hour|hourly|per\s*hr|hr|h|\/ hour|\/hour|\/hr)\b/gi,
 
-    // 2. Salary ranges with 'to' wording (e.g., "$35,000 to $45,000 per year")
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 3. k-based salary ranges (e.g., "$100k—$120k")
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 4. Hourly ranges (e.g., "55/hr - 65/hr")
+    // 2. Hourly ranges
     /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
 
-    // 5. Monthly salaries with at least three digits (e.g., "$4200 monthly")
+    // 3. Salary ranges with dashes
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+
+    // 4. Salary ranges with 'to' wording
+    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
+
+    // 5. k-based salary ranges
+    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
+
+    // 6. Monthly salaries
     /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
 
-    // **6. Single salary mentions with 'per hour' or similar (e.g., "$35.00 per hour")**
-    /\$\s*\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(per\s*hour|hourly|per\s*hr|hr|h)\b/gi,
-
-    // 7. Single salary mentions (e.g., "$85,000")
+    // 7. Single salary mentions (lowest priority)
     /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
   ];
 
-  let matchesWithDollar = [];
-  let matchesWithoutDollar = [];
-
-  // Iterate through each pattern and collect matches
+  // Find the first match in order of priority
   for (const pattern of patterns) {
-    const matches = Array.from(normalizedText.matchAll(pattern));
-    for (const match of matches) {
-      if (pattern.source.includes('\\$')) {
-        // Patterns that require '$' are stored in matchesWithDollar
-        matchesWithDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      } else {
-        // Patterns that do NOT require '$' are stored in matchesWithoutDollar
-        matchesWithoutDollar.push({
-          text: match[0].trim(),
-          index: match.index
-        });
-      }
+    const matches = normalizedText.match(pattern);
+    if (matches && matches.length > 0) {
+      return matches[0].trim();
     }
   }
 
-  // Function to find the match with the highest index
-  const getLastMatch = (matches) => {
-    return matches.reduce((prev, current) => {
-      return (prev.index > current.index) ? prev : current;
-    }, matches[0]);
-  };
-
-  // Prioritize matches with '$'
-  if (matchesWithDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithDollar);
-    return lastMatch.text;
-  }
-  // If no matches with '$', consider matches without '$'
-  else if (matchesWithoutDollar.length > 0) {
-    const lastMatch = getLastMatch(matchesWithoutDollar);
-    return lastMatch.text;
-  }
-
-  // Return empty string if no matches found
   return "";
 }
 
@@ -112,7 +79,12 @@ export async function GET(req, { params }) {
     `, [id]);
 
     let jobPosting = result.rows[0];
-    jobPosting.salary = extractSalary(jobPosting.description);
+    if (!jobPosting) {
+      return NextResponse.json({ error: 'Job posting not found' }, { status: 404 });
+    }
+
+    if (!jobPosting.salary)
+      jobPosting.salary = extractSalary(jobPosting.description);
 
     // Track view if user is authenticated
     if (authHeader) {
@@ -144,7 +116,8 @@ export async function GET(req, { params }) {
 
     return NextResponse.json({
       success: true,
-      data: jobPosting
+      data: jobPosting,
+      keywords: scanKeywords(jobPosting.description),
     });
 
   } catch (error) {

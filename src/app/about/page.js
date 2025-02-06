@@ -49,36 +49,32 @@ export default function About() {
   const scrollToSection = (sectionId) => {
     sectionRefs.current[sectionId]?.scrollIntoView({ behavior: 'smooth' })
   }
-// Dependencies: pnpm install lucide-react
+  // Dependencies: pnpm install lucide-react
 
   return (
     <div className="container py-20 px-4 mx-auto max-w-4xl md:px-0 w-full">
       <main className="space-y-4 items-center">
         {/* Hero Section */}
-        <section className="text-center space-y-6">
-          <h1 className="text-4xl text-center dark:text-neutral-200 font-mono">
-            About Us
+        <section className="text-center space-y-4 mb-20">
+          <h1 className="text-3xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-sans)]">
+            about
           </h1>
-          <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg py-4">
-             Welcome to junera, a smarter job board for STEM professionals. Priotizing quality & speed on your job search.
+          <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg">
+            Welcome to junera, a smarter job board for STEM professionals. Priotizing quality & speed on your job search.
           </p>
         </section>
 
-        {/* Divider */}
-        <div className="mx-auto border-t border-neutral-10 lg:max-w-[900px] md:max-w-[750px] py-4" />
+
         <section className="justify-center md:max-w-[750px] mx-auto space-y-14">
-          <h2 className="text-3xl text-center dark:text-neutral-200 font-mono">
-            Our Focus
-          </h2>
           <div className="grid grid-cols-2 gap-12">
             <div className="space-y-4">
-              <h3 className="text-2xl text-center dark:text-neutral-200 font-mono">Speed</h3>
+              <h3 className="text-2xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-sans)]">Speed</h3>
               <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg py-4">
                 We aim to bring you jobs as quick as possible with a job board that is updated daily with STEM jobs from accross the web.
               </p>
             </div>
             <div className="space-y-4">
-              <h3 className="text-2xl text-center dark:text-neutral-200 font-mono">Quality</h3>
+              <h3 className="text-2xl text-center dark:text-neutral-200 font-[family-name:var(--font-geist-sans)]">Quality</h3>
               <p className="text-center w-full mx-auto sm:max-w-sm dark:text-neutral-300 md:text-lg py-4">
                 Our parameters ensure you get information right from the companies official website, prioritizing real, quality jobs.
               </p>
@@ -91,41 +87,41 @@ export default function About() {
 
         {/* Contact Section */}
         <Card className="lg:max-w-[900px] md:max-w-[750px] mx-auto">
-            <CardContent className="flex p-6">
+          <CardContent className="flex p-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-xl dark:text-neutral-200 font-[family-name:var(--font-geist-sans)]">contact</h3>
+                <p className="w-full mx-auto dark:text-neutral-300 md:text-md">
+                  Feel free to reach out with any feedback or suggestions
+                </p>
+              </div>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-2xl dark:text-neutral-200 font-mono">Contact Us</h3>
-                  <p className="w-full mx-auto dark:text-neutral-300 md:text-lg">
-                    Feel free to reach out with any feedback or suggestions
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <Mail className="h-6 w-6 text-primary" />
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none w-full mx-auto dark:text-neutral-300">Email</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        <a href="bryce@junera.us">bryce@junera.us</a>
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center space-x-4">
+                  <Mail className="h-6 w-6 text-primary" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium leading-none w-full mx-auto dark:text-neutral-300">Email</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <a href="bryce@junera.us">bryce@junera.us</a>
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       <a href="cy@junera.us">cy@junera.us</a>
-                      </p>
-                    </div>
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <Github className="h-6 w-6 text-primary" />
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none w-full mx-auto dark:text-neutral-300">Github</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                </div>
+                <div className="flex items-center space-x-4">
+                  <Github className="h-6 w-6 text-primary" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium leading-none w-full mx-auto dark:text-neutral-300">Github</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       <a
-                          href="https://github.com/brycemcole/junera">https://github.com/brycemcole/junera</a>
-                      </p>
-                    </div>
+                        href="https://github.com/brycemcole/junera">https://github.com/brycemcole/junera</a>
+                    </p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   )

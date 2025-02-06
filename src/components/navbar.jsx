@@ -5,7 +5,7 @@ import { useState, useEffect, use } from "react";
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { NavbarMenu } from '@/components/navbar-menu';
-import { Info, BriefcaseBusiness, LayoutDashboard, LogOut, Home, User, UserPlus, Bell, Bookmark } from "lucide-react";
+import { Info, BriefcaseBusiness, LayoutDashboard, LogOut, Home, User, UserPlus, Bell, Bookmark, Bot } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuShortcut, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -54,163 +54,26 @@ function Dot({ className }) {
 }
 
 function AvatarButton({ image, fullname, unreadCount }) {
+  const getInitials = (name) => {
+    if (!name) return '';
+    const names = name.split(' ');
+    return names.length >= 2 
+      ? `${names[0][0]}${names[names.length-1][0]}`
+      : name[0];
+  };
+
   return (
     <div className="relative">
-      <Avatar className="rounded-lg">
+      <Avatar className="rounded-lg h-9 w-9">
         <AvatarImage src={image} alt={fullname} />
-        <AvatarFallback>
-          {fullname?.split(' ').map(name => name[0]).join('')}
+        <AvatarFallback className="rounded-lg">
+          {getInitials(fullname)}
         </AvatarFallback>
       </Avatar>
     </div>
   );
 }
 
-
-function NotificationsPopover() {
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      axios.get('/api/notifications', {
-        headers: { Authorization: `Bearer ${user.token}` },
-      })
-        .then(response => {
-          // Transform API response to match our UI format
-          const formattedNotifications = response.data.map(n => ({
-            id: n.id,
-            image: n.senderLogo || `https://avatars.dicebear.com/api/avataaars/${n.senderUsername}.svg`,
-            user: n.senderName,
-            action: n.type === 'job_match' ? 'matched you with' : 'sent',
-            target: n.type === 'job_match' ? n.metadata?.title || 'Job Posting' : n.important_message,
-            timestamp: n.createdAt,
-            is_read: n.is_read, // Changed from unread: !n.is_read
-            type: n.type
-          }));
-          setNotifications(formattedNotifications);
-        })
-        .catch(error => console.error('Error loading notifications:', error))
-        .finally(() => setLoading(false));
-    }
-  }, [user]);
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await axios.put('/api/notifications', null, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setNotifications(notifications.map(notification => ({
-        ...notification,
-        unread: false
-      })));
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
-  };
-
-  const handleNotificationClick = async (id) => {
-    try {
-      await axios.put(`/api/notifications?id=${id}`, null, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setNotifications(notifications.map(notification =>
-        notification.id === id ? { ...notification, unread: false } : notification
-      ));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button size="icon" variant="outline" className="relative" aria-label="Open notifications">
-          <Bell size={16} strokeWidth={2} aria-hidden="true" />
-          {unreadCount > 0 && (
-            <Badge className="absolute -top-2 left-full min-w-5 -translate-x-1/2 px-1">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-1 mr-4 mt-4">
-        <div className="flex items-baseline justify-between gap-4 px-3 py-2">
-          <div className="text-sm font-semibold">Notifications</div>
-          {unreadCount > 0 && (
-            <button className="text-xs font-medium hover:underline" onClick={handleMarkAllAsRead}>
-              Mark all as read
-            </button>
-          )}
-        </div>
-        <div
-          role="separator"
-          aria-orientation="horizontal"
-          className="-mx-1 my-1 h-px bg-border"
-        ></div>
-        {loading ? (
-          // Loading skeleton
-          Array(3).fill(0).map((_, i) => (
-            <div key={i} className="px-3 py-2">
-              <div className="flex items-start gap-3">
-                <Skeleton className="h-9 w-9 rounded-md" />
-                <div className="space-y-1 flex-1">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-            </div>
-          ))
-        ) : notifications.length === 0 ? (
-          <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            No notifications yet
-          </div>
-        ) : (
-          notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className="rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
-            >
-              <div className="relative flex items-start gap-3 pe-3">
-                <Image
-                  className="size-9 rounded-md"
-                  src={notification.image}
-                  width={32}
-                  height={32}
-                  alt={notification.user}
-                />
-                <div className="flex-1 space-y-1">
-                  <button
-                    className="text-left text-foreground/80 after:absolute after:inset-0"
-                    onClick={() => handleNotificationClick(notification.id)}
-                  >
-                    <span className="font-medium text-foreground hover:underline">
-                      {notification.user}
-                    </span>{" "}
-                    {notification.action}{" "}
-                    <span className="font-medium text-foreground hover:underline">
-                      {notification.target}
-                    </span>
-                    .
-                  </button>
-                  <div className="text-xs text-muted-foreground">{notification.timestamp}</div>
-                </div>
-                {notification.is_read === false && ( // Changed from notification.unread
-                  <div className="self-center absolute end-0">
-                    <Dot />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 function DropdownMenuDemo2() {
   const { user, loading, logout } = useAuth();
@@ -266,10 +129,6 @@ function DropdownMenuDemo2() {
                   <User />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/notifications')}>
                   <Bell />
                   <span>Notifications</span>
@@ -281,9 +140,9 @@ function DropdownMenuDemo2() {
                   </DropdownMenuShortcut>
                   )}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/saved')}>
-                  <Bookmark/>
-                  <span>Saved</span>
+                <DropdownMenuItem onClick={() => router.push('/job-postings/my-jobs')}>
+                  <BriefcaseBusiness/>
+                  <span>My Jobs</span>
                 </DropdownMenuItem>
             </>
           )}
@@ -330,9 +189,8 @@ function DropdownMenuDemo() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group"
+          className="group shadow-sm h-8 w-8"
           variant="outline"
-          size="icon"
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
         >
@@ -385,7 +243,7 @@ function DropdownMenuDemo() {
                 <DropdownMenuSeparator />
                 {user && !loading && (
                   <>
-                    <DropdownMenuItem onClick={() => router.push('/job-postings/applied')}>
+                    <DropdownMenuItem onClick={() => router.push('/job-postings/my-jobs')}>
                       <span>Your Jobs</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -419,6 +277,10 @@ function DropdownMenuDemo() {
 
           {user ? (
             <>
+              <DropdownMenuItem onClick={() => router.push('/agents')}>
+                <Bot />
+                <span>Agents</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/dashboard')}>
                 <LayoutDashboard />
                 <span>Dashboard</span>
@@ -447,44 +309,34 @@ function DropdownMenuDemo() {
 }
 
 export default function Navbar() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, initialized } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  if (!initialized) {
+    return null; // Or return a minimal loading navbar
+  }
 
   return (
-    <nav className="backdrop-blur bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent fixed top-0 left-0 right-0">
+    <nav className="backdrop-blur shadow-md bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
       <div className="flex flex-row justify-between px-4 py-2 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
-          <span className="text-sm font-mono">junera</span>
+          <span className="text-sm font-[family-name:var(--font-geist-sans)]">junera</span>
         </div>
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
         </div>
         <div className="md:hidden items-center flex gap-4">
-          {!loading && (
+          {initialized && (
             <>
               {user ? (
                 <DropdownMenuDemo2 />
               ) : (
-                <>
-                  <Button variant="ghost" className="text-customGreen h-9 px-3 font-medium dark:text-white hover:text-primary hover:bg-accent">
-                    <Link href="/register">
-                     Sign Up
-                    </Link>
-                  </Button>
-                  <Button className="font-medium rounded-lg px-4 py-1.5 h-9 hover:text-primary hover:bg-accent">
-                    <Link href="/login">
-                     Login
-                    </Link>
-                  </Button>
-                </>
+                <Button className="bg-green-500/20  border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-2.5 py-1.5 h-8">
+                  <Link href="/login">Login</Link>
+                </Button>
               )}
             </>
           )}

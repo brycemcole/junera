@@ -1,5 +1,6 @@
 import { query } from "@/lib/pgdb";
 import jwt from 'jsonwebtoken';
+import { getCached, setCached } from '@/lib/cache';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
@@ -9,6 +10,12 @@ export async function GET(req) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
   const token = authHeader.split(' ')[1];
+
+  const cacheKey = `matching-jobs:${token}`;
+  const cachedResult = await getCached(cacheKey);
+  if (cachedResult) {
+    return new Response(cachedResult, { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
 
   try {
     // Verify token and get user ID
@@ -45,7 +52,7 @@ export async function GET(req) {
     // Add conditions for each saved search
     savedSearchesResult.rows.forEach(savedSearch => {
       const criteria = savedSearch.search_criteria;
-      
+
       combinedQuery += ` OR (1=1`; // Start a new group of conditions
 
       if (criteria.title) {
@@ -91,6 +98,7 @@ export async function GET(req) {
         );
       });
 
+
       return {
         ...job,
         matchedSearch: matchedSearch ? matchedSearch.search_name : 'Any',
@@ -98,9 +106,14 @@ export async function GET(req) {
       };
     });
 
-    return new Response(JSON.stringify({ 
+    setCached(cacheKey, JSON.stringify({
       jobs: jobsWithCriteria,
-      matchCount: result.rowCount 
+      matchCount: result.rowCount
+    }));
+
+    return new Response(JSON.stringify({
+      jobs: jobsWithCriteria,
+      matchCount: result.rowCount
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -108,9 +121,9 @@ export async function GET(req) {
 
   } catch (error) {
     console.error("Error fetching matching jobs:", error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       error: "Error fetching matching jobs",
-      details: error.message 
+      details: error.message
     }), { status: 500 });
   }
 }

@@ -7,30 +7,61 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    const initAuth = async () => {
       try {
-        const decoded = jwt.decode(token);
-        if (decoded && decoded.exp * 1000 > Date.now()) {
-          setUser({ token, fullName: decoded.fullName, email: decoded.email, username: decoded.username, id: decoded.id, avatar: decoded.avatar, jobPrefsTitle: decoded.jobPrefsTitle, jobPrefsLocation: decoded.jobPrefsLocation });
-        } else {
-          localStorage.removeItem('token');
-          setUser(null);
+        const token = localStorage.getItem('token');
+        if (token) {
+          const decoded = jwt.decode(token);
+          if (decoded && decoded.exp * 1000 > Date.now()) {
+            setUser({
+              token,
+              fullName: decoded.fullName,
+              email: decoded.email,
+              username: decoded.username,
+              id: decoded.id,
+              avatar: decoded.avatar,
+              jobPrefsTitle: decoded.jobPrefsTitle,
+              jobPrefsLocation: decoded.jobPrefsLocation,
+              jobPrefsLevel: decoded.jobPrefsLevel
+            });
+          } else {
+            localStorage.removeItem('token');
+          }
         }
       } catch (error) {
-        console.error("Token decoding failed:", error);
+        console.error("Auth initialization error:", error);
         localStorage.removeItem('token');
-        setUser(null);
+      } finally {
+        setLoading(false);
+        setInitialized(true);
       }
-    }
-    setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  const login = (token, username, id, avatar) => {
-    localStorage.setItem('token', token);
-    setUser({ token, username, id, avatar });
+  const login = async (token, username, id, fullName, avatar, jobPrefsTitle, jobPrefsLocation, jobPrefsLevel) => {
+    try {
+      localStorage.setItem('token', token);
+      const userData = {
+        token,
+        username,
+        id,
+        fullName,
+        avatar,
+        jobPrefsTitle,
+        jobPrefsLocation,
+        jobPrefsLevel
+      };
+      setUser(userData);
+      return true;
+    } catch (error) {
+      console.error('Error during login:', error);
+      return false;
+    }
   };
 
   const logout = () => {
@@ -39,8 +70,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={{ user, login, logout, loading, initialized }}>
+      {initialized ? children : null}
     </AuthContext.Provider>
   );
 };

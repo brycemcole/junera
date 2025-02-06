@@ -16,7 +16,7 @@ export const ExampleJobPostings = () => {
     React.useEffect(() => {
         fetch("/api/job-postings?title=software+engineer")
             .then((res) => res.json())
-            .then((data) => setData(data.jobPostings?.slice(0, 4)))
+            .then((data) => setData(data.jobPostings))
             .catch((error) => console.error("Error fetching data:", error));
     }, []);
 
@@ -52,22 +52,22 @@ export const ExampleJobPostings = () => {
 
 if (!data) {
     return <>
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
     </>;
   } else if (data.length === 0) {
     return <>
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
-    <Skeleton className="w-2/3 mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
+    <Skeleton className="mx-auto h-[20px] rounded-full" />
     </>;
   }
 
   return (
-    <div className="border rounded-xl w-2/3 mx-auto px-4">
+    <div className="border rounded-xl h-[225px] w-full  mx-auto px-4 overflow-y-scroll overflow-x-auto">
       {data.map((job, index) => (
         <div
           key={job.id}
@@ -110,12 +110,14 @@ if (!data) {
             </div>
 
             <div className="flex md:gap-y-2 gap-x-4 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
+              {job?.location?.trim() ? (
               <div className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
-                  {job?.location || "N/A"}
+                  {job.location}
                 </span>
               </div>
+              ) : null}
               <div className="flex items-center gap-2">
                 <Briefcase className="h-3 w-3 text-muted-foreground" />
                 <span className="truncate">{job?.experienceLevel || "N/A"}</span>

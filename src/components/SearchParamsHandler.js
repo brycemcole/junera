@@ -20,6 +20,7 @@ export default function SearchParamsHandler({
     setExperienceLevel,
     setLocation,
     setCompany,
+    setSaved,
     setCurrentPage,
 }) {
     const searchParams = useSearchParams();
@@ -31,6 +32,7 @@ export default function SearchParamsHandler({
         setExperienceLevel(params.explevel || "");
         setLocation(params.location || "");
         setCompany(params.company || "");
+        setSaved(params.saved === 'true');
         setCurrentPage(parseInt(params.page, 10) || 1);
     }, [
         searchParams,
@@ -38,6 +40,7 @@ export default function SearchParamsHandler({
         setExperienceLevel,
         setLocation,
         setCompany,
+        setSaved,
         setCurrentPage,
     ]);
 
@@ -49,5 +52,6 @@ SearchParamsHandler.propTypes = {
     setExperienceLevel: PropTypes.func.isRequired,
     setLocation: PropTypes.func.isRequired,
     setCompany: PropTypes.func.isRequired,
-    setCurrentPage: PropTypes.func.isRequired,
+    setSaved: PropTypes.func.isRequired,
+    setCurrentPage: PropTypes.func.isRequired,  
 };
