@@ -19,6 +19,11 @@ export default function Footer() {
           <span className="whitespace-nowrap text-xs text-muted-foreground">
             junera {new Date().getFullYear()}
           </span>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            <Link href="https://x.com/br3dev">
+              contact
+            </Link>
+          </span>
         </div>
       </div>
     </footer>

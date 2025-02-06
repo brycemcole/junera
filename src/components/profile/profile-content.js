@@ -19,7 +19,7 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
     return (
         <>
             <section className="mb-4">
-                <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+                <h1 className="text-xl font-[family-name:var(--font-geist-sans)] font-medium mb-1">
                     {profile.user.full_name}
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -206,7 +206,7 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
                 !profile.education?.length &&
                 !profile.certifications?.length && (
                     <EmptyState type="profile" />
-            )}
+                )}
 
             {/* Suggested Users */}
             <div className="mt-12 mb-8">

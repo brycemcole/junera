@@ -55,7 +55,7 @@ export default function SavedPage() {
     return (
         <div className="container mx-auto px-6 max-w-4xl">
             <section className="mb-4">
-                <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+                <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
                     Agents
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -63,7 +63,7 @@ export default function SavedPage() {
                 </p>
             </section>
             <section>
-                <h2 className="text-md font-[family-name:var(--font-geist-mono)] flex flex-row items-center justify-between font-medium mb-1">
+                <h2 className="text-md font-[family-name:var(--font-geist-sans)] flex flex-row items-center justify-between font-medium mb-1">
                     Tasks
                     <Button variant="ghost" size="icon" className="hover:bg-accent" onClick={() => redirect('/job-postings/saved-searches')}>
                     <Plus className="w-4 h-4" />

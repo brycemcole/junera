@@ -698,7 +698,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         <div className="flex flex-row items-center justify-between gap-4 mb-4">
           <div>
             <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
-            <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-mono)] font-medium">
+            <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-sans)] font-medium">
 
               {jobPosting.title}
             </h1>

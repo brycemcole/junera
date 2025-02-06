@@ -317,7 +317,7 @@ export default function DashboardPage() {
   return user ? (
     <div className="container mx-auto py-0 p-6 max-w-4xl">
       <section className="mb-4">
-        <h1 className="text-xl font-[family-name:var(--font-geist-mono)] font-medium mb-1">
+        <h1 className="text-xl font-[family-name:var(--font-geist-sans)] font-medium mb-1">
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground">

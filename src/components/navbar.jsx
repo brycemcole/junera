@@ -189,9 +189,8 @@ function DropdownMenuDemo() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group shadow-sm"
+          className="group shadow-sm h-8 w-8"
           variant="outline"
-          size="icon"
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
         >
@@ -324,7 +323,7 @@ export default function Navbar() {
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
-          <span className="text-sm font-[family-name:var(--font-geist-mono)]">junera</span>
+          <span className="text-sm font-[family-name:var(--font-geist-sans)]">junera</span>
         </div>
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
@@ -335,7 +334,7 @@ export default function Navbar() {
               {user ? (
                 <DropdownMenuDemo2 />
               ) : (
-                <Button className="bg-green-500/20 border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-4 py-1.5 h-9">
+                <Button className="bg-green-500/20  border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-2.5 py-1.5 h-8">
                   <Link href="/login">Login</Link>
                 </Button>
               )}
