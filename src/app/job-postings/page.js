@@ -1,6 +1,7 @@
 "use client";
 import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
+import EditProfileDialog from '@/components/edit-profile'
 import { unstable_cache } from 'next/cache'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -892,6 +893,129 @@ export default function JobPostingsPage() {
     }
   }, [user, authLoading, dataLoading]);
 
+  const profileFields = [
+    {
+      type: 'multiselect',
+      name: 'job_prefs_title',
+      label: 'Desired Job Titles',
+      placeholder: 'preferred job title',
+      options: [
+        { value: 'Software Engineer', label: 'Software Engineer' },
+        { value: 'Frontend Developer', label: 'Frontend Developer' },
+        { value: 'Backend Developer', label: 'Backend Developer' },
+        { value: 'Full Stack Developer', label: 'Full Stack Developer' },
+        { value: 'DevOps Engineer', label: 'DevOps Engineer' },
+        { value: 'Project Manager', label: 'Project Manager' },
+        // Add more options as needed
+      ]
+    },
+    {
+      type: 'multiselect',
+      name: 'job_prefs_location',
+      label: 'Preferred Locations',
+      placeholder: 'preferred location',
+      options: [
+        { value: 'New York', label: 'New York' },
+        { value: 'San Francisco', label: 'San Francisco' },
+        { value: 'Remote', label: 'Remote' },
+        // Add more location options as needed
+      ]
+    },
+    /*
+    {
+      type: 'text',
+      name: 'job_prefs_industry',
+      label: 'test',
+      placeholder: 'e.g. Technology, Finance'
+    },
+    {
+      type: 'text',
+      name: 'job_prefs_language',
+      label: 'test',
+      placeholder: 'e.g. English'
+    },
+    */
+    {
+      type: 'multiselect',
+      name: 'job_prefs_level',
+      label: 'Experience Level',
+      options: [
+        { value: 'Internship', label: 'Internship' },
+        { value: 'Entry Level', label: 'Entry Level' },
+        { value: 'Mid Level', label: 'Mid Level' },
+        { value: 'Senior Level', label: 'Senior Level' },
+        { value: 'Lead', label: 'Lead' },
+        { value: 'Manager', label: 'Manager' }
+      ]
+    },
+    {
+      type: 'number',
+      name: 'job_prefs_salary',
+      label: 'Expected Salary (Annual)',
+      placeholder: 'Enter expected salary'
+    },
+    {
+      type: 'boolean',
+      name: 'job_prefs_relocatable',
+      label: 'Willing to Relocate'
+    }
+  ];
+
+  const handleProfileUpdate = async (formData) => {
+    try {
+      // Ensure all array fields are properly formatted
+      const processedData = {
+        ...formData,
+        job_prefs_title: formData.job_prefs_title
+          ? (Array.isArray(formData.job_prefs_title)
+            ? formData.job_prefs_title
+            : [formData.job_prefs_title])
+          : [],
+        job_prefs_location: formData.job_prefs_location
+          ? (Array.isArray(formData.job_prefs_location)
+            ? formData.job_prefs_location
+            : [formData.job_prefs_location])
+          : [],
+        job_prefs_level: formData.job_prefs_level
+          ? (Array.isArray(formData.job_prefs_level)
+            ? formData.job_prefs_level
+            : [formData.job_prefs_level])
+          : [],
+        job_prefs_salary: formData.job_prefs_salary
+          ? parseInt(formData.job_prefs_salary, 10)
+          : null,
+        job_prefs_relocatable: Boolean(formData.job_prefs_relocatable)
+      };
+
+      const response = await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(processedData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update preferences');
+      }
+
+      const { token, preferences } = await response.json();
+
+      // Update auth context with new token and preferences
+      if (updatePreferences) {
+        await updatePreferences(preferences);
+      }
+
+      // Refresh the page to show updated preferences
+      router.refresh();
+
+    } catch (err) {
+      console.error('Error updating preferences:', err);
+      throw err;
+    }
+  };
+
   const applySavedSearch = (searchParamsStr) => {
     const params = JSON.parse(searchParamsStr);
     const newTitle = params.jobTitle || params.title || '';
@@ -1501,13 +1625,25 @@ export default function JobPostingsPage() {
             <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
 
-          <TabComponent
-            savedSearches={savedSearches}
-            applySavedSearch={applySavedSearch}
-            currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
-          />
-
-
+          <div className="flex flex-row">
+            <TabComponent
+              savedSearches={savedSearches}
+              applySavedSearch={applySavedSearch}
+              currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
+            />
+            <EditProfileDialog
+              fields={profileFields}
+              initialData={{
+                job_prefs_title: user?.jobPrefsTitle || [],
+                job_prefs_location: user?.jobPrefsLocation || [],
+                job_prefs_level: user?.jobPrefsLevel || [],
+                job_prefs_salary: user?.jobPrefsSalary || null,
+                job_prefs_relocatable: user?.jobPrefsRelocatable || false
+              }}
+              onSubmit={handleProfileUpdate}
+              title={<Settings size={12} />}
+            />
+          </div>
         </div>
 
         <Suspense fallback={<div>Loading...</div>}>
@@ -1522,6 +1658,7 @@ export default function JobPostingsPage() {
               </div>
             </>
           )}
+
 
 
           <div>

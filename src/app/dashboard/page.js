@@ -375,7 +375,7 @@ export default function DashboardPage() {
         )}
 
         {/* Preferred Jobs Section */}
-        {(user?.jobPrefsTitle || user?.jobPrefsLocation) && (
+        { (user?.jobPrefsTitle || user?.jobPrefsLocation) ? (
           <Card className="border-none shadow-none col-span-2 relative">
             <CardTitle className="mb-4">
               Jobs matching your preferences
@@ -399,7 +399,6 @@ export default function DashboardPage() {
                   (No active filters. Showing any jobs.)
                 </p>
               )}
-
               <JobList
                 data={preferredJobs}
                 loading={loadingPreferredJobs}
@@ -407,18 +406,29 @@ export default function DashboardPage() {
                 emptyMessage="No matching jobs found for your preferences."
                 lastElementRef={lastJobElementRef}
               />
-
               {loadingPreferredJobs && (
                 <div className="flex justify-center py-4">
                   <LoaderCircle className="animate-spin" />
                 </div>
               )}
-
               {!hasMore && preferredJobs.length > 0 && (
                 <div className="text-center py-4 text-sm text-gray-500">
                   No more jobs to load
                 </div>
               )}
+            </CardDescription>
+          </Card>
+        ) : (
+          <Card className="border-none shadow-none col-span-2 relative">
+            <CardTitle className="mb-4">Job Matches Unavailable</CardTitle>
+            <CardDescription>
+              <p className="mb-2">
+                Your preferred job title and location are missing.
+                Please update your profile to see matching jobs.
+              </p>
+              <Button variant="outline" onClick={() => router.push('/profile')}>
+                Edit Profile
+              </Button>
             </CardDescription>
           </Card>
         )}

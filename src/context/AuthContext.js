@@ -69,8 +69,44 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updatePreferences = async (preferences) => {
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(preferences)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update preferences');
+      }
+
+      // Update local storage with new token
+      localStorage.setItem('token', data.token);
+
+      // Update user state with new preferences and token
+      setUser(prev => ({
+        ...prev,
+        token: data.token,
+        jobPrefsTitle: data.preferences.job_prefs_title,
+        jobPrefsLocation: data.preferences.job_prefs_location,
+        jobPrefsLevel: data.preferences.job_prefs_level
+      }));
+
+      return true;
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, initialized }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, initialized, updatePreferences }}>
       {initialized ? children : null}
     </AuthContext.Provider>
   );
