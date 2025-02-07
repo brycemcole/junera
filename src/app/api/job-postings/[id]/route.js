@@ -7,6 +7,7 @@ import sql from 'mssql';
 import { getCompanies } from "@/lib/companyCache";
 import * as React from 'react';
 import { query } from "@/lib/pgdb";
+import { scanKeywords } from '@/lib/job-utils';
 const he = require('he');
 
 function extractSalary(text) {
@@ -152,64 +153,27 @@ async function getRelatedJobPostings(jobPosting) {
   };
 }
 
-// Moved to background task
-async function trackUserView(pool, jobId, authHeader) {
-  try {
-    const token = await authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
-
-    await pool.request()
-      .input('userId', sql.NVarChar, decoded.id)
-      .input('jobId', sql.NVarChar, jobId)
-      .query(`
-        MERGE user_recent_viewed_jobs AS target
-        USING (SELECT @userId as user_id, @jobId as jobPostings_id) AS source
-        ON target.user_id = source.user_id AND target.jobPostings_id = source.jobPostings_id
-        WHEN MATCHED THEN
-          UPDATE SET viewed_at = GETDATE()
-        WHEN NOT MATCHED THEN
-          INSERT (user_id, jobPostings_id, viewed_at, company_id)
-          VALUES (
-            @userId, 
-            @jobId, 
-            GETDATE(),
-            (SELECT company_id FROM jobPostings WHERE id = @jobId)
-          );
-      `);
-  } catch (error) {
-    console.error('Failed to track user view:', error);
-  }
-}
-
 // Simplified bookmark check
 async function checkIfBookmarked(jobId, token) {
   if (!token) return false;
 
   try {
-    const pool = await getConnection();
     const decoded = jwt.verify(token, process.env.SESSION_SECRET);
 
-    const result = await pool.request()
-      .input('userId', decoded.id)
-      .input('jobId', jobId)
-      .query(`
-        SELECT TOP 1 1 
-        FROM favorites_jobs 
-        WHERE user_id = @userId AND job_posting_id = @jobId
-      `);
+    const result = await query(`
+      SELECT 1 
+      FROM user_interactions 
+      WHERE user_id = $1 
+      AND job_posting_id = $2 
+      AND interaction_type = 'bookmark'
+      LIMIT 1
+    `, [decoded.id, jobId]);
 
-    return result.recordset.length > 0;
+    return result.rows.length > 0;
   } catch (error) {
     console.error('Error checking bookmark:', error);
     return false;
   }
-}
-
-// Add the scanKeywords function
-function scanKeywords(text) {
-  const keywordsList = ['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++', 'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust', 'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps', 'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB', 'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD', 'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub', 'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ', 'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode', 'Android Studio'];
-  const foundKeywords = keywordsList.filter(keyword => text.includes(keyword));
-  return foundKeywords;
 }
 
 // Add a function to extract salary range from text

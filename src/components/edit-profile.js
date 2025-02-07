@@ -39,6 +39,7 @@ export default function EditProfileDialog({
     description = "Make changes to your profile here."
 }) {
     const [formData, setFormData] = useState(initialData);
+    const [open, setOpen] = useState(false);
 
     const handleChange = (name, value) => {
         setFormData(prev => ({
@@ -49,7 +50,12 @@ export default function EditProfileDialog({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await onSubmit(formData);
+        try {
+            await onSubmit(formData);
+            setOpen(false); // Close the dialog after successful submission
+        } catch (err) {
+            console.error('Error submitting form:', err);
+        }
     };
 
     const renderField = (field) => {
@@ -123,7 +129,7 @@ export default function EditProfileDialog({
     };
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="ghost" size="icon">
                     {title}

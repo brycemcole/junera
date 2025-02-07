@@ -1,10 +1,9 @@
 import { query } from "@/lib/pgdb";
 import { getCached, setCached } from '@/lib/cache';
+import { scanKeywords } from '@/lib/job-utils';
 const he = require('he');
 
-function scanKeywords(text) {
-  // ...existing code...
-}
+// Remove the scanKeywords function definition
 
 function extractSalary(text) {
   if (!text) return "";

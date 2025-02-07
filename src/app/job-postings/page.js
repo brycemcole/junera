@@ -11,6 +11,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { buttonVariants } from "@/components/ui/button";
+import { updatePreferences } from '@/actions/update-preferences';
 
 import { cn } from "@/lib/utils";
 import {
@@ -572,7 +573,7 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
 });
 
 export default function JobPostingsPage() {
-  const { user, loading, authLoading } = useAuth();
+  const { user, loading: authLoading, updatePreferences: updateUserPreferences } = useAuth();
   const router = useRouter();
   const enabled = false;
 
@@ -793,7 +794,7 @@ export default function JobPostingsPage() {
             All
           </TabsTrigger>
 
-          {!loading && user && (
+          {!authLoading && user && (
             <>
               <TabsTrigger
                 value="preferences"
@@ -987,7 +988,7 @@ export default function JobPostingsPage() {
         job_prefs_relocatable: Boolean(formData.job_prefs_relocatable)
       };
 
-      const response = await fetch('/api/user/preferences', {
+      const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -997,19 +998,21 @@ export default function JobPostingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update preferences');
+        throw new Error('Failed to update profile');
       }
 
-      const { token, preferences } = await response.json();
+      const { user: updatedUser } = await response.json();
 
-      // Update auth context with new token and preferences
-      if (updatePreferences) {
-        await updatePreferences(preferences);
+      // Update the auth context with new preferences
+      if (updateUserPreferences) {
+        await updateUserPreferences({
+          job_prefs_title: updatedUser.job_prefs_title,
+          job_prefs_location: updatedUser.job_prefs_location,
+          job_prefs_level: updatedUser.job_prefs_level
+        });
       }
 
-      // Refresh the page to show updated preferences
       router.refresh();
-
     } catch (err) {
       console.error('Error updating preferences:', err);
       throw err;
@@ -1602,7 +1605,7 @@ export default function JobPostingsPage() {
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">{headerTitle}</h1>
+              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">{headerTitle}</h1>
               <p className="text-sm text-muted-foreground">
                 <small className="text-sm text-muted-foreground">
                   {count} results

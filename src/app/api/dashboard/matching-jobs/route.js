@@ -1,6 +1,7 @@
 import { query } from "@/lib/pgdb";
 import jwt from 'jsonwebtoken';
 import { getCached, setCached } from '@/lib/cache';
+import { scanKeywords } from '@/lib/job-utils';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
@@ -98,11 +99,15 @@ export async function GET(req) {
         );
       });
 
-
       return {
         ...job,
-        matchedSearch: matchedSearch ? matchedSearch.search_name : 'Any',
-        matchingCriteria: matchedSearch ? matchedSearch.search_criteria : null
+        id: job.job_id,
+        keywords: scanKeywords(job.title + ' ' + (job.description || '')).slice(0, 5),
+        postedDate: job.created_at,
+        salary_range_str: job.salary_range || '',
+        experienceLevel: job.experiencelevel,
+        matchedSearch: matchedSearch?.search_name || 'Any',
+        matchingCriteria: matchedSearch?.search_criteria || null
       };
     });
 

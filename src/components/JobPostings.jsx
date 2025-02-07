@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+const { useAuth } = require('@/context/AuthContext');
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; // Assuming Avatar components are defined/imported
 import { Badge } from "@/components/ui/badge"; 
-import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag } from "lucide-react"; // Assuming you are using react-icons
+import { MapPin, Briefcase, Calendar, DollarSign, LoaderCircle, Clock, Tags, Tag, HandCoins, Eye } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
 import Button24 from "@/components/button24"
 import { redirect } from "next/navigation";
 import Link from 'next/link';
+import ViewStatus from '@/components/ViewStatus';
+import { trackJobView } from '@/app/actions/trackJobView';
 
 export const JobList = ({ data, loading, error }) => { 
   const router = useRouter();
+  const user = useAuth();
 
   const stateMap = {
     'remote': 'N/A',
@@ -161,95 +165,92 @@ export const JobList = ({ data, loading, error }) => {
       </div>
     );
   }
+
+  const handleJobClick = async (jobId) => {
+    await trackJobView(jobId);
+  };
+
   return (
     <div className="md:px-0 border-none md:shadow-none max-w-full">
       {data.map((job, index) => (
         <div
-        key={index} className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
+          key={index} 
+          className="flex flex-row gap-4 group py-3 md:py-3 space-y-0 md:space-y-1 cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl"
+          onClick={() => handleJobClick(job.id)}
         >
-
-<div className="flex flex-col gap-3 justify-between">
-{job.company ? (
-                <Link href={{ pathname: `/companies/${job.company}`, query: router.query }}>
-
-            <Avatar className="w-9 h-9 rounded-lg flex-shrink-0">
-              <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-              <AvatarFallback className="rounded-lg">
-                {job.company?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            </Link>
-          ) : (
-            <Avatar className="w-6 h-6 flex-shrink-0">
-              <AvatarFallback>
-                {job.company?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          )}
-          <Button24 jobId={job.id} />
+          <div className="flex flex-col gap-3 justify-between">
+            {job.company ? (
+              <Link href={{ pathname: `/companies/${job.company}`, query: router.query }}>
+                <Avatar className="w-9 h-9 rounded-lg flex-shrink-0">
+                  <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
+                  <AvatarFallback className="rounded-lg">
+                    {job.company?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            ) : (
+              <Avatar className="w-6 h-6 flex-shrink-0">
+                <AvatarFallback>
+                  {job.company?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="flex flex-col gap-1">
+              <Button24 jobId={job.id} />
+              <ViewStatus jobId={job.id} />
+            </div>
           </div>
           {/* Header Section */}
-          <Link href={{ pathname: `/job-postings/${job.id}`, query: router.query }}>
-
-          <div className="flex flex-col min-w-0 gap-0">
-                <h4 className="text-md text-muted-foreground truncate">
-                  {job?.company || "No company name available"}
-                </h4>
-            <h3 className="font-semibold group-hover:underline text-foreground text-lg">
-              {job?.title || "No job titles available"}
-            </h3>
-            <div className="text-sm leading-loose line-clamp-3 max-w-full">
-
-
-            </div>
-
-            <div className="flex gap-1 gap-x-3 text-[13px] text-sm font-medium text-muted-foreground flex-wrap">
-            {job?.salary ? (
-                <div className="flex text-foreground items-center gap-2">
-                  <span className="truncate">{job.salary}</span>
-                </div>
-              ) : job?.salary_range_str ? (
+          <Link href={{ pathname: `/job-postings/${job.id}`, query: router.query }} onClick={() => handleJobClick(job.id)}>
+            <div className="flex flex-col min-w-0 gap-0">
+              <h4 className="text-sm text-muted-foreground truncate">
+                {job?.company || "No company name available"}
+              </h4>
+              <h3 className="scroll-m-20 text-xl font-semibold tracking-tight">
+                {job?.title || "No job titles available"}
+              </h3>
+              <div className="flex items-center gap-2 my-2 max-w-full flex-wrap">
+                {job?.keywords ?
+                  (
+                    job.keywords.map((keyword, index) => (
+                      <Badge key={index} variant="outline" className="text-sm">
+                        {keyword}
+                      </Badge>
+                    ))
+                  ) : null}
+              </div>
+              <div className="leading-7">
+                {job?.salary ? (
+                  <div className="flex text-foreground items-center gap-2">
+                    <HandCoins className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{job.salary}</span>
+                  </div>
+                ) : job?.salary_range_str ? (
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">{job.salary_range_str}</span>
+                  </div>
+                ) : null}
+                {job?.location?.trim() ? (
+                  <div className="flex items-center truncate gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
+                      {parseUSLocations(job.location).substring(0, 30)}
+                    </span>
+                  </div>
+                ) : ""}
                 <div className="flex items-center gap-2">
-                  <span className="truncate">{job.salary_range_str}</span>
-                </div>
-              ) : null}
-                          {job?.keywords ?
-                          (
-                          <div className="flex items-center gap-2">
-                            <Tag className="h-3 w-3 text-muted-foreground" />
-                            <span className="truncate">{job.keywords.length} tags</span>
-                          </div>
-                          ) : null}
-              {job?.location?.trim() ? (
-              <div className="flex items-center truncate gap-2">
-                <MapPin className="h-3 w-3 text-muted-foreground" />
-                <span className={`${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 dark:text-green-600' : ''}`}>
-                  {parseUSLocations(job.location).substring(0, 30)}
-                </span>
-              </div>
-              ) : ""}
-              {job.experienceLevel !== "null" && (
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate">
-                  {job?.experienceLevel ? job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1).toLowerCase() : ""}
-                </span>
-              </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate">
-                  {job?.postedDate
-                    ? `${formatDistanceToNow(new Date(job.postedDate), {
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">
+                    {job?.postedDate
+                      ? `posted ${formatDistanceToNow(new Date(job.postedDate), {
                         addSuffix: true,
                       })}`
-                    : "N/A"}
-                </span>
+                      : "N/A"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
           </Link>
-
         </div>
       ))}
       {loading && (

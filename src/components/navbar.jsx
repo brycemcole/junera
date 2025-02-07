@@ -64,7 +64,7 @@ function AvatarButton({ image, fullname, unreadCount }) {
 
   return (
     <div className="relative">
-      <Avatar className="rounded-lg h-9 w-9">
+      <Avatar className="rounded-lg h-8 w-8">
         <AvatarImage src={image} alt={fullname} />
         <AvatarFallback className="rounded-lg">
           {getInitials(fullname)}

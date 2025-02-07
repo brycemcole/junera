@@ -2,7 +2,8 @@
 require('dotenv').config(); // Ensure you have dotenv installed and configured
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
-import { formatDistanceToNow, set } from "date-fns";
+import { formatDistanceToNow, set, format, formatDistanceStrict } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz'; // Add this import
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text } from "lucide-react";
+import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text, Eye, HandCoins } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -265,9 +266,11 @@ export default function JobPostingPage({ params }) {
   const { user } = useAuth();
   const [showAlert, setShowAlert] = useState(false);
   const [llmResponse, setLlmResponse] = useState("");
-  const [loadingLLMReponse, setLoadingLLMResponse] = useState(false);
+  const [loadingLLMReponse, setLoadingLLMReponse] = useState(false);
   const [errorLLMResponse, setErrorLLMResponse] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isViewed, setIsViewed] = useState(false);
+  const [viewedAt, setViewedAt] = useState(null);
 
   const handleInghtsClick = () => {
     setInsightsShown(!insightsShown);
@@ -386,7 +389,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
     if (!user) return;
     const jobPosting = data.data;
     setLlmResponse(""); // Initialize as empty string for streaming
-    setLoadingLLMResponse(true);
+    setLoadingLLMReponse(true);
     let fullResponse = ""; // Track complete response
 
     try {
@@ -479,7 +482,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         variant: "destructive"
       });
     } finally {
-      setLoadingLLMResponse(false);
+      setLoadingLLMReponse(false);
     }
   };
 
@@ -490,27 +493,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
     let isMounted = true;
     const controller = new AbortController();
 
-    async function fetchUserProfile() {
-      if (!user || !isMounted) return;
-      try {
-        const response = await fetch('/api/user/profile', {
-          headers: { 'Authorization': `Bearer ${user.token}` },
-          signal: controller.signal
-        });
-        const profile = await response.json();
-        if (isMounted) setUserProfile(profile);
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-        if (isMounted) console.error('Error fetching user profile:', error);
-      }
-    }
-
-    async function fetchCompanyJobCount(companyName) {
+    // Split into separate effect for company job count
+    async function fetchCompanyJobCount(companyName, signal) {
       try {
         const response = await fetch(`/api/companies/job-postings-count/${companyName}`, {
-          signal: controller.signal
+          signal: signal
         });
-        console.log('Company job count response:', response);
         const { jobPostingsCount } = await response.json();
         if (isMounted) {
           setData(prevData => ({
@@ -518,61 +506,58 @@ Please assess the qualifications and provide a brief explanation of whether the 
             jobPostingsCount
           }));
         }
-
       } catch (error) {
         if (error.name === 'AbortError') return;
         if (isMounted) console.error('Error fetching company job count:', error);
       }
     }
 
-    async function fetchJobData() {
-      try {
-        const token = localStorage.getItem('token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    // Execute all main data fetching in parallel immediately
+    const promises = [
+      fetch(`/api/job-postings/${id}`, {
+        headers: localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {},
+        signal: controller.signal
+      }).then(res => res.json()),
+      user ? fetch('/api/user/profile', {
+        headers: { 'Authorization': `Bearer ${user.token}` },
+        signal: controller.signal
+      }).then(res => res.json()) : Promise.resolve(null),
+      localStorage.getItem('token') ? fetch(`/api/job-postings/${id}/view`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      }).then(res => res.json()) : Promise.resolve(null)
+    ];
 
-        // Fetch job data
-        const response = await fetch(`/api/job-postings/${id}`, {
-          headers,
-          signal: controller.signal
-        });
+    Promise.all(promises)
+      .then(([jobResult, profile, viewData]) => {
+        if (!isMounted) return;
 
-        const result = await response.json();
-        if (isMounted) {
-          setData(result);
-          setLoading(false);
-          fetchCompanyJobCount(result.data.company);
-
-          // Only track view if we successfully fetched the job data and have a token
-          if (token && !sessionStorage.getItem(`viewed-${id}`)) {
-            try {
-              await fetch(`/api/job-postings/${id}/view`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                signal: controller.signal
-              });
-              // Mark this job as viewed in this session
-              sessionStorage.setItem(`viewed-${id}`, 'true');
-            } catch (viewError) {
-              if (viewError.name !== 'AbortError') {
-                console.error('Error tracking view:', viewError);
-              }
-            }
-          }
+        setData(jobResult);
+        if (profile) setUserProfile(profile);
+        if (viewData) {
+          setIsViewed(true);
+          setViewedAt(new Date(viewData.interaction.interaction_date));
         }
-      } catch (err) {
+        setLoading(false);
+
+        // Fetch company job count after we have the company name
+        if (jobResult?.data?.company) {
+          fetchCompanyJobCount(jobResult.data.company, controller.signal);
+        }
+      })
+      .catch(err => {
         if (err.name === 'AbortError') return;
         if (isMounted) {
-          console.error('Error fetching job data:', err);
+          console.error('Error fetching data:', err);
           setError(err.message);
           setLoading(false);
         }
-      }
-    }
-    fetchJobData();
-    fetchUserProfile();
+      });
+
     return () => {
       isMounted = false;
       controller.abort();
@@ -694,123 +679,99 @@ Please assess the qualifications and provide a brief explanation of whether the 
           }, null, 2),
         }}
       />
-      <div className="container mx-auto py-0 p-6 max-w-4xl">
-        <div className="flex flex-row items-center justify-between gap-4 mb-4">
-          <div>
-            <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
-            <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-sans)] font-medium">
+      <div className="container mx-auto py-0 p-6 max-w-3xl">
+        {/* Job Header Section */}
+        <div className="bg-background border rounded-lg p-4 mb-6">
+          {/* Company and Title Section */}
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex-grow">
+              <div className="flex items-center gap-2 mb-2">
+                <Link
+                  href={`/companies/${jobPosting.company}`}
+                  className="text-sm font-medium hover:underline underline-offset-4"
+                >
+                  {jobPosting.company}
+                </Link>
+              </div>
+              <h1 className="text-xl font-semibold mb-3">
+                {jobPosting.title}                {isViewed && (
+                  <Badge variant="outline" className="gap-1 border-none p-0 m-0">
+                    <Eye className="h-3 w-3" />
+                    Viewed <span className="text-muted-foreground">{formatDistanceStrict(viewedAt, new Date())} ago</span>
+                  </Badge>
+                )}
+              </h1>
 
-              {jobPosting.title}
-            </h1>
-          </div>
-
-          <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-xl">
-            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-            <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-        </div>
-        <div className="mb-4 flex flex-col gap-y-2 text-md text-foreground items-start">
-          {jobPosting?.salary ? (
-            <div className="flex items-center gap-2">
-              <BriefcaseBusiness className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.salary}
-              </span>
-            </div>
-          ) : jobPosting?.salary_range_str ? (
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.salary_range_str}
-              </span>
-            </div>
-          ) : null}
-          {/*
-          <div className="flex items-center gap-2">
-
-            <User
-              className={`h-[14px] w-[14px] sm:h-4 sm:w-4 ${jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"
-                }`}
-            />
-            <span
-              className={jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"}
-            >
-              {jobPosting.applicants === 0
-                ? "Be the first applicant"
-                : `${jobPosting.applicants} applicants`}
-            </span>
-          </div>
-          */}
-          {jobPosting.location && (
-            <div className="flex items-center gap-2">
-              <MapPin className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.location?.toLowerCase().includes('remote')
-                  ? jobPosting.location
-                  : `${jobPosting.location}`
-                }
-              </span>
-            </div>
-          )}
-
-          {keywords && keywords.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Tag className="h-3 w-3" />
-              <span>{keywords.join(', ')}</span>
-            </div>
-          )}
-
-          {jobPosting.location?.toLowerCase().includes('remote') && (
-            <div className="flex items-center gap-2">
-              <MapIcon className="h-3 w-3 text-green-500" />
-              <span>Remote Available</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Timer className="h-3 w-3 text-foreground" />
-            <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
-          </div>
-
-          {jobPosting?.experiencelevel && jobPosting?.experiencelevel !== "null" && (
-            <>
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-3 w-3 text-foreground" />
-                <span>{jobPosting.experiencelevel}</span>
+              {/* Key Details Row */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground mb-3">
+                {((jobPosting?.salary && jobPosting.salary > 1000) || jobPosting?.salary_range_str) && (
+                  <div className="flex items-center gap-1.5">
+                    <HandCoins className="h-3.5 w-3.5" />
+                    <span>{jobPosting.salary || jobPosting.salary_range_str}</span>
+                  </div>
+                )}
+                {jobPosting.location && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>{jobPosting.location}</span>
+                  </div>
+                )}
+                {jobPosting?.experiencelevel && (
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="h-3.5 w-3.5" />
+                    <span>{jobPosting.experiencelevel}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Timer className="h-3.5 w-3.5" />
+                  <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
+                </div>
               </div>
 
-            </>
-          )}
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
-            <Link href={`/companies/${jobPosting.company}`}>
-              {loading ?
-                `View jobs at ${jobPosting.company}`
-                :
-                companyJobCount !== undefined ?
-                  `View ${companyJobCount} jobs`
-                  :
-                  `View jobs`} at {jobPosting.company}
-            </Link>
-          </div>
-        </div>
+              {/* Keywords */}
+              {keywords && keywords.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.map((keyword, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        <div className="flex flex-wrap flex-col gap-2 mb-6">
-          <div className="flex gap-3">
+            <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
+              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+              <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`${jobPosting.source_url}`}
+              href={jobPosting.source_url}
               target="_blank"
-              className="w-full md:w-auto max-w-64"
-              onClick={handleApplyClick} // Add onClick handler
+              onClick={handleApplyClick}
+              className="flex-1 sm:flex-none"
             >
-              <Button className="group w-full md:w-48 max-w-64 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
-                Apply
+              <Button className="w-full sm:w-auto min-w-28 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
+                Apply Now
               </Button>
             </Link>
             <Button24 jobId={id} />
             <SharePopover title={`${jobPosting.title} at ${jobPosting.company}`} />
-            <JobDropdown handleSummarizationQuery={handleSummarizationQuery} jobId={id} title={jobPosting.title} company={jobPosting.company} companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`} location={jobPosting.location} />
-
+            <JobDropdown
+              handleSummarizationQuery={handleSummarizationQuery}
+              jobId={id}
+              title={jobPosting.title}
+              company={jobPosting.company}
+              companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
+              location={jobPosting.location}
+            />
           </div>
         </div>
+
+        {/* Rest of the content */}
         {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
           <Summarization
             title="Summary"

@@ -7,50 +7,48 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from '@/hooks/use-toast';
 
-// New custom hook to detect if element is on screen
-function useOnScreen(ref) {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsVisible(entry.isIntersecting);
-    });
-    observer.observe(ref.current);
-    return () => {
-      observer.disconnect();
-    };
-  }, [ref]);
-  return isVisible;
-}
-
 export default function Button24({ jobId }) {
     const [bookmarked, setBookmarked] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [hasChecked, setHasChecked] = useState(false);
     const { user } = useAuth();
     const { toast } = useToast();
-    const containerRef = useRef(null);
-    const isVisible = useOnScreen(containerRef);
+    const componentRef = useRef(null);
 
     useEffect(() => {
-        const checkBookmarkStatus = async () => {
-            if (!jobId || !user || !user?.token) return;
-            try {
-                const response = await fetch(`/api/bookmarks?jobId=${jobId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${user.token}`
-                    }
-                });
-                const data = await response.json();
-                setBookmarked(data.isBookmarked);
-            } catch (error) {
-                console.error('Error checking bookmark status:', error);
-            }
-        };
+        if (!componentRef.current || hasChecked || !jobId || !user || !user?.token) return;
 
-        if (isVisible) {
-            checkBookmarkStatus();
-        }
-    }, [jobId, user?.token, user, isVisible]);
+        const observer = new IntersectionObserver(
+            async (entries) => {
+                const [entry] = entries;
+                if (entry.isIntersecting && !hasChecked) {
+                    setHasChecked(true);
+                    try {
+                        const response = await fetch(`/api/bookmarks?jobId=${jobId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${user.token}`
+                            }
+                        });
+                        const data = await response.json();
+                        setBookmarked(data.isBookmarked);
+                    } catch (error) {
+                        console.error('Error checking bookmark status:', error);
+                    }
+                }
+            },
+            {
+                root: null,
+                rootMargin: '50px',
+                threshold: 0.1
+            }
+        );
+
+        observer.observe(componentRef.current);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [jobId, user?.token, user, hasChecked]);
 
     const handleToggle = async (pressed) => {
         if (!user) {
@@ -111,7 +109,7 @@ export default function Button24({ jobId }) {
 
     if (!user) return null;
     return (
-        <div ref={containerRef}>
+        <div ref={componentRef}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>

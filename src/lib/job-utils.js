@@ -1,8 +1,34 @@
-
 const he = require('he');
 
 export function scanKeywords(text) {
-  // ...existing scanKeywords function code...
+  if (!text) return [];
+  const keywordsList = [
+    'JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'C++',
+    'C#', 'Azure', 'Machine Learning', 'Artificial Intelligence', 'AWS', 'Rust',
+    'TypeScript', 'Angular', 'Vue.js', 'Docker', 'Kubernetes', 'CI/CD', 'DevOps',
+    'GraphQL', 'RESTful', 'API', 'Microservices', 'Serverless', 'Firebase', 'MongoDB',
+    'PostgreSQL', 'MySQL', 'NoSQL', 'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD',
+    'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'Jenkins', 'Git', 'GitHub',
+    'Bitbucket', 'Jira', 'Confluence', 'Slack', 'Trello', 'VSCode', 'IntelliJ',
+    'WebStorm', 'PyCharm', 'Eclipse', 'NetBeans', 'Visual Studio', 'Xcode',
+    'Android Studio', 'Unity', 'Unreal Engine', 'Blender', 'Maya', 'Photoshop',
+    'Google Office', 'Microsoft office', 'Adobe Creative Suite', 'Figma', 'Sketch',
+    'Project Management', 'Excel', 'SaaS', 'PaaS', 'IaaS', 'NFT', 'Blockchain',
+    'Cryptocurrency', 'Web3', 'Solidity', 'Rust', 'Golang', 'Ruby', 'Scala', 'Kotlin',
+    'Swift', 'Objective-C', 'Flutter', 'React Native', 'Ionic', 'Xamarin', 'PhoneGap',
+    'Cordova', 'NativeScript', 'Electron', 'Government Consulting', 'Semiconductors',
+    'Aerospace', 'Defense', 'Healthcare', 'Finance', 'Banking', 'Insurance', 'Retail',
+    'E-commerce', 'Education', 'Transportation'
+  ];
+
+  const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const lowerText = text.toLowerCase();
+  return keywordsList.filter(keyword => {
+    const escapedKeyword = escapeRegex(keyword.toLowerCase());
+    const regex = new RegExp(`\\b${escapedKeyword}\\b`, 'g');
+    return regex.test(lowerText);
+  });
 }
 
 export function extractSalary(text) {
