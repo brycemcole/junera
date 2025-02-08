@@ -1,17 +1,14 @@
 "use client";
-import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
+import React, { memo, useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
 import EditProfileDialog from '@/components/edit-profile'
-import { unstable_cache } from 'next/cache'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { buttonVariants } from "@/components/ui/button";
-import { updatePreferences } from '@/actions/update-preferences';
 
 import { cn } from "@/lib/utils";
 import {
@@ -160,7 +157,6 @@ const decompressData = async (compressed) => {
 const states = {
   "null": "Any",
   "remote": "Remote",
-  "new york": "New York",
   "new york": "New York",
   "california": "California",
   "texas": "Texas",
@@ -1138,7 +1134,7 @@ export default function JobPostingsPage() {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
-        e.preventDefault();
+        e.preventDefault(); 
         // Clear existing timer
         if (timer) {
           clearTimeout(timer);
@@ -1327,11 +1323,8 @@ export default function JobPostingsPage() {
       throttledScrollHandler.cancel();
     };
   }, [handleScroll]);
-
-  const isFirstRenderRef = useRef(true);
-
+  useRef(true);
   useEffect(() => {
-    let isFirstRender = true;
     const controller = new AbortController();
     lastRequestRef.current = controller;
 
@@ -1435,7 +1428,7 @@ export default function JobPostingsPage() {
           setHasMore(cachedPages.length >= pageNum * limit);
           setCurrentPage(pageNum);
         } else {
-          const jobData = await fetchJobData(route, params);
+          const jobData = await fetchJobData(route);
           await storeResponseInLocalStorage(route, jobData);
           updateJobDataState(jobData);
         }
@@ -1469,7 +1462,7 @@ export default function JobPostingsPage() {
       return cachedData && Date.now() - cachedData.timestamp < 15 * 60 * 1000;
     }
 
-    async function fetchJobData(route, params) {
+    async function fetchJobData(route) {
       const response = await fetch(route, {
         signal: controller.signal,
         cache: 'force-cache',
@@ -1507,44 +1500,6 @@ export default function JobPostingsPage() {
         })
         .catch(console.error);
     }
-
-    const restoreFromSession = () => {
-      try {
-        const storedState = sessionStorage.getItem('jobListingsState');
-        if (!storedState) return false;
-
-        const { data: storedData, page, params, timestamp } = JSON.parse(storedState);
-        console.log(storedData);
-        console.log('ATTEMPTING TO RESTORE SESSION DATA');
-
-        // Check if data is still fresh
-        if (!isDataFresh(timestamp)) {
-          sessionStorage.removeItem('jobListingsState');
-          return false;
-        }
-
-        // Check if params match current state
-        if (
-          params.title === title &&
-          params.experienceLevel === experienceLevel &&
-          params.location === location &&
-          params.company === company &&
-          params.saved === saved
-        ) {
-          console.log('Restoring from session');
-          setData(storedData);
-          console.log(storedData);
-          return true;
-        }
-      } catch (error) {
-        console.error('Error restoring session data:', error);
-        sessionStorage.removeItem('jobListingsState');
-      }
-      return false;
-    };
-
-
-
     fetchData();
 
     return () => {
@@ -1569,7 +1524,7 @@ export default function JobPostingsPage() {
       sessionStorage.removeItem('jobListingsState');
       setDataTimestamp(null);
     }
-  }, [title, experienceLevel, location, company, saved]);
+  }, [title, experienceLevel, location, company, saved, currentPage]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {

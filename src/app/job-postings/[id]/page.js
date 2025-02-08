@@ -56,9 +56,7 @@ import {
 } from "@/components/ui/popover"
 import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { JobCard } from "../../../components/job-posting";
-import { CollapsibleJobs } from "./collapsible";
-import { StickyNavbar } from './navbar';
+
 const stripHTML = (str) => {
   const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'u', 'b', 'i', 'strong', 'em'];
   const parser = new DOMParser();
@@ -155,31 +153,6 @@ const CompanySimilarJobs = ({ company }) => {
 };
 
 
-
-function InsightsButton({ onClick }) {
-  return (
-    <Button variant="outline" onClick={onClick}>
-      Show Insights
-      <Sparkles className="-me-1 ms-2" size={16} strokeWidth={2} aria-hidden="true" />
-    </Button>
-  );
-}
-
-// ### Updated Utility Function: Extract Salary ###
-/**
- * Extracts salary information from a given text.
- * Handles various formats such as:
- * - 'USD $100,000-$200,000'
- * - '$100k-120k'
- * - '55/hr - 65/hr'
- * - '$4200 monthly'
- * - etc.
- *
- * @param {string} text - The text to extract salary from.
- * @returns {string} - The extracted salary string or an empty string if not found.
- */
-
-
 function Summarization({ title, message, loading, error }) {
   return (
 
@@ -272,118 +245,6 @@ export default function JobPostingPage({ params }) {
   const [isViewed, setIsViewed] = useState(false);
   const [viewedAt, setViewedAt] = useState(null);
 
-  const handleInghtsClick = () => {
-    setInsightsShown(!insightsShown);
-  };
-
-
-  const handleBadgeClick = () => {
-    setShowAlert(true);
-  };
-
-  const handlePredefinedQuestion = async (query) => {
-    if (!user) return;
-    let question = q;
-    if (!question) return;
-    console.log('Predefined question:', question);
-
-    if (!userProfile) {
-      setLlmResponse("Loading user profile...");
-      return;
-    }
-    const jobPosting = data.jobPosting;
-
-    const technicalSkills = userProfile.user.technical_skills || 'None specified';
-    const softSkills = userProfile.user.soft_skills || 'None specified';
-    const otherSkills = userProfile.user.other_skills || 'None specified';
-
-    const modifiedQuestion = `Does ${userProfile.user.firstname} qualify for the job titled "${jobPosting.title}" at ${jobPosting.company}? Please provide a match score out of 100 and a brief explanation.`;
-    const matchSchema = {
-      type: "json_schema",
-      json_schema: {
-        name: "job_match",
-        schema: {
-          type: "object",
-          properties: {
-            field: { type: "string" },
-          },
-          required: [
-            "field"
-          ]
-        }
-      }
-    };
-    const systemMessage = {
-      role: "system",
-      content: `
-You are a helpful career assistant evaluating job fit for ${userProfile.user.firstname} ${userProfile.user.lastname}.
-
-### User Profile:
-- **Professional Summary:** ${userProfile.user.professionalSummary || 'No summary available.'}
-- **Technical Skills:** ${technicalSkills}
-- **Soft Skills:** ${softSkills}
-- **Other Skills:** ${otherSkills}
-- **Desired Job Title:** ${userProfile.user.desired_job_title || 'Not specified'}
-- **Preferred Location:** ${userProfile.user.desired_location || 'Any location'}
-- **Preferred Salary:** $${userProfile.user.jobPreferredSalary || 'Not specified'}
-- **Employment Type:** ${userProfile.user.employment_type || 'Not specified'}
-- **Preferred Industries:** ${userProfile.user.preferred_industries || 'Not specified'}
-- **Willing to Relocate:** ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
-
-### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.company}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-- **Location**: ${exp.location || 'Not specified'}
-- **Description**: ${exp.description || 'No description available'}
-- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'}
-
-### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-- **Grade**: ${edu.grade || 'Not specified'}
-- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'}
-
-### Job Posting Details:
-${JSON.stringify(jobPosting)}
-
-Please assess the qualifications and provide a brief explanation of whether the user is a good fit for this job.
-            `,
-    };
-    console.log('System message:', systemMessage.content);
-
-    const userMessage = { role: "user", content: modifiedQuestion };
-    const newMessages = [systemMessage, userMessage];
-    setLlmResponse("Loading...");
-
-    try {
-      setLoadingLLMResponse(true);
-      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "qwen2-7b-instruct",
-          messages: newMessages,
-          temperature: 0.7,
-          max_tokens: 500,
-          stream: false,
-        }),
-      });
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || "No response.";
-      setLlmResponse(content);
-      setLoadingLLMResponse(false);
-    } catch (error) {
-      console.error("Error fetching LLM response:", error);
-      setLlmResponse("Failed to get a response. Please try again.");
-      setErrorLLMResponse(error.message);
-    }
-  };
 
   const handleSummarizationQuery = async () => {
     if (!user) return;
@@ -681,58 +542,59 @@ Please assess the qualifications and provide a brief explanation of whether the 
       />
       <div className="container mx-auto py-0 p-6 max-w-3xl">
         {/* Job Header Section */}
-        <div className="bg-background border rounded-lg p-4 mb-6">
+        <div className="bg-background rounded-lg mb-8"> {/* Increased mb and added padding */}
           {/* Company and Title Section */}
-          <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-start justify-between gap-4 mb-5"> {/* Increased mb */}
             <div className="flex-grow">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2"> {/* Adjusted margin */}
                 <Link
                   href={`/companies/${jobPosting.company}`}
-                  className="text-sm font-medium hover:underline underline-offset-4"
+                  className="text-md font-semibold text-foreground/80 hover:underline underline-offset-4"
                 >
                   {jobPosting.company}
                 </Link>
               </div>
-              <h1 className="text-xl font-semibold mb-3">
-                {jobPosting.title}                {isViewed && (
-                  <Badge variant="outline" className="gap-1 border-none p-0 m-0">
-                    <Eye className="h-3 w-3" />
-                    Viewed <span className="text-muted-foreground">{formatDistanceStrict(viewedAt, new Date())} ago</span>
-                  </Badge>
-                )}
+              <h1 className="text-2xl font-bold mb-4 tracking-tight"> {/* Increased title size and tracking */}
+                {jobPosting.title}
               </h1>
 
               {/* Key Details Row */}
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground mb-3">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground/90 mb-4"> {/* Slightly less muted key details */}
                 {((jobPosting?.salary && jobPosting.salary > 1000) || jobPosting?.salary_range_str) && (
                   <div className="flex items-center gap-1.5">
-                    <HandCoins className="h-3.5 w-3.5" />
+                    <HandCoins className="h-4 w-4" /> {/* Slightly larger icons */}
                     <span>{jobPosting.salary || jobPosting.salary_range_str}</span>
+                  </div>
+                )}
+                {isViewed && (
+                  <div className="flex items-center gap-1.5">
+                    <Eye className="h-3.5 w-3.5" /> {/* Slightly larger icons */}
+                    Viewed <span className="text-muted-foreground">{formatDistanceStrict(viewedAt, new Date())} ago</span>
                   </div>
                 )}
                 {jobPosting.location && (
                   <div className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5" />
+                    <MapPin className="h-4 w-4" /> {/* Slightly larger icons */}
                     <span>{jobPosting.location}</span>
                   </div>
                 )}
                 {jobPosting?.experiencelevel && (
                   <div className="flex items-center gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5" />
+                    <Briefcase className="h-4 w-4" /> {/* Slightly larger icons */}
                     <span>{jobPosting.experiencelevel}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <Timer className="h-3.5 w-3.5" />
+                  <Timer className="h-4 w-4" /> {/* Slightly larger icons */}
                   <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
                 </div>
               </div>
 
               {/* Keywords */}
               {keywords && keywords.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2 mt-1"> {/* Adjusted margin and gap */}
                   {keywords.map((keyword, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
+                    <Badge key={index} variant="secondary" className="text-sm"> {/* More defined badges, slightly larger text */}
                       {keyword}
                     </Badge>
                   ))}
@@ -740,14 +602,14 @@ Please assess the qualifications and provide a brief explanation of whether the 
               )}
             </div>
 
-            <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
+            <Avatar alt={jobPosting.company} className="w-14 h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
               <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
               <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2"> {/* Adjusted margin */}
             <Link
               href={jobPosting.source_url}
               target="_blank"
@@ -755,7 +617,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
               className="flex-1 sm:flex-none"
             >
               <Button className="w-full sm:w-auto min-w-28 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
-                Apply Now
+                Apply
               </Button>
             </Link>
             <Button24 jobId={id} />
@@ -843,35 +705,6 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
           <CompanySimilarJobs company={jobPosting.company} />
         </Suspense>
-
-
-        {user && insightsShown && (
-          <>
-            <h3 className="text-md font-semibold mb-3">Quick Insights</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-                <Sparkle size={14} strokeWidth={2} className="text-muted-foreground" />
-              </Badge>
-              <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-                <User size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-                <p className="text-sm px-1 py-0.5 font-medium text-muted-foreground">
-                  Am I a good fit?
-                </p>
-              </Badge>
-              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-foreground/10" variant="secondary">
-                <Briefcase size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-                <p className="text-sm px-1 py-0.5 font-semibold text-muted-foreground">
-                  What should I say in my cover letter?
-                </p>
-              </Badge>
-
-            </div>
-
-            {showAlert && <AlertDemo />}
-          </>
-        )}
 
       </div>
     </>
