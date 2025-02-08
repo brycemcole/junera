@@ -537,9 +537,26 @@ export async function GET(req) {
     if (titleGroup.length > 0) {
       const titleConditions = titleGroup.map((t, i) => {
         const idx = paramIndex + i;
-        return `title_vector @@ to_tsquery('english', $${idx})`;
+        if (t.startsWith("-")) {
+          // Negative condition (exclude titles containing this term)
+          negativeConditions.push(
+            `NOT (title_vector @@ to_tsquery('english', $${idx}))`
+          );
+        } else {
+          // Normal condition (include titles matching this term)
+          titleConditions.push(
+            `title_vector @@ to_tsquery('english', $${idx})`
+          );
+        }
       });
-      queryText += ` AND (${titleConditions.join(' OR ')})`;
+
+      if (titleConditions.length > 0) {
+        queryText += ` AND (${titleConditions.join(" OR ")})`;
+      }
+      if (negativeConditions.length > 0) {
+        queryText += ` AND (${negativeConditions.join(" AND ")})`;
+      }
+
       filterParams.push(
         ...titleGroup.map((t) => t.trim().replace(/\s+/g, ' & '))
       );
