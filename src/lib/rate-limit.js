@@ -12,6 +12,12 @@ const registerLimiter = new RateLimiter({
   fireImmediately: true
 });
 
+const reportLimiter = new RateLimiter({
+  tokensPerInterval: 5,
+  interval: "hour",
+  fireImmediately: true
+});
+
 const ipLimiter = new Map();
 
 export async function checkRateLimit(action, ip) {
@@ -24,7 +30,11 @@ export async function checkRateLimit(action, ip) {
     }));
   }
 
-  const limiter = action === 'login' ? loginLimiter : registerLimiter;
+  const limiter = action === 'login' ? loginLimiter : 
+                  action === 'register' ? registerLimiter :
+                  action === 'report' ? reportLimiter :
+                  loginLimiter; // fallback to login limiter for unknown actions
+                  
   const ipBasedLimiter = ipLimiter.get(ip);
 
   const [hasTokenLimiter, hasTokenIp] = await Promise.all([

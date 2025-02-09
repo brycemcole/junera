@@ -85,6 +85,52 @@ const executeQueryWithTimeout = async (queryText, params) => {
   }
 };
 
+const expandLocation = (location) => {
+  if (!location) return [];
+  const lowercaseLocation = location.toLowerCase();
+  let searchTerms = [lowercaseLocation];
+
+  // Check if it's a state abbreviation
+  Object.entries(stateMap).forEach(([fullName, abbr]) => {
+    if (lowercaseLocation === abbr.toLowerCase()) {
+      searchTerms.push(fullName);
+    } else if (lowercaseLocation === fullName) {
+      searchTerms.push(abbr.toLowerCase());
+    }
+  });
+
+  // Add partial matches for cities with state
+  const cityStateMatch = lowercaseLocation.match(/([^,]+),?\s*([a-z]{2}|[^,]+)$/i);
+  if (cityStateMatch) {
+    const [_, city, state] = cityStateMatch;
+    const trimmedCity = city.trim();
+    const trimmedState = state.trim();
+    
+    // Add the city by itself
+    searchTerms.push(trimmedCity);
+
+    // If state is an abbreviation, add full name
+    if (trimmedState.length === 2) {
+      const fullStateName = Object.entries(stateMap)
+        .find(([_, abbr]) => abbr.toLowerCase() === trimmedState.toLowerCase())?.[0];
+      if (fullStateName) {
+        searchTerms.push(fullStateName);
+        searchTerms.push(`${trimmedCity}, ${fullStateName}`);
+      }
+    } 
+    // If state is full name, add abbreviation
+    else {
+      const stateAbbr = stateMap[trimmedState.toLowerCase()];
+      if (stateAbbr) {
+        searchTerms.push(stateAbbr.toLowerCase());
+        searchTerms.push(`${trimmedCity}, ${stateAbbr}`);
+      }
+    }
+  }
+
+  return [...new Set(searchTerms)]; // Remove duplicates
+};
+
 export async function GET(req) {
   const authHeader = req.headers.get('Authorization');
   let token = '';
@@ -205,19 +251,7 @@ export async function GET(req) {
   }
 
   // Build location search terms
-  let locationSearchTerms = [];
-  if (location) {
-    locationSearchTerms.push(location);
-
-    // If user typed full state name, also add abbr
-    if (stateMap[location]) {
-      locationSearchTerms.push(stateMap[location].toLowerCase());
-    }
-    // If user typed abbr, add full name
-    else if (abbrMap[location]) {
-      locationSearchTerms.push(abbrMap[location].toLowerCase());
-    }
-  }
+  let locationSearchTerms = location ? expandLocation(location) : [];
 
   // Prepare caching
   const cacheKey = `jobPostings:${searchParams.toString()}:prefs-${applyJobPrefs}:sort-${sort}`;
@@ -428,14 +462,17 @@ export async function GET(req) {
 
     // 3) Location
     if (locationSearchTerms.length > 0) {
-      const tsquery = locationSearchTerms
-        .map((term) =>
-          term.includes(' ') ? term.split(' ').join(' & ') : term
+      const locationConditions = locationSearchTerms.map((term, i) => {
+        const idx = paramIndex + i;
+        return `location_vector @@ to_tsquery('simple', $${idx})`;
+      });
+      queryText += ` AND (${locationConditions.join(' OR ')})`;
+      filterParams.push(
+        ...locationSearchTerms.map(term => 
+          term.split(/\s+/).join(' & ')
         )
-        .join(' | ');
-      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
-      filterParams.push(tsquery);
-      paramIndex++;
+      );
+      paramIndex += locationSearchTerms.length;
     }
 
     // 4) Company

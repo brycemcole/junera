@@ -12,7 +12,7 @@ import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
 import SharePopover from "@/components/share-popover";
 import { TextShimmer } from '@/components/core/text-shimmer';
-
+import ReportPopover from "@/components/report-popover";
 import {
   Accordion,
   AccordionContent,
@@ -57,8 +57,7 @@ import {
 import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { redirect } from 'next/navigation';
-import { decodeHTMLEntities, stripHTML } from '@/lib/job-utils';
-
+import { decodeHTMLEntities, stripHTML, stateMap } from '@/lib/job-utils';
 
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
@@ -192,6 +191,25 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
       </DropdownMenuContent>
     </DropdownMenu>
   );
+};
+
+const getStateFromLocation = (location) => {
+  if (!location) return null;
+  const lowercaseLocation = location.toLowerCase();
+  
+  // First check if it's already a state abbreviation
+  const stateAbbr = Object.values(stateMap).find(abbr => 
+    lowercaseLocation.includes(abbr.toLowerCase())
+  );
+  if (stateAbbr) return stateAbbr;
+
+  // Then check for full state names
+  for (const [stateName, abbr] of Object.entries(stateMap)) {
+    if (lowercaseLocation.includes(stateName)) {
+      return abbr;
+    }
+  }
+  return null;
 };
 
 export default function JobPostingPage({ params }) {
@@ -506,46 +524,53 @@ export default function JobPostingPage({ params }) {
         }}
       />
       <div className="container mx-auto py-0 p-6 max-w-3xl">
-        {/* Job Header Section */}
-        <div className="bg-background rounded-lg mb-8"> {/* Increased mb and added padding */}
-          {/* Company and Title Section */}
-          <div className="flex items-start justify-between gap-4 mb-5"> {/* Increased mb */}
+        
+        <div className="bg-background rounded-lg mb-8">
+          
+          <div className="flex items-start justify-between gap-4 mb-5">
+            
             <div className="flex-grow">
-              <div className="mb-2"> {/* Adjusted margin */}
+              
+              <div className="flex items-center gap-4 mb-4">
+              <Avatar alt={jobPosting.company} className="w-14 h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
+              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+              <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+              <div> 
+
                 <Link
                   href={`/companies/${jobPosting.company}`}
                   className="text-md font-semibold text-foreground/80 hover:underline underline-offset-4"
                 >
                   {jobPosting.company}
                 </Link>
-              </div>
-              <h1 className="text-2xl font-bold mb-4 tracking-tight"> {/* Increased title size and tracking */}
+              <h1 className="text-2xl font-bold tracking-tight"> 
                 {jobPosting.title}
               </h1>
-
-              {/* Key Details Row */}
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> {/* Slightly less muted key details */}
+              </div>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> 
                 {((jobPosting?.salary && jobPosting.salary > 1000) || jobPosting?.salary_range_str) && (
                   <div className="flex items-center gap-1.5">
-                    <HandCoins className="h-4 w-4" /> {/* Slightly larger icons */}
+                    <HandCoins className="h-4 w-4" /> 
                     <span>{jobPosting.salary || jobPosting.salary_range_str}</span>
                   </div>
                 )}
                 {isViewed && (
                   <div className="flex items-center text-blue-500 gap-1.5">
-                    <Eye className="h-3.5 w-3.5" /> {/* Slightly larger icons */}
+                    <Eye className="h-3.5 w-3.5" />
                     Viewed <span>{formatDistanceStrict(viewedAt, new Date())} ago</span>
                   </div>
                 )}
                 {jobPosting.location && (
                   <div className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" /> {/* Slightly larger icons */}
+                    <MapPin className="h-4 w-4" /> 
                     <span>{jobPosting.location}</span>
                   </div>
                 )}
                 {jobPosting?.experiencelevel != 'null' && (
                   <div className="flex items-center gap-1.5">
-                    <Briefcase className="h-4 w-4" /> {/* Slightly larger icons */}
+                    <Briefcase className="h-4 w-4" />
                     <span>{jobPosting.experiencelevel}</span>
                   </div>
                 )}
@@ -567,10 +592,6 @@ export default function JobPostingPage({ params }) {
               )}
             </div>
 
-            <Avatar alt={jobPosting.company} className="w-14 h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
-              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-              <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
           </div>
 
           {/* Action Buttons */}
@@ -586,7 +607,7 @@ export default function JobPostingPage({ params }) {
               </Button>
             </Link>
             <Button24 jobId={id} />
-            <SharePopover title={`${jobPosting.title} at ${jobPosting.company}`} />
+            <ReportPopover jobId={id} />
             <JobDropdown
               handleSummarizationQuery={handleSummarizationQuery}
               jobId={id}
@@ -595,6 +616,58 @@ export default function JobPostingPage({ params }) {
               companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
               location={jobPosting.location}
             />
+          </div>
+
+          {/* Quick Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&strictSearch=false`}>
+              <Button variant="secondary" size="sm" className="text-sm">
+                <Telescope className="w-4 h-4 mr-2" />
+                Similar Titles
+              </Button>
+            </Link>
+            {jobPosting.location && (
+              <>
+                <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location)}`}>
+                  <Button variant="secondary" size="sm" className="text-sm">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Jobs in {jobPosting.location}
+                  </Button>
+                </Link>
+                {getStateFromLocation(jobPosting.location) && (
+                  <Link href={`/job-postings?location=${encodeURIComponent(getStateFromLocation(jobPosting.location))}`}>
+                    <Button variant="secondary" size="sm" className="text-sm">
+                      <House className="w-4 h-4 mr-2" />
+                      All {getStateFromLocation(jobPosting.location)} Jobs
+                    </Button>
+                  </Link>
+                )}
+                <Link 
+                  href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&location=${encodeURIComponent(jobPosting.location)}&strictSearch=false`}
+                >
+                  <Button variant="secondary" size="sm" className="text-sm">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Similar Jobs Here
+                  </Button>
+                </Link>
+              </>
+            )}
+            {jobPosting.experiencelevel && jobPosting.experiencelevel !== 'null' && (
+              <Link href={`/job-postings?experienceLevel=${encodeURIComponent(jobPosting.experiencelevel)}`}>
+                <Button variant="secondary" size="sm" className="text-sm">
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  {jobPosting.experiencelevel} Jobs
+                </Button>
+              </Link>
+            )}
+            {jobPosting.company && (
+              <Link href={`/companies/${encodeURIComponent(jobPosting.company)}`}>
+                <Button variant="secondary" size="sm" className="text-sm">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  More at {jobPosting.company}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
