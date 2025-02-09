@@ -37,16 +37,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
 import { BriefcaseBusiness } from "lucide-react";
-import { useDebounce } from 'use-debounce';
-import { MapPin } from 'lucide-react';
-
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Plus } from 'lucide-react';
-import { Bookmark } from 'lucide-react';
-import { Label } from "@/components/ui/label";
 import { Check, ChevronDown } from "lucide-react";
 import {
   Command,
@@ -207,45 +198,6 @@ const states = {
   "wyoming": "Wyoming",
 };
 
-
-function SavedSearchButton({ name, title, experienceLevel, location }) {
-  const router = useRouter();
-
-  // Function to get badge color based on search type
-  const getBadgeColor = () => {
-    if (title) return "bg-blue-500";
-    if (experienceLevel) return "bg-emerald-500";
-    if (location) return "bg-purple-500";
-    return "bg-gray-500";
-  };
-
-  const redirectToSearch = () => {
-    const params = {
-      title: title || "",
-      location: location || "",
-      explevel: experienceLevel || ""
-    };
-    const newParams = new URLSearchParams(params);
-    const newUrl = `/job-postings?${newParams.toString()}`;
-    if (newUrl !== window.location.search) {
-      router.push(newUrl);
-    }
-  };
-
-  return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 px-2 cursor-pointer hover:bg-accent"
-      onClick={redirectToSearch}
-    >
-      <span
-        className={`size-1.5 rounded-full ${getBadgeColor()}`}
-        aria-hidden="true"
-      />
-      {name}
-    </Badge>
-  );
-}
 
 
 const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
@@ -509,15 +461,6 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
   );
 });
 
-const JobCount = memo(function JobCount({ count, className }) {
-  return (
-    <span className={className}>
-      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-[family-name:var(--font-geist-mono)] text-muted-foreground">
-        <span>{count} jobs</span>
-      </div>
-    </span>
-  );
-});
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, companies }) {
   if (!company) return null;
@@ -1560,12 +1503,9 @@ export default function JobPostingsPage() {
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">{headerTitle}</h1>
-              <p className="text-sm text-muted-foreground">
-                <small className="text-sm text-muted-foreground">
-                  {count} results
-                </small>
-              </p>
+              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
+              <span className="text-emerald-500">{count}</span>  {headerTitle}
+              </h1>
 
 
             </div>

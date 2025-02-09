@@ -5,6 +5,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useRouter } from "next/navigation";
 import {
   Tooltip,
   TooltipContent,
@@ -16,10 +17,35 @@ import { RiCodeFill, RiFacebookFill, RiMailLine, RiTwitterXFill } from "@remixic
 import { Check, Copy, ShareIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
-export default function SharePopover({title}: {title: string}) {
+const sizeVariants = {
+  default: {
+    button: "h-9 w-9",
+    icon: 16
+  },
+  small: {
+    button: "h-7 w-7 min-w-0 p-0",
+    icon: 12
+  }
+};
+
+export default function SharePopover({
+  title, 
+  size = "default",
+  jobId
+}: {
+  title: string, 
+  size?: "default" | "small",
+  jobId?: string
+}) {
+  const router = useRouter();
   const [copied, setCopied] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  
+  // Update URL generation
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const currentUrl = jobId 
+    ? `${baseUrl}/job-postings/${jobId}`
+    : typeof window !== 'undefined' ? window.location.href : '';
 
   const handleCopy = () => {
     if (inputRef.current) {
@@ -49,11 +75,15 @@ export default function SharePopover({title}: {title: string}) {
     }
   };
 
+  const handleViewJob = () => {
+    router.push(`/job-postings/${jobId}`);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" className={sizeVariants[size].button}>
             <ShareIcon className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
@@ -61,40 +91,48 @@ export default function SharePopover({title}: {title: string}) {
           <div className="flex flex-col gap-3 text-center">
             <div className="text-sm font-medium">Share job posting</div>
             <div className="text-sm font-medium">{title}</div>
+            {jobId && (
+              <Button 
+                variant="outline" 
+                onClick={handleViewJob}
+                className="w-full"
+              >
+                View Job
+              </Button>
+            )}
             <div className="flex flex-wrap justify-center gap-2">
-                    <Button 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={() => handleShare('embed')}
-                      aria-label="Copy embed code"
-                    >
-                      <RiCodeFill size={16} strokeWidth={2} aria-hidden="true" />
-                    </Button>
-                    <Button 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={() => handleShare('twitter')}
-                      aria-label="Share on Twitter"
-                    >
-                      <RiTwitterXFill size={16} strokeWidth={2} aria-hidden="true" />
-                    </Button>
-                    <Button 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={() => handleShare('facebook')}
-                      aria-label="Share on Facebook"
-                    >
-                      <RiFacebookFill size={16} strokeWidth={2} aria-hidden="true" />
-                    </Button>
-                    <Button 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={() => handleShare('email')}
-                      aria-label="Share via email"
-                    >
-                      <RiMailLine size={16} strokeWidth={2} aria-hidden="true" />
-                    </Button>
-
+              <Button 
+                variant="outline" 
+                className={sizeVariants[size].button}
+                onClick={() => handleShare('embed')}
+                aria-label="Copy embed code"
+              >
+                <RiCodeFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className={sizeVariants[size].button}
+                onClick={() => handleShare('twitter')}
+                aria-label="Share on Twitter"
+              >
+                <RiTwitterXFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className={sizeVariants[size].button}
+                onClick={() => handleShare('facebook')}
+                aria-label="Share on Facebook"
+              >
+                <RiFacebookFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
+              </Button>
+              <Button 
+                variant="outline" 
+                className={sizeVariants[size].button}
+                onClick={() => handleShare('email')}
+                aria-label="Share via email"
+              >
+                <RiMailLine size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
+              </Button>
             </div>
             <div className="space-y-2">
               <div className="relative">

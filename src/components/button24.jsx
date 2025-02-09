@@ -7,7 +7,18 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from '@/hooks/use-toast';
 
-export default function Button24({ jobId }) {
+const sizeVariants = {
+    default: {
+        button: "size-9",
+        icon: 16
+    },
+    small: {
+        button: "w-7 h-7 p-0 min-w-0",
+        icon: 14
+    }
+};
+
+export default function Button24({ jobId, size = "default" }) {
     const [bookmarked, setBookmarked] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [hasChecked, setHasChecked] = useState(false);
@@ -119,14 +130,14 @@ export default function Button24({ jobId }) {
                             className="text-foreground"
                         >
                             <Toggle
-                                className="group size-9 border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
+                                className={`group ${sizeVariants[size].button} border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500`}
                                 aria-label="Bookmark this"
                                 pressed={bookmarked || isHovered}
                                 onPressedChange={handleToggle}
                                 onClick={handleClick}
                             >
                                 <Bookmark 
-                                    size={16} 
+                                    size={sizeVariants[size].icon}
                                     strokeWidth={2} 
                                     aria-hidden="true"
                                     className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}

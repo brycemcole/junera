@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
-import SharePopover from "./share-popover";
+import SharePopover from "@/components/share-popover";
 import { TextShimmer } from '@/components/core/text-shimmer';
 
 import {
@@ -559,7 +559,7 @@ export default function JobPostingPage({ params }) {
               </h1>
 
               {/* Key Details Row */}
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground/90 mb-4"> {/* Slightly less muted key details */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> {/* Slightly less muted key details */}
                 {((jobPosting?.salary && jobPosting.salary > 1000) || jobPosting?.salary_range_str) && (
                   <div className="flex items-center gap-1.5">
                     <HandCoins className="h-4 w-4" /> {/* Slightly larger icons */}
@@ -567,9 +567,9 @@ export default function JobPostingPage({ params }) {
                   </div>
                 )}
                 {isViewed && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center text-blue-500 gap-1.5">
                     <Eye className="h-3.5 w-3.5" /> {/* Slightly larger icons */}
-                    Viewed <span className="text-muted-foreground">{formatDistanceStrict(viewedAt, new Date())} ago</span>
+                    Viewed <span>{formatDistanceStrict(viewedAt, new Date())} ago</span>
                   </div>
                 )}
                 {jobPosting.location && (
@@ -578,23 +578,23 @@ export default function JobPostingPage({ params }) {
                     <span>{jobPosting.location}</span>
                   </div>
                 )}
-                {jobPosting?.experiencelevel && (
+                {jobPosting?.experiencelevel != 'null' && (
                   <div className="flex items-center gap-1.5">
                     <Briefcase className="h-4 w-4" /> {/* Slightly larger icons */}
                     <span>{jobPosting.experiencelevel}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <Timer className="h-4 w-4" /> {/* Slightly larger icons */}
+                  <Timer className="h-4 w-4" /> 
                   <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
                 </div>
               </div>
 
               {/* Keywords */}
               {keywords && keywords.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-1"> {/* Adjusted margin and gap */}
+                <div className="flex flex-wrap gap-2 mt-1"> 
                   {keywords.map((keyword, index) => (
-                    <Badge key={index} variant="secondary" className="text-sm"> {/* More defined badges, slightly larger text */}
+                    <Badge key={index} className="text-md px-2" variant="outline"> 
                       {keyword}
                     </Badge>
                   ))}
