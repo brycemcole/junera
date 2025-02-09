@@ -5,10 +5,28 @@ import jwt from 'jsonwebtoken';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
+const getClientIp = (headersList) => {
+  // Try different headers that might contain the client IP
+  const forwardedFor = headersList.get("x-forwarded-for");
+  const realIp = headersList.get("x-real-ip");
+  const cfConnectingIp = headersList.get("cf-connecting-ip");
+  
+  if (forwardedFor) {
+    // x-forwarded-for can contain multiple IPs, get the first one
+    const ips = forwardedFor.split(',').map(ip => ip.trim());
+    return ips[0];
+  }
+  
+  if (realIp) return realIp;
+  if (cfConnectingIp) return cfConnectingIp;
+  
+  return "0.0.0.0"; // fallback IP if none found
+};
+
 export async function POST(req, { params }) {
-  const { id } = await params;
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
+  const { id } = params;
+  const headersList = headers();
+  const ip = getClientIp(headersList);
   
   // Check rate limit for non-authenticated users
   let user = null;
@@ -24,9 +42,14 @@ export async function POST(req, { params }) {
   }
 
   if (!user) {
-    const hasRemaining = await checkRateLimit("report", ip);
-    if (!hasRemaining) {
-      return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+    try {
+      const hasRemaining = await checkRateLimit("report", ip);
+      if (!hasRemaining) {
+        return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+      }
+    } catch (error) {
+      console.error("Rate limit check failed:", error);
+      // Continue without rate limiting if it fails
     }
   }
 

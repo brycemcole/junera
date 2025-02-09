@@ -47,6 +47,10 @@ export default function ReportPopover({ jobId }) {
             const data = await response.json();
 
             if (!response.ok) {
+                // Handle specific error cases
+                if (response.status === 429) {
+                    throw new Error("Too many reports. Please try again later.");
+                }
                 throw new Error(data.error || "Failed to submit report");
             }
 
@@ -59,10 +63,11 @@ export default function ReportPopover({ jobId }) {
             setOpen(false);
             setFormData({ reportType: "", comments: "" });
         } catch (error) {
+            console.error("Report submission error:", error);
             setError(error.message);
             toast({
-                title: "Error",
-                description: error.message,
+                title: "Error Submitting Report",
+                description: error.message || "An unexpected error occurred. Please try again.",
                 variant: "destructive",
             });
         } finally {
