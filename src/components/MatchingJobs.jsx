@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton"
 import JobList from './JobPostings';
+import { processJobPostings } from '@/lib/job-utils';
 
 export default function MatchingJobs({ loading, error }) {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function MatchingJobs({ loading, error }) {
         if (!response.ok) throw new Error('Failed to fetch jobs');
         
         const data = await response.json();
+        if (!data.jobs) throw new Error('No jobs found');
         setJobs(Array.isArray(data.jobs) ? data.jobs : []);
       } catch (error) {
         console.error('Error fetching jobs:', error);

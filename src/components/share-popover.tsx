@@ -23,7 +23,7 @@ const sizeVariants = {
     icon: 16
   },
   small: {
-    button: "h-7 w-7 min-w-0 sm:size-9",
+    button: "h-7 w-7 min-w-0 p-0 sm:size-9",
     icon: 12
   }
 };

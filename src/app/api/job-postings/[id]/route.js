@@ -5,63 +5,8 @@ import jwt from 'jsonwebtoken';
 import sql from 'mssql';
 import * as React from 'react';
 import { query } from "@/lib/pgdb";
-import { scanKeywords } from '@/lib/job-utils';
+import { scanKeywords, extractSalary } from '@/lib/job-utils';
 const he = require('he');
-
-function extractSalary(text) {
-  if (!text) return "";
-
-  // Step 1: Decode HTML entities
-  const decodedString = he.decode(text);
-
-  // Step 2: Remove HTML tags
-  const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
-
-  // Step 3: Normalize HTML entities and special characters
-  const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&mdash;/g, '—')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim();
-
-  // Define regex patterns in order of priority
-  const patterns = [
-    // New pattern to match decimal hourly ranges without a suffix (e.g. "$30.94 - $47.77")
-    /\$\s*(\d+(?:\.\d+)?)\s*[-–—]\s*\$\s*(\d+(?:\.\d+)?)/gi,
-    // 1. Hourly rates (highest priority)
-    /\$\s*(\d+\.?\d*)\s*(per\s*hour|hourly|per\s*hr|hr|h|\/ hour|\/hour|\/hr)\b/gi,
-
-    // 2. Hourly ranges
-    /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
-
-    // 3. Salary ranges with dashes
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 4. Salary ranges with 'to' wording
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 5. k-based salary ranges
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 6. Monthly salaries
-    /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
-
-    // 7. Single salary mentions (lowest priority)
-    /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
-  ];
-
-  // Find the first match in order of priority
-  for (const pattern of patterns) {
-    const matches = normalizedText.match(pattern);
-    if (matches && matches.length > 0) {
-      return matches[0].trim();
-    }
-  }
-
-  return "";
-}
 
 export async function GET(req, { params }) {
   params = await params;
@@ -82,8 +27,10 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: 'Job posting not found' }, { status: 404 });
     }
 
-    if (!jobPosting.salary)
+    // Extract salary if not already present
+    if (!jobPosting.salary) {
       jobPosting.salary = extractSalary(jobPosting.description);
+    }
 
     // Track view if user is authenticated
     if (authHeader) {

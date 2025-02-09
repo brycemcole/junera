@@ -1,9 +1,9 @@
 'use client';
-require('dotenv').config(); // Ensure you have dotenv installed and configured
+require('dotenv').config();
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
 import { formatDistanceToNow, set, format, formatDistanceStrict } from "date-fns";
-import { formatInTimeZone } from 'date-fns-tz'; // Add this import
+import { formatInTimeZone } from 'date-fns-tz';
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -475,54 +475,6 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <title>{`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`}</title>
-      <meta name="description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
-      <meta name="robots" content="index, follow" />
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content={`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`} />
-      <meta property="og:description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
-      <meta property="og:url" content={`https://junera.ai/job-postings/${id}`} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "JobPosting",
-            "mainEntityOfPage": {
-              "@type": "WebPage",
-              "@id": `https://junera.us/job-postings/${id}`
-            },
-            "title": jobPosting.title,
-            "description": jobPosting.description,
-            "datePosted": jobPosting.created_at,
-            "validThrough": jobPosting.valid_through || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            "jobLocation": {
-              "@type": "Place",
-              "address": {
-                "@type": "PostalAddress",
-                "addressRegion": jobPosting.location || "Multiple Locations"
-              }
-            },
-            "hiringOrganization": {
-              "@type": "Organization",
-              "name": jobPosting.company
-            },
-            "employmentType": jobPosting.experienceLevel ? jobPosting.experienceLevel.toUpperCase() : "FULL_TIME",
-            "baseSalary": jobPosting.salary_range_str ? {
-              "@type": "MonetaryAmount",
-              "currency": "USD",
-              "value": {
-                "@type": "QuantitativeValue",
-                "value": jobPosting.salary_range_str
-              }
-            } : undefined,
-            "applicantLocationRequirements": jobPosting.location?.toLowerCase().includes('remote') ? {
-              "@type": "Country",
-              "name": "Remote"
-            } : undefined
-          }, null, 2),
-        }}
-      />
       <div className="container mx-auto py-0 p-6 max-w-3xl">
         
         <div className="bg-background rounded-lg mb-8">
@@ -550,10 +502,10 @@ export default function JobPostingPage({ params }) {
               </div>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> 
-                {((jobPosting?.salary && jobPosting.salary > 1000) || jobPosting?.salary_range_str) && (
+                {jobPosting.salary && (
                   <div className="flex items-center gap-1.5">
                     <HandCoins className="h-4 w-4" /> 
-                    <span>{jobPosting.salary || jobPosting.salary_range_str}</span>
+                    <span>{jobPosting.salary}</span>
                   </div>
                 )}
                 {isViewed && (
