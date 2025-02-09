@@ -26,7 +26,7 @@ export async function updatePreferences(token, formData) {
             job_prefs_relocatable: Boolean(formData.job_prefs_relocatable)
         };
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/preferences`, {
+        const response = await fetch(`/api/user/preferences`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,

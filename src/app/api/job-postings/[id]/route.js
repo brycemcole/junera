@@ -1,10 +1,8 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import { createDatabaseConnection } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import sql from 'mssql';
-import { getCompanies } from "@/lib/companyCache";
 import * as React from 'react';
 import { query } from "@/lib/pgdb";
 import { scanKeywords } from '@/lib/job-utils';
