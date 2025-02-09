@@ -56,45 +56,10 @@ import {
 } from "@/components/ui/popover"
 import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-const stripHTML = (str) => {
-  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'u', 'b', 'i', 'strong', 'em'];
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(str, 'text/html');
-
-  // Remove disallowed tags
-  const elements = doc.body.querySelectorAll('*');
-  elements.forEach((el) => {
-    if (!allowedTags.includes(el.tagName.toLowerCase())) {
-      el.replaceWith(document.createTextNode(el.textContent));
-    }
-  });
-
-  // Cap font sizes
-  const allElements = doc.body.querySelectorAll('*');
-  allElements.forEach((el) => {
-    const computedStyle = window.getComputedStyle(el);
-    const fontSize = parseFloat(computedStyle.getPropertyValue('font-size'));
-    if (fontSize > 24) { // Cap font size to 24px
-      el.style.fontSize = '24px';
-    }
-  });
-
-  return doc.body.innerHTML;
-};
-const decodeHTMLEntities = (str) => {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = str;
-  return textarea.value;
-};
-
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { Check, Copy } from "lucide-react";
 import { redirect } from 'next/navigation';
+import { decodeHTMLEntities, stripHTML } from '@/lib/job-utils';
 
-// Create a separate component for Similar Jobs
+
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +118,7 @@ const CompanySimilarJobs = ({ company }) => {
 };
 
 
-function Summarization({ title, message, loading, error }) {
+const Summarization = ({ title, message, loading, error }) => {
   return (
 
     <div className="flex gap-3 mb-4">
@@ -585,16 +550,16 @@ export default function JobPostingPage({ params }) {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <Timer className="h-4 w-4" /> 
+                  <Timer className="h-4 w-4" />
                   <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
                 </div>
               </div>
 
               {/* Keywords */}
               {keywords && keywords.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-1"> 
+                <div className="flex flex-wrap gap-2 mt-1">
                   {keywords.map((keyword, index) => (
-                    <Badge key={index} className="text-md px-2" variant="outline"> 
+                    <Badge key={index} className="text-md px-2" variant="outline">
                       {keyword}
                     </Badge>
                   ))}
@@ -708,89 +673,5 @@ export default function JobPostingPage({ params }) {
 
       </div>
     </>
-  );
-}
-
-function ReportPopover() {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="outline"><Flag /></Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 mx-4">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Report Job Posting</h4>
-            <p className="text-sm text-muted-foreground">
-              Report an issue with this job posting
-            </p>
-          </div>
-          <form className="grid gap-4">
-            <div className="grid gap-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="missingInformation"
-                  name="issueType"
-                  value="missingInformation"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="missingInformation" className="text-sm">
-                  Missing Information
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="inactiveJob"
-                  name="issueType"
-                  value="inactiveJob"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="inactiveJob" className="text-sm">
-                  Inactive Job Posting
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="incorrectDetails"
-                  name="issueType"
-                  value="incorrectDetails"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="incorrectDetails" className="text-sm">
-                  Incorrect Job Details
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="other"
-                  name="issueType"
-                  value="other"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="other" className="text-sm">
-                  Other
-                </label>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="comments" className="text-sm font-medium">
-                Additional Comments (optional)
-              </label>
-              <textarea
-                id="comments"
-                rows="3"
-                className="w-full mt-1 p-2 border border-gray-300 rounded-md"
-                placeholder="Provide more details here..."
-              ></textarea>
-            </div>
-            <Button type="submit">Submit Report</Button>
-          </form>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 }

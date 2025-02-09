@@ -23,27 +23,27 @@ const sizeVariants = {
     icon: 16
   },
   small: {
-    button: "h-7 w-7 min-w-0 p-0",
+    button: "h-7 w-7 min-w-0 sm:size-9",
     icon: 12
   }
 };
 
 export default function SharePopover({
-  title, 
+  title,
   size = "default",
   jobId
 }: {
-  title: string, 
+  title: string,
   size?: "default" | "small",
   jobId?: string
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Update URL generation
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const currentUrl = jobId 
+  const currentUrl = jobId
     ? `${baseUrl}/job-postings/${jobId}`
     : typeof window !== 'undefined' ? window.location.href : '';
 
@@ -58,7 +58,7 @@ export default function SharePopover({
   const handleShare = (platform: string) => {
     const encodedUrl = encodeURIComponent(currentUrl);
     const encodedTitle = encodeURIComponent(title);
-    
+
     const shareUrls = {
       twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
@@ -92,8 +92,8 @@ export default function SharePopover({
             <div className="text-sm font-medium">Share job posting</div>
             <div className="text-sm font-medium">{title}</div>
             {jobId && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleViewJob}
                 className="w-full"
               >
@@ -101,32 +101,32 @@ export default function SharePopover({
               </Button>
             )}
             <div className="flex flex-wrap justify-center gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={sizeVariants[size].button}
                 onClick={() => handleShare('embed')}
                 aria-label="Copy embed code"
               >
                 <RiCodeFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={sizeVariants[size].button}
                 onClick={() => handleShare('twitter')}
                 aria-label="Share on Twitter"
               >
                 <RiTwitterXFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={sizeVariants[size].button}
                 onClick={() => handleShare('facebook')}
                 aria-label="Share on Facebook"
               >
                 <RiFacebookFill size={sizeVariants[size].icon} strokeWidth={2} aria-hidden="true" />
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className={sizeVariants[size].button}
                 onClick={() => handleShare('email')}
                 aria-label="Share via email"
@@ -145,34 +145,34 @@ export default function SharePopover({
                   aria-label="Share link"
                   readOnly
                 />
-                      <button
-                        onClick={handleCopy}
-                        className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-lg border border-transparent text-muted-foreground/80 outline-offset-2 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:cursor-not-allowed"
-                        aria-label={copied ? "Copied" : "Copy to clipboard"}
-                        disabled={copied}
-                      >
-                        <div
-                          className={cn(
-                            "transition-all",
-                            copied ? "scale-100 opacity-100" : "scale-0 opacity-0",
-                          )}
-                        >
-                          <Check
-                            className="stroke-emerald-500"
-                            size={16}
-                            strokeWidth={2}
-                            aria-hidden="true"
-                          />
-                        </div>
-                        <div
-                          className={cn(
-                            "absolute transition-all",
-                            copied ? "scale-0 opacity-0" : "scale-100 opacity-100",
-                          )}
-                        >
-                          <Copy size={16} strokeWidth={2} aria-hidden="true" />
-                        </div>
-                      </button>
+                <button
+                  onClick={handleCopy}
+                  className="absolute inset-y-0 end-0 flex h-full w-9 items-center justify-center rounded-e-lg border border-transparent text-muted-foreground/80 outline-offset-2 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:cursor-not-allowed"
+                  aria-label={copied ? "Copied" : "Copy to clipboard"}
+                  disabled={copied}
+                >
+                  <div
+                    className={cn(
+                      "transition-all",
+                      copied ? "scale-100 opacity-100" : "scale-0 opacity-0",
+                    )}
+                  >
+                    <Check
+                      className="stroke-emerald-500"
+                      size={16}
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div
+                    className={cn(
+                      "absolute transition-all",
+                      copied ? "scale-0 opacity-0" : "scale-100 opacity-100",
+                    )}
+                  >
+                    <Copy size={16} strokeWidth={2} aria-hidden="true" />
+                  </div>
+                </button>
               </div>
             </div>
           </div>

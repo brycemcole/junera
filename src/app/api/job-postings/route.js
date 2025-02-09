@@ -9,9 +9,9 @@ import { getRelatedTitles } from '@/lib/jobTitleMappings'; // Add this import
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 import jwt from 'jsonwebtoken';
 import { scanKeywords } from '@/lib/job-utils';
-
+import { processJobPostings } from '@/lib/job-utils';
 const SECRET_KEY = process.env.SESSION_SECRET;
-
+const QUERY_TIMEOUT_MS = 10000;
 const stateMap = {
   'remote': 'N/A',
   'alabama': 'AL',
@@ -65,105 +65,6 @@ const stateMap = {
   'wisconsin': 'WI',
   'wyoming': 'WY',
 };
-
-// Utility function to scan keywords
-// Removed the scanKeywords function definition
-
-// ### Updated Utility Function: Extract Salary ###
-/**
- * Extracts salary information from a given text.
- * Handles various formats such as:
- * - 'USD $100,000-$200,000'
- * - '$100k-120k'
- * - '55/hr - 65/hr'
- * - '$4200 monthly'
- * - etc.
- *
- * @param {string} text - The text to extract salary from.
- * @returns {string} - The extracted salary string or an empty string if not found.
- */
-function extractSalary(text) {
-  if (!text) return "";
-
-  // Step 1: Decode HTML entities
-  const decodedString = he.decode(text);
-
-  // Step 2: Remove HTML tags
-  const textWithoutTags = decodedString.replace(/<[^>]*>/g, ' ');
-
-  // Step 3: Normalize HTML entities and special characters
-  const normalizedText = textWithoutTags
-    .replace(/\u00a0/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&mdash;/g, '—')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim();
-
-  // Define regex patterns in order of priority
-  const patterns = [
-    // New pattern to match decimal hourly ranges without a suffix (e.g. "$30.94 - $47.77")
-    /\$\s*(\d+(?:\.\d+)?)\s*[-–—]\s*\$\s*(\d+(?:\.\d+)?)/gi,
-    // 1. Hourly rates (highest priority)
-    /\$\s*(\d+\.?\d*)\s*(per\s*hour|hourly|per\s*hr|hr|h|\/ hour|\/hour|\/hr)\b/gi,
-
-    // 2. Hourly ranges
-    /(\d+\.?\d*)\s*[-–—]\s*(\d+\.?\d*)\s*\/\s*(hour|hr|h)/gi,
-
-    // 3. Salary ranges with dashes
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*[-–—]\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 4. Salary ranges with 'to' wording
-    /\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(to|through|up\s*to)\s*\$\s*(\d{1,3}(?:,\d{3})+|\d{3,})\s*(USD|CAD)?(?:\s*per\s*year)?/gi,
-
-    // 5. k-based salary ranges
-    /\$\s*(\d+\.?\d*)k\s*[-–—]\s*\$\s*(\d+\.?\d*)k/gi,
-
-    // 6. Monthly salaries
-    /\$\s*(\d{3,}\.?\d*)\s*\b(monthly|month|months|mo)\b/gi,
-
-    // 7. Single salary mentions (lowest priority)
-    /\$\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/gi,
-  ];
-
-  // Find the first match in order of priority
-  for (const pattern of patterns) {
-    const matches = normalizedText.match(pattern);
-    if (matches && matches.length > 0) {
-      return matches[0].trim();
-    }
-  }
-
-  return "";
-}
-// Add shared utility functions at the top of the file
-const processJobPostings = (jobs) => {
-  return jobs.map((job) => {
-    const keywords = scanKeywords(job.description || "");
-    const remoteKeyword = (job.location || "").toLowerCase().includes('remote') ? 'Remote' : "";
-    const salary = extractSalary(job.description || "");
-
-    return {
-      id: job.job_id || "",
-      title: job.title || "",
-      company: job.company || "",
-      companyLogo: job.company ? `https://logo.clearbit.com/${encodeURIComponent(job.company.replace('.com', ''))}.com` : "",
-      experienceLevel: job.experiencelevel || "",
-      summary: job.summary || "",
-      description: "",
-      location: job.location || "",
-      salary: salary || "",
-      postedDate: job.created_at ? job.created_at.toISOString() : "",
-      remoteKeyword: remoteKeyword || "",
-      keywords: keywords || [],
-    };
-  });
-};
-
-// Add query timeout error handling
-const QUERY_TIMEOUT_MS = 10000;
-
-// Add this function at the top
 const executeQueryWithTimeout = async (queryText, params) => {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => {
@@ -185,7 +86,6 @@ const executeQueryWithTimeout = async (queryText, params) => {
 };
 
 export async function GET(req) {
-  console.log('Fetching job postings...');
   const authHeader = req.headers.get('Authorization');
   let token = '';
   let user = null;
@@ -267,7 +167,6 @@ export async function GET(req) {
       location = userPreferredLocations[0].toLowerCase();
     }
   } else {
-    // Clear these if we’re NOT applying prefs
     userPreferredTitles = [];
     userPreferredLocations = [];
   }
@@ -672,8 +571,6 @@ export async function GET(req) {
     );
   }
 }
-
-
 export async function PUT(req) {
   const { signal } = req;
   try {
@@ -727,5 +624,4 @@ export async function PUT(req) {
   }
 }
 
-// Force dynamic to ensure we check cache on each request
 export const dynamic = 'force-dynamic';

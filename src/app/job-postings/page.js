@@ -1077,7 +1077,7 @@ export default function JobPostingsPage() {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
-        e.preventDefault(); 
+        e.preventDefault();
         // Clear existing timer
         if (timer) {
           clearTimeout(timer);
@@ -1503,8 +1503,8 @@ export default function JobPostingsPage() {
         <div className="z-0">
           <Suspense fallback={<div>Loading...</div>}>
             <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
-              <span className="text-emerald-500">{count}</span>  {headerTitle}
+              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-0">
+                <span className="text-emerald-500 font-semibold">{count ? count.toLocaleString() : 0}</span>  {headerTitle}
               </h1>
 
 

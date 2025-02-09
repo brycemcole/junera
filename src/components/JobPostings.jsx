@@ -11,94 +11,21 @@ import Button24 from "@/components/button24"
 import SharePopover from "@/components/share-popover";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
+import { fullStripHTML, decodeHTMLEntities, parseUSLocations } from "@/lib/job-utils";
+import DOMPurify from 'dompurify';
 
-
-// Simplified and improved DateDisplay component
 function DateDisplay({ postedDate }) {
-  if (!postedDate) {
-    return "N/A";
-  }
-
-  const date = new Date(postedDate);
-  return (
-    <span className="text-muted-foreground text-sm">
-      {formatDistanceToNow(date, { addSuffix: true, includeSeconds: false })}
-    </span>
-  );
-}
-
-
-// Helper function to normalize location strings (handle casing and spacing)
-function normalizeLocation(location) {
-    if (!location) return "";
-    return location.toLowerCase().trim();
-}
-
-
-// Much more robust and readable location parsing
-function parseUSLocations(location) {
-    if (!location) return '';
-
-    const stateMap = {
-        'remote': 'N/A',
-        'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
-        'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE', 'florida': 'FL', 'georgia': 'GA',
-        'hawaii': 'HI', 'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA',
-        'kansas': 'KS', 'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
-        'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS', 'missouri': 'MO',
-        'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
-        'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH',
-        'oklahoma': 'OK', 'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
-        'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT', 'vermont': 'VT',
-        'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY',
-    };
-
-    const normalizedLocation = normalizeLocation(location);
-
-    if (normalizedLocation.includes('remote')) {
-        return 'Remote';
+    if (!postedDate) {
+        return "N/A";
     }
 
-    const stateAbbreviations = new Set();
-
-    // Split by common delimiters, handle multiple locations
-    const locationParts = normalizedLocation.split(/[,;|\/&]+/);
-
-    for (const part of locationParts) {
-        const trimmedPart = part.trim();
-
-        // Check for direct state abbreviations (e.g., "CA")
-        if (Object.values(stateMap).includes(trimmedPart.toUpperCase())) {
-            stateAbbreviations.add(trimmedPart.toUpperCase());
-            continue;
-        }
-
-        //check for "ST -" format
-        const stateMatch = trimmedPart.match(/^([a-z]{2})\s*-/);
-        if (stateMatch && Object.values(stateMap).includes(stateMatch[1].toUpperCase())) {
-          stateAbbreviations.add(stateMatch[1].toUpperCase());
-          continue;
-        }
-
-        // Check for full state names
-        for (const stateName in stateMap) {
-            if (trimmedPart.includes(stateName)) {
-                stateAbbreviations.add(stateMap[stateName]);
-                break; // Important: Stop after finding the first match within the part
-            }
-        }
-    }
-
-    // Format output
-    if (stateAbbreviations.size === 0) {
-        return location; // Return original if no states found
-    } else if (stateAbbreviations.size === 1) {
-        return Array.from(stateAbbreviations)[0]; // Return single abbreviation
-    } else {
-        return `Multiple locations: ${Array.from(stateAbbreviations).join(', ')}`;
-    }
+    const date = new Date(postedDate);
+    return (
+        <span className="text-muted-foreground text-sm">
+            {formatDistanceToNow(date, { addSuffix: true, includeSeconds: false })}
+        </span>
+    );
 }
-
 
 export const JobList = ({ data, loading, error }) => {
     const router = useRouter();
@@ -146,89 +73,96 @@ export const JobList = ({ data, loading, error }) => {
                 >
 
                     {/* Job Details */}
-                                        <div className="flex flex-col min-w-0 gap-0 flex-grow">
-                                            <div className="flex flex-row items-start gap-2">
-                                                <div className="flex flex-col gap-1">
-                                                <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex"> {/* Removed items-center */}
-    {job.company ? (
-        <Link href={{ pathname: `/companies/${job.company}`, query: router.query }} className="inline-flex items-center">
-          <Avatar className="w-6 h-6 rounded-full flex-shrink-0 mr-2">
-            <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-            <AvatarFallback className="rounded-full">
-              {job.company?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
-    ) : (
-        <Avatar className="w-5 h-5 flex-shrink-0 mr-2">
-          <AvatarFallback>
-            {job.company?.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-    )}
-    <div className="company-and-title"> {/* Added className for styling */}
-        <span className="font-semibold text-gray-500 company-name">{job?.company || "No company name available"}</span>
-        <span className="mx-[3px]"></span>
-        <span className="job-title">{job?.title || "No job titles available"}</span>
-    </div>
-</h3>
-
-                                                    {job?.summary && (
-                                                    <div className="text-sm">
-                                                        <p className={`text-muted-foreground transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
-                                                            {job.summary}
-                                                        </p>
-                                                        {job.summary.length > 100 && (
-                                                            <button 
-                                                                onClick={(e) => {
-                                                e.preventDefault();
-                                                toggleSummary(job.id);
-                                            }}
-                                            className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
-                                        >
-                                            {expandedSummaries.has(job.id) ? 'Show less' : 'Show more'}
-                                        </button>
+                    <div className="flex flex-col min-w-0 gap-0 flex-grow">
+                        <div className="flex flex-row items-start gap-2">
+                            <div className="flex flex-col gap-1">
+                                <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex"> {/* Removed items-center */}
+                                    {job.company ? (
+                                        <Link href={{ pathname: `/companies/${job.company}`, query: router.query }} className="inline-flex items-center">
+                                            <Avatar className="w-6 h-6 rounded-full flex-shrink-0 mr-2">
+                                                <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
+                                                <AvatarFallback className="rounded-full">
+                                                    {job.company?.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </Link>
+                                    ) : (
+                                        <Avatar className="w-5 h-5 flex-shrink-0 mr-2">
+                                            <AvatarFallback>
+                                                {job.company?.charAt(0).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
                                     )}
-                                </div>
-                            )}
-</div>                            
-                            
+                                    <div className="company-and-title">
+                                        <span className="font-semibold text-gray-500 company-name">{job?.company || "No company name available"}</span>
+                                        <span className="mx-[3px]"></span>
+                                        <span className="job-title">{job?.title || "No job titles available"}</span>
+                                    </div>
+                                </h3>
+
+                                {job?.summary ? (
+                                    <div className="text-sm mb-1">
+                                        <p className={`text-muted-foreground break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                            {job.summary}
+                                        </p>
+                                        {job.summary.length > 100 && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    toggleSummary(job.id);
+                                                }}
+                                                className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
+                                            >
+                                                {expandedSummaries.has(job.id) ? 'Hide summary' : 'Show summary'}
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                                    :
+                                    job?.description ? (
+                                            <p className={`text-muted-foreground mb-2 break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                                {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
+                                            </p>
+
+                                    ) : null}
+                            </div>
+
                         </div>
                         <div className="flex flex-row gap-2 items-center justify-between">
-                        <div className="leading-6 text-sm flex flex-col gap-2">
-                            <div className="flex flex-row flex-wrap gap-2 items-center">
-                                {job?.salary || job?.salary_range_str ? (
-                                    <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
-                                        {job.salary || job.salary_range_str}
-                                    </Badge>
+                            <div className="leading-6 text-sm flex flex-col gap-2">
+                                <div className="flex flex-row flex-wrap gap-2 items-center">
+                                    {job?.salary || job?.salary_range_str ? (
+                                        <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
+                                            {job.salary || job.salary_range_str}
+                                        </Badge>
+                                    ) : null}
+                                    {job?.location?.trim() && (
+                                        <Badge
+                                            variant="outline"
+                                            className={`truncate border-gray-400  ${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 border-green-500 dark:text-green-600' : 'text-gray-500'}`}
+                                        >
+                                            {parseUSLocations(job.location).substring(0, 30)}
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-row gap-2 items-center">
+                                <SharePopover jobId={job.id} size={'small'} />
+                                {user ? (
+                                    <Button24 jobId={job.id} size={'small'} />
                                 ) : null}
-                                {job?.location?.trim() && (
-                                    <Badge
-                                        variant="outline"
-                                        className={`truncate border-gray-400  ${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 border-green-500 dark:text-green-600' : 'text-gray-500'}`}
-                                    >
-                                        {parseUSLocations(job.location).substring(0, 30)}
-                                    </Badge>
-                                )}
+                                <Link
+                                    href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
+                                    onClick={() => handleJobClick(job.id)}
+                                    className="ml-auto"
+                                >
+                                    <Button variant="outline" size="sm" className="md:w-36 md:h-9 md:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
+                                        View Job
+                                    </Button>
+                                </Link>
                             </div>
                         </div>
-
-                        <div className="flex flex-row gap-2 items-center">
-                        <SharePopover jobId={job.id} size={'small'} />
-                            {user ? (   
-                                <Button24 jobId={job.id} size={'small'} />
-                            ) : null}
-                        <Link 
-                                href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
-                                onClick={() => handleJobClick(job.id)}
-                                className="ml-auto"
-                            >
-                                <Button variant="outline" size="sm">
-                                    View Job
-                                </Button>
-                            </Link>
-                            </div>
-                            </div>
                     </div>
                 </div>
             ))}

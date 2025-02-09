@@ -328,7 +328,7 @@ export default function DashboardPage() {
       <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Featured Bookmark Section */}
         <Suspense fallback={<Skeleton />}>
-          <Card className="border-none shadow-none col-span-2 relative">
+          <Card className="border-none shadow-none col-span-2 lg:col-span-3 relative">
             <CardTitle className="mb-4">
               New Jobs Matching Your Searches
               {loadingSavedSearches && (
@@ -356,7 +356,7 @@ export default function DashboardPage() {
 
         {/* Featured Bookmark + Similar Jobs */}
         {featuredBookmark && (
-          <Card className="border-none shadow-none col-span-2 relative">
+          <Card className="border-none shadow-none col-span-2 lg:col-span-3 relative">
             <CardTitle className="mb-4">
               More jobs like your saved job
               {loadingFeaturedBookmark && <LoaderCircle className="absolute bottom-3 right-0 animate-spin" />}
@@ -375,8 +375,8 @@ export default function DashboardPage() {
         )}
 
         {/* Preferred Jobs Section */}
-        { (user?.jobPrefsTitle || user?.jobPrefsLocation) ? (
-          <Card className="border-none shadow-none col-span-2 relative">
+        {(user?.jobPrefsTitle || user?.jobPrefsLocation) ? (
+          <Card className="border-none shadow-none col-span-2 lg:col-span-3 relative">
             <CardTitle className="mb-4">
               Jobs matching your preferences
               {loadingPreferredJobs && <LoaderCircle className="absolute bottom-3 right-0 animate-spin" />}
@@ -419,7 +419,7 @@ export default function DashboardPage() {
             </CardDescription>
           </Card>
         ) : (
-          <Card className="border-none shadow-none col-span-2 relative">
+          <Card className="border-none shadow-none col-span-2 lg:col-span-3 relative">
             <CardTitle className="mb-4">Job Matches Unavailable</CardTitle>
             <CardDescription>
               <p className="mb-2">

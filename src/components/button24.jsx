@@ -13,7 +13,7 @@ const sizeVariants = {
         icon: 16
     },
     small: {
-        button: "w-7 h-7 p-0 min-w-0",
+        button: "w-7 h-7 min-w-0 sm:size-9",
         icon: 14
     }
 };
@@ -80,7 +80,7 @@ export default function Button24({ jobId, size = "default" }) {
         }
 
         const isAddingBookmark = !bookmarked;  // Determine action based on current state
-        
+
         try {
             const response = await fetch(
                 isAddingBookmark ? '/api/bookmarks' : `/api/bookmarks?jobPostingId=${jobId}`,
@@ -90,8 +90,8 @@ export default function Button24({ jobId, size = "default" }) {
                         'Authorization': `Bearer ${user.token}`,
                         'Content-Type': 'application/json',
                     },
-                    ...(isAddingBookmark && { 
-                        body: JSON.stringify({ jobPostingId: jobId }) 
+                    ...(isAddingBookmark && {
+                        body: JSON.stringify({ jobPostingId: jobId })
                     })
                 }
             );
@@ -136,9 +136,9 @@ export default function Button24({ jobId, size = "default" }) {
                                 onPressedChange={handleToggle}
                                 onClick={handleClick}
                             >
-                                <Bookmark 
+                                <Bookmark
                                     size={sizeVariants[size].icon}
-                                    strokeWidth={2} 
+                                    strokeWidth={2}
                                     aria-hidden="true"
                                     className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}
                                 />
