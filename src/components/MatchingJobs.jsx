@@ -27,8 +27,10 @@ export default function MatchingJobs({ loading, error }) {
         if (!response.ok) throw new Error('Failed to fetch jobs');
         
         const data = await response.json();
-        if (!data.jobs) throw new Error('No jobs found');
-        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+
+        console.log(data);
+        if (!data.jobs && !data.jobPostings) throw new Error('No jobs found');
+        setJobs(Array.isArray(data.jobs) ? data.jobs : processJobPostings(data.jobPostings));
       } catch (error) {
         console.error('Error fetching jobs:', error);
         setErrorJobs(error.message);
