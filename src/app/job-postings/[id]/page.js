@@ -13,6 +13,8 @@ import { JobList } from "@/components/JobPostings";
 import SharePopover from "@/components/share-popover";
 import { TextShimmer } from '@/components/core/text-shimmer';
 import ReportPopover from "@/components/report-popover";
+import { trackJobView } from '@/app/actions/trackJobView';
+
 import {
   Accordion,
   AccordionContent,
@@ -162,7 +164,7 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="ml-auto w-9 h-9" size="default">
+        <Button variant="outline" className="w-9 h-9" size="default">
           <Ellipsis
             className="text-foreground"
             size={16}
@@ -366,11 +368,9 @@ export default function JobPostingPage({ params }) {
         headers: { 'Authorization': `Bearer ${user.token}` },
         signal: controller.signal
       }).then(res => res.json()) : Promise.resolve(null),
-      localStorage.getItem('token') ? fetch(`/api/job-postings/${id}/view`, {
-        method: 'POST',
+      localStorage.getItem('token') ? fetch(`/api/job-postings/${id}/view-status`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
         },
         signal: controller.signal
       }).then(res => res.json()) : Promise.resolve(null)
@@ -383,8 +383,16 @@ export default function JobPostingPage({ params }) {
         setData(jobResult);
         if (profile) setUserProfile(profile);
         if (viewData) {
-          setIsViewed(true);
-          setViewedAt(new Date(viewData.interaction.interaction_date));
+          setIsViewed(viewData.isViewed);
+          if (viewData.viewedAt) {
+            setViewedAt(new Date(viewData.viewedAt));
+          }
+
+          if (!viewData.isViewed)  {
+            trackJobView(id);
+            setIsViewed(true);
+            setViewedAt(new Date());
+          }
         }
         setLoading(false);
 
@@ -502,16 +510,16 @@ export default function JobPostingPage({ params }) {
               </div>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> 
+              {isViewed && viewedAt && (
+                  <div className="flex items-center text-blue-500 gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    Viewed <span>{formatDistanceToNow(viewedAt, { addSuffix: true })}</span>
+                  </div>
+                )}
                 {jobPosting.salary && (
                   <div className="flex items-center gap-1.5">
                     <HandCoins className="h-4 w-4" /> 
                     <span>{jobPosting.salary}</span>
-                  </div>
-                )}
-                {isViewed && (
-                  <div className="flex items-center text-blue-500 gap-1.5">
-                    <Eye className="h-3.5 w-3.5" />
-                    Viewed <span>{formatDistanceStrict(viewedAt, new Date())} ago</span>
                   </div>
                 )}
                 {jobPosting.location && (
@@ -547,7 +555,7 @@ export default function JobPostingPage({ params }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 mt-2"> {/* Adjusted margin */}
+          <div className="flex flex-wrap items-left gap-2 mt-2"> {/* Adjusted margin */}
             <Link
               href={jobPosting.source_url}
               target="_blank"

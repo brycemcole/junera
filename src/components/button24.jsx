@@ -140,7 +140,7 @@ export default function Button24({ jobId, size = "default" }) {
                                     size={sizeVariants[size].icon}
                                     strokeWidth={2}
                                     aria-hidden="true"
-                                    className={isHovered ? "fill-current " : bookmarked ? "fill-current" : "text-muted-foreground"}
+                                    className={isHovered ? "fill-current" : bookmarked ? "fill-current" : "text-foreground"}
                                 />
                             </Toggle>
                         </div>

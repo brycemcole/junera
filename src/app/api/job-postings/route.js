@@ -10,6 +10,7 @@ import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 import jwt from 'jsonwebtoken';
 import { scanKeywords } from '@/lib/job-utils';
 import { processJobPostings } from '@/lib/job-utils';
+import { getStateAbbreviation, getNearbyStates } from '@/lib/stateRelationships';
 const SECRET_KEY = process.env.SESSION_SECRET;
 const QUERY_TIMEOUT_MS = 10000;
 const stateMap = {
@@ -90,14 +91,19 @@ const expandLocation = (location) => {
   const lowercaseLocation = location.toLowerCase();
   let searchTerms = [lowercaseLocation];
 
-  // Check if it's a state abbreviation
-  Object.entries(stateMap).forEach(([fullName, abbr]) => {
-    if (lowercaseLocation === abbr.toLowerCase()) {
-      searchTerms.push(fullName);
-    } else if (lowercaseLocation === fullName) {
-      searchTerms.push(abbr.toLowerCase());
-    }
-  });
+  // Check if it's a state abbreviation or name to include nearby states
+  const stateAbbr = getStateAbbreviation(location);
+  if (stateAbbr) {
+    const nearbyStatesList = getNearbyStates(stateAbbr);
+    // Add both abbreviations and full names for all nearby states
+    nearbyStatesList.forEach(stateCode => {
+      searchTerms.push(stateCode.toLowerCase());
+      const stateName = Object.entries(stateMap).find(([name, abbr]) => abbr === stateCode)?.[0];
+      if (stateName) {
+        searchTerms.push(stateName);
+      }
+    });
+  }
 
   // Add partial matches for cities with state
   const cityStateMatch = lowercaseLocation.match(/([^,]+),?\s*([a-z]{2}|[^,]+)$/i);
@@ -109,22 +115,18 @@ const expandLocation = (location) => {
     // Add the city by itself
     searchTerms.push(trimmedCity);
 
-    // If state is an abbreviation, add full name
-    if (trimmedState.length === 2) {
-      const fullStateName = Object.entries(stateMap)
-        .find(([_, abbr]) => abbr.toLowerCase() === trimmedState.toLowerCase())?.[0];
-      if (fullStateName) {
-        searchTerms.push(fullStateName);
-        searchTerms.push(`${trimmedCity}, ${fullStateName}`);
-      }
-    } 
-    // If state is full name, add abbreviation
-    else {
-      const stateAbbr = stateMap[trimmedState.toLowerCase()];
-      if (stateAbbr) {
-        searchTerms.push(stateAbbr.toLowerCase());
-        searchTerms.push(`${trimmedCity}, ${stateAbbr}`);
-      }
+    // Get state abbreviation and nearby states
+    const stateAbbr = getStateAbbreviation(trimmedState);
+    if (stateAbbr) {
+      const nearbyStatesList = getNearbyStates(stateAbbr);
+      // Add city combinations with all nearby states
+      nearbyStatesList.forEach(nearbyState => {
+        searchTerms.push(`${trimmedCity}, ${nearbyState}`);
+        const stateName = Object.entries(stateMap).find(([name, abbr]) => abbr === nearbyState)?.[0];
+        if (stateName) {
+          searchTerms.push(`${trimmedCity}, ${stateName}`);
+        }
+      });
     }
   }
 

@@ -588,13 +588,15 @@ export default function JobPostingsPage() {
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
           <div className="space-y-3">
             <div className="space-y-4">
-              <p className="text-[13px] font-medium">Filter job postings</p>
-              <p className="text-xs text-muted-foreground">
+              <div>
+              <p className="text-sm font-medium">Filter job postings</p>
+              <p className="text-muted-foreground text-xs">
                 Filter through over {count} job postings!
               </p>
+              </div>
               <div className="space-y-2">
                 <div>
-                  <span className="text-foreground">Company</span>
+                  <span className="text-foreground text-sm">Company</span>
                   <p className="text-xs text-muted-foreground">Filter by specific company names</p>
                 </div>
                 <Suspense fallback={<div>Loading...</div>}>
@@ -1529,6 +1531,7 @@ export default function JobPostingsPage() {
               applySavedSearch={applySavedSearch}
               currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
             />
+            {!authLoading  && user && (
             <EditProfileDialog
               fields={profileFields}
               initialData={{
@@ -1541,6 +1544,7 @@ export default function JobPostingsPage() {
               onSubmit={handleProfileUpdate}
               title={<Settings size={12} />}
             />
+            )}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useState, useEffect } from 'react';
 import jwt from 'jsonwebtoken';
+import { redirect } from 'next/navigation';
 
 const AuthContext = createContext();
 
@@ -67,6 +68,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    redirect('/');
   };
 
   const updatePreferences = async (preferences) => {

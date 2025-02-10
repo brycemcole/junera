@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   NavigationMenu,
@@ -14,7 +14,6 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { BookMarked, BriefcaseBusiness, Navigation, Star } from "lucide-react"
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useAuth } from '@/context/AuthContext';
 
@@ -171,20 +170,12 @@ export function NavbarMenu() {
         </>
         ) : (
           <>
-          <NavigationMenuItem>
+
             <Link href="/login" passHref>
-              <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+            <Button className="w-full font-semibold bg-green-500/20 border border-green-600/30 text-green-700 shadow-md hover:text-primary hover:bg-green-500/30 w-24" type="submit">
                 Login
-              </NavigationMenuLink>
+              </Button>
             </Link>
-          </NavigationMenuItem>
-          <NavigationMenuItem>
-            <Link href="/register" passHref>
-              <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                Register
-              </NavigationMenuLink>
-            </Link>
-          </NavigationMenuItem>
           </>
         )}
       </NavigationMenuList>

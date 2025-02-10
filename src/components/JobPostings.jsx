@@ -108,7 +108,10 @@ export const JobList = ({ data, loading, error }) => {
                                     <div className="text-lg">
                                         <span className="font-semibold text-gray-500 company-name">{job?.company || "No company name available"}</span>
                                         <span className="mx-[3px]"></span>
-                                        <span className="">{job?.title || "No job titles available"}</span>
+                                        <span className="">{job?.title || "No job titles available"}
+                                            <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
+                                        </span>
+
                                     </div>
                                 </h3>
 
@@ -132,51 +135,18 @@ export const JobList = ({ data, loading, error }) => {
                                 )
                                     :
                                     job?.description ? (
-                                        <div className="text-md mb-1">
+                                        <div className="text-md mb-2">
                                             <p className={`text-muted-foreground text-[16px] leading-relaxed break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
                                                 {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
                                             </p>
-                                            {fullStripHTML(decodeHTMLEntities(job.description)).length > summaryThreshold && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        toggleSummary(job.id);
-                                                    }}
-                                                    className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
-                                                >
-                                                    {expandedSummaries.has(job.id) ? 'Hide summary' : 'Show summary'}
-                                                </button>
-                                            )}
                                         </div>
                                     ) : null}
                             </div>
 
                         </div>
                         <div className="flex flex-row gap-2 items-center justify-between">
-                            <div className="leading-6 text-sm flex flex-col gap-2">
-                                <div className="flex flex-row flex-wrap gap-2 items-center">
-                                    {job?.salary || job?.salary_range_str ? (
-                                        <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
-                                            {job.salary || job.salary_range_str}
-                                        </Badge>
-                                    ) : null}
-                                    {job?.location?.trim() && (
-                                        <Badge
-                                            variant="outline"
-                                            className={`truncate border-gray-400  ${job?.location?.toLowerCase().includes('remote') ? 'text-green-500 border-green-500 dark:text-green-600' : 'text-gray-500'}`}
-                                        >
-                                            {parseUSLocations(job.location).substring(0, 30)}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex flex-row gap-2 items-center">
-                                <SharePopover jobId={job.id} size={'small'} />
-                                {user ? (
-                                    <Button24 jobId={job.id} size={'small'} />
-                                ) : null}
-                                <Link
+                        <div className="flex flex-row gap-2 items-center">
+                        <Link
                                     href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
                                     onClick={() => handleJobClick(job.id)}
                                     className="ml-auto"
@@ -185,7 +155,22 @@ export const JobList = ({ data, loading, error }) => {
                                         View Job
                                     </Button>
                                 </Link>
+                                <SharePopover jobId={job.id} size={'small'} />
+                                {user ? (
+                                    <Button24 jobId={job.id} size={'small'} />
+                                ) : null}
                             </div>
+                            <div className="leading-6 text-sm flex flex-col gap-2">
+                                <div className="flex flex-row flex-wrap gap-2 items-center">
+                                    {job?.salary || job?.salary_range_str ? (
+                                        <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
+                                            {job.salary || job.salary_range_str}
+                                        </Badge>
+                                    ) : null}
+                                </div>
+                            </div>
+
+
                         </div>
                     </div>
                 </div>
