@@ -278,8 +278,8 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="backdrop-blur md:shadow-md bg-background/50 sm:m-4 lg:max-w-[900px] max-w-4xl sm:mx-8 lg:mx-auto z-50 md:border border-b md:rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
-      <div className="flex flex-row justify-between px-4 py-3 z-100">
+    <nav className="backdrop-blur sm:shadow-md bg-background/50 sm:m-4 lg:max-w-[900px] max-w-4xl sm:mx-6 lg:mx-auto z-50 sm:border border-b sm:rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
+      <div className="flex flex-row justify-between px-6 py-3 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
             <span className="text-2xl">🌳</span>
@@ -295,7 +295,7 @@ export default function Navbar() {
               {user ? (
                 <DropdownMenuDemo2 />
               ) : (
-                <Button className="bg-green-500/20  border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-2.5 py-1.5 h-9">
+                <Button className="bg-emerald-500/20 border border-emerald-600/30 text-emerald-700 shadow-sm hover:text-primary hover:bg-emerald-500/30 rounded-lg px-2.5 sm:px-7 py-1.5 h-9">
                   <Link href="/login">Login</Link>
                 </Button>
               )}

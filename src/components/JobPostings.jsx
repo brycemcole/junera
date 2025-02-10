@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LoaderCircle } from "lucide-react";
@@ -31,6 +31,18 @@ export const JobList = ({ data, loading, error }) => {
     const router = useRouter();
     const user = useAuth();
     const [expandedSummaries, setExpandedSummaries] = useState(new Set());
+    const [summaryThreshold, setSummaryThreshold] = useState(160);
+
+    useEffect(() => {
+        const handleResize = () => {
+            const newThreshold = window.innerWidth >= 768 ? 300 : 160;
+            setSummaryThreshold(newThreshold);
+        };
+        
+        handleResize(); // Set initial value
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const toggleSummary = (jobId) => {
         setExpandedSummaries(prev => {
@@ -69,7 +81,7 @@ export const JobList = ({ data, loading, error }) => {
             {data.map((job, index) => (
                 <div
                     key={job.id || index} // Use job.id if available, otherwise index
-                    className="flex flex-row items-center gap-4 group py-3 md:py-3  cursor-pointer transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl border-gray-200/50 last:border-none"
+                    className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl border-gray-200/50 last:border-none"
                 >
 
                     {/* Job Details */}
@@ -105,7 +117,7 @@ export const JobList = ({ data, loading, error }) => {
                                         <p className={`text-muted-foreground break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
                                             {job.summary}
                                         </p>
-                                        {job.summary.length > 100 && (
+                                        {job.summary.length > summaryThreshold && (
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -120,10 +132,22 @@ export const JobList = ({ data, loading, error }) => {
                                 )
                                     :
                                     job?.description ? (
-                                            <p className={`text-muted-foreground mb-2 break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                        <div className="text-sm mb-1">
+                                            <p className={`text-muted-foreground break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
                                                 {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
                                             </p>
-
+                                            {fullStripHTML(decodeHTMLEntities(job.description)).length > summaryThreshold && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleSummary(job.id);
+                                                    }}
+                                                    className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
+                                                >
+                                                    {expandedSummaries.has(job.id) ? 'Hide summary' : 'Show summary'}
+                                                </button>
+                                            )}
+                                        </div>
                                     ) : null}
                             </div>
 
@@ -157,7 +181,7 @@ export const JobList = ({ data, loading, error }) => {
                                     onClick={() => handleJobClick(job.id)}
                                     className="ml-auto"
                                 >
-                                    <Button variant="outline" size="sm" className="md:w-36 md:h-9 md:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
+                                    <Button variant="outline" size="sm" className="sm:w-36 h-7 sm:h-9 sm:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
                                         View Job
                                     </Button>
                                 </Link>

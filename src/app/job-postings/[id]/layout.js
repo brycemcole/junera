@@ -2,8 +2,6 @@ const getApiUrl = () => {
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
-  // Fallback to the current host if NEXT_PUBLIC_API_URL is not set
-  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
 };
 
 export async function generateMetadata(props) {
