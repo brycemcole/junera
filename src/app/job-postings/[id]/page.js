@@ -475,7 +475,7 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 p-6 max-w-3xl">
+      <div className="container mx-auto py-0 p-6 max-w-4xl">
         
         <div className="bg-background rounded-lg mb-8">
           

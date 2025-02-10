@@ -105,16 +105,16 @@ export const JobList = ({ data, loading, error }) => {
                                             </AvatarFallback>
                                         </Avatar>
                                     )}
-                                    <div className="company-and-title">
+                                    <div className="text-lg">
                                         <span className="font-semibold text-gray-500 company-name">{job?.company || "No company name available"}</span>
                                         <span className="mx-[3px]"></span>
-                                        <span className="job-title">{job?.title || "No job titles available"}</span>
+                                        <span className="">{job?.title || "No job titles available"}</span>
                                     </div>
                                 </h3>
 
                                 {job?.summary ? (
-                                    <div className="text-sm mb-1">
-                                        <p className={`text-muted-foreground break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                    <div className="mb-1">
+                                        <p className={`text-muted-foreground text-[16px] break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
                                             {job.summary}
                                         </p>
                                         {job.summary.length > summaryThreshold && (
@@ -132,8 +132,8 @@ export const JobList = ({ data, loading, error }) => {
                                 )
                                     :
                                     job?.description ? (
-                                        <div className="text-sm mb-1">
-                                            <p className={`text-muted-foreground break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                        <div className="text-md mb-1">
+                                            <p className={`text-muted-foreground text-[16px] leading-relaxed break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
                                                 {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
                                             </p>
                                             {fullStripHTML(decodeHTMLEntities(job.description)).length > summaryThreshold && (
@@ -181,7 +181,7 @@ export const JobList = ({ data, loading, error }) => {
                                     onClick={() => handleJobClick(job.id)}
                                     className="ml-auto"
                                 >
-                                    <Button variant="outline" size="sm" className="sm:w-36 h-7 sm:h-9 sm:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
+                                    <Button variant="outline" size="sm" className="sm:w-36 h-8 sm:h-9 sm:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
                                         View Job
                                     </Button>
                                 </Link>

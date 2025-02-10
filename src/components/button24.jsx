@@ -13,7 +13,7 @@ const sizeVariants = {
         icon: 16
     },
     small: {
-        button: "w-7 h-7 min-w-0 sm:size-9",
+        button: "w-8 h-8 min-w-0 sm:size-9",
         icon: 14
     }
 };
@@ -140,7 +140,7 @@ export default function Button24({ jobId, size = "default" }) {
                                     size={sizeVariants[size].icon}
                                     strokeWidth={2}
                                     aria-hidden="true"
-                                    className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}
+                                    className={isHovered ? "fill-current " : bookmarked ? "fill-current" : "text-muted-foreground"}
                                 />
                             </Toggle>
                         </div>
