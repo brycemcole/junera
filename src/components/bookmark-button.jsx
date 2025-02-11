@@ -18,7 +18,7 @@ const sizeVariants = {
     }
 };
 
-export default function Button24({ jobId, size = "default" }) {
+export default function BookmarkButton({ jobId, size = "default" }) {
     const [bookmarked, setBookmarked] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [hasChecked, setHasChecked] = useState(false);

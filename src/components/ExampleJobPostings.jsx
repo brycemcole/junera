@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Briefcase, Calendar, DollarSign } from "lucide-react"; // Assuming you are using react-icons
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import Button24 from "@/components/button24"
+import BookmarkButton from "@/components/bookmark-button"
 import { stripHTML, decodeHTMLEntities } from "@/lib/job-utils";
 
 
@@ -61,7 +61,7 @@ export const ExampleJobPostings = () => {
                 </AvatarFallback>
               </Avatar>
             )}
-            <Button24 jobId={job.id} />
+            <BookmarkButton jobId={job.id} />
           </div>
           {/* Header Section */}
           <div className="flex flex-col min-w-0">

@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import EnhanceJobPopover from "./enhance-popover";
 import Link from "next/link";
-import Button24 from "@/components/button24"
+import BookmarkButton from "@/components/bookmark-button"
 import {
   Avatar,
   AvatarFallback,
@@ -566,7 +566,7 @@ export default function JobPostingPage({ params }) {
                 Apply
               </Button>
             </Link>
-            <Button24 jobId={id} />
+            <BookmarkButton jobId={id} />
             <ReportPopover jobId={id} />
             <JobDropdown
               handleSummarizationQuery={handleSummarizationQuery}

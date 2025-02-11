@@ -5,14 +5,14 @@ import { LoaderCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from 'next/link';
 import ViewStatus from '@/components/ViewStatus';
-import { trackJobView } from '@/app/actions/trackJobView';
 import { Badge } from "@/components/ui/badge";  // Moved Badge here for better organization
-import Button24 from "@/components/button24"
+import BookmarkButton from "@/components/bookmark-button"
 import SharePopover from "@/components/share-popover";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "./ui/button";
 import { fullStripHTML, decodeHTMLEntities, parseUSLocations } from "@/lib/job-utils";
 import DOMPurify from 'dompurify';
+import ViewStatusIndicator from '@/components/view-status-indicator';
 
 function DateDisplay({ postedDate }) {
     if (!postedDate) {
@@ -70,21 +70,13 @@ export const JobList = ({ data, loading, error }) => {
     }
 
 
-    const handleJobClick = async (jobId) => {
-        await trackJobView(jobId);
-        // Next.js handles navigation, no need for window.open
-        // router.push(`/job-postings/${jobId}`);  // You can still push if needed, but Link component usually sufficient
-    };
-
     return (
         <div className="md:px-0 border-none space-y-4 md:shadow-none max-w-full">
             {data.map((job, index) => (
                 <div
                     key={job.id || index} // Use job.id if available, otherwise index
-                    className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl border-gray-200/50 last:border-none"
+                    className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl border-gray-200/50 last:border-none relative" // Added relative positioning
                 >
-
-                    {/* Job Details */}
                     <div className="flex flex-col min-w-0 gap-0 flex-grow">
                         <div className="flex flex-row items-start gap-2">
                             <div className="flex flex-col gap-1">
@@ -157,7 +149,7 @@ export const JobList = ({ data, loading, error }) => {
                                 </Link>
                                 <SharePopover jobId={job.id} size={'small'} />
                                 {user ? (
-                                    <Button24 jobId={job.id} size={'small'} />
+                                    <BookmarkButton jobId={job.id} size={'small'} />
                                 ) : null}
                             </div>
                             <div className="leading-6 text-sm flex flex-col gap-2">
@@ -169,10 +161,13 @@ export const JobList = ({ data, loading, error }) => {
                                     ) : null}
                                 </div>
                             </div>
+                            <ViewStatusIndicator jobId={job.id} />
+
 
 
                         </div>
                     </div>
+
                 </div>
             ))}
 
