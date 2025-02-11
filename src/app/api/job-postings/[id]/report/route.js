@@ -24,7 +24,7 @@ const getClientIp = (headersList) => {
 };
 
 export async function POST(req, { params }) {
-  const { id } = params;
+  const { id } = await params;
   const headersList = headers();
   const ip = getClientIp(headersList);
   

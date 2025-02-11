@@ -152,7 +152,7 @@ export const JobList = ({ data, loading, error }) => {
                                     <BookmarkButton jobId={job.id} size={'small'} />
                                 ) : null}
                             </div>
-                            <div className="leading-6 text-sm flex flex-col gap-2">
+                            <div className="text-sm flex flex-col gap-2 flex-end">
                                 <div className="flex flex-row flex-wrap gap-2 items-center">
                                     {job?.salary || job?.salary_range_str ? (
                                         <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
@@ -160,9 +160,9 @@ export const JobList = ({ data, loading, error }) => {
                                         </Badge>
                                     ) : null}
                                 </div>
-                            </div>
-                            <ViewStatusIndicator jobId={job.id} />
+                                <ViewStatusIndicator jobId={job.id} />
 
+                            </div>
 
 
                         </div>

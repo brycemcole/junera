@@ -8,21 +8,18 @@ export async function GET(req) {
   const url = req.url;
   const { searchParams } = new URL(url);
 
-  // Create cache key from search params
-  const cacheKey = `jobCount:${searchParams.toString()}`;
-
   try {
-    // Check cache first
-    const cachedCount = await getCached(cacheKey);
-    if (cachedCount) {
-      return Response.json({ count: parseInt(cachedCount), ok: true }, { status: 200 });
-    }
-
     // Extract query params
     let title = (searchParams.get("title") || "").trim();
     let location = (searchParams.get("location") || "").trim().toLowerCase();
     const company = (searchParams.get("company") || "").trim();
     let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
+
+    const cacheKey = `job-count:${title}:${location}:${company}:${experienceLevel}`;
+    const cachedResult = await getCached(cacheKey);
+    if (cachedResult) {
+      return Response.json(cachedResult, { status: 200 });
+    }
 
     // Get title group if title provided
     let titleGroup = title ? findJobTitleGroup(title) : [];
@@ -78,8 +75,8 @@ export async function GET(req) {
     const result = await query(queryText, params);
     const count = parseInt(result.rows[0]?.total_count || 0);
 
-    // Cache the count for 5 minutes
-    await setCached(cacheKey, count, 300);
+    // Store in cache
+    await setCached(cacheKey, { count, ok: true }, 60 * 60);
 
     return Response.json({ count, ok: true }, { status: 200 });
 

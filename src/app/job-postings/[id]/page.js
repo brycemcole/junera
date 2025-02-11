@@ -483,8 +483,42 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 p-6 max-w-4xl">
-        
+      <div className="container mx-auto py-0 pt-10 p-6 max-w-4xl">
+        {/* Add structured job data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "JobPosting",
+              "title": jobPosting.title,
+              "description": stripHTML(decodeHTMLEntities(jobPosting.description)),
+              "datePosted": jobPosting.created_at,
+              "validThrough": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              "employmentType": jobPosting.experienceLevel?.toUpperCase() || "FULL_TIME",
+              "hiringOrganization": {
+                "@type": "Organization",
+                "name": jobPosting.company,
+                "logo": jobPosting.company ? `https://logo.clearbit.com/${jobPosting.company.toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null
+              },
+              "jobLocation": {
+                "@type": "Place",
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressRegion": jobPosting.location
+                }
+              },
+              "baseSalary": jobPosting.salary ? {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "value": {
+                  "@type": "QuantitativeValue",
+                  "value": jobPosting.salary
+                }
+              } : undefined
+            })
+          }}
+        />
         <div className="bg-background rounded-lg mb-8">
           
           <div className="flex items-start justify-between gap-4 mb-5">
@@ -544,7 +578,7 @@ export default function JobPostingPage({ params }) {
               {keywords && keywords.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {keywords.map((keyword, index) => (
-                    <Badge key={index} className="text-md px-2" variant="outline">
+                    <Badge key={index} className="text-sm text-green-800 border-green-600/20 bg-green-600/10 px-2" variant="outline">
                       {keyword}
                     </Badge>
                   ))}

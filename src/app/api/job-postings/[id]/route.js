@@ -2,35 +2,67 @@
 
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import sql from 'mssql';
-import * as React from 'react';
 import { query } from "@/lib/pgdb";
-import { scanKeywords, extractSalary } from '@/lib/job-utils';
-const he = require('he');
+import { scanKeywords } from '@/lib/job-utils';
+import { getCached, setCached } from '@/lib/cache';
 
 export async function GET(req, { params }) {
-  params = await params;
   try {
-    const id = params.id;
+    const id = await params.id;
     const authHeader = req.headers.get('Authorization');
 
-    // Get job posting details
-    const result = await query(`
-      SELECT
-        jp.* 
-      FROM jobPostings jp
-      WHERE jp.job_id = $1;
+    // First check cache
+    const cacheKey = `job-posting:${id}`;
+    const cached = await getCached(cacheKey);
+    if (cached) {
+      return new Response(cached, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=7200',
+          'X-Robots-Tag': 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+          'Link': `<https://junera.us/job-postings/${id}>; rel="canonical"`,
+        }
+      });
+    }
+
+    // Get job posting details with job_id instead of id
+    const jobResult = await query(`
+      SELECT * FROM jobPostings WHERE job_id = $1
     `, [id]);
 
-    let jobPosting = result.rows[0];
-    if (!jobPosting) {
+    if (!jobResult.rows[0]) {
       return NextResponse.json({ error: 'Job posting not found' }, { status: 404 });
     }
 
-    // Extract salary if not already present
-    if (!jobPosting.salary) {
-      jobPosting.salary = extractSalary(jobPosting.description);
-    }
+    const jobPosting = jobResult.rows[0];
+
+    // Get related jobs in separate queries
+    const [relatedCompanyJobs, similarTitleJobs] = await Promise.all([
+      query(`
+        SELECT 
+          title,
+          COUNT(*) as job_count
+        FROM jobPostings 
+        WHERE company = $1
+        AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY title
+        ORDER BY job_count DESC
+        LIMIT 5
+      `, [jobPosting.company]),
+      
+      query(`
+        SELECT 
+          title,
+          COUNT(*) as job_count
+        FROM jobPostings 
+        WHERE title ILIKE $1
+        AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY title
+        ORDER BY job_count DESC
+        LIMIT 5
+      `, [`%${jobPosting.title}%`])
+    ]);
 
     // Track view if user is authenticated
     if (authHeader) {
@@ -39,97 +71,68 @@ export async function GET(req, { params }) {
         const decoded = jwt.verify(token, process.env.SESSION_SECRET);
         const userId = decoded.id;
 
-        // Update view count
+        // Update view count using job_id
         await query(`
           UPDATE jobPostings 
-          SET views = COALESCE(views, 0) + 1 
+          SET views = views + 1 
           WHERE job_id = $1
         `, [id]);
 
-        // Record user interaction
+        // Track user view using job_id
         await query(`
-          INSERT INTO user_interactions (user_id, job_posting_id, interaction_type, interaction_date)
-          VALUES ($1, $2, 'view', NOW())
+          INSERT INTO user_interactions (user_id, job_posting_id, interaction_type)
+          VALUES ($1, $2, 'view')
           ON CONFLICT (user_id, job_posting_id, interaction_type) 
-          DO UPDATE SET interaction_date = NOW()
+          DO UPDATE SET interaction_date = CURRENT_TIMESTAMP
         `, [userId, id]);
 
+        // Check if the job is bookmarked
+        const bookmarkResult = await query(`
+          SELECT 1 
+          FROM user_interactions 
+          WHERE user_id = $1 
+          AND job_posting_id = $2 
+          AND interaction_type = 'bookmark'
+          LIMIT 1
+        `, [userId, id]);
+
+        jobPosting.isBookmarked = bookmarkResult.rows.length > 0;
       } catch (error) {
         console.error('Error tracking view:', error);
-        // Continue execution even if view tracking fails
       }
     }
+    
+    // Extract keywords from description
+    const keywords = scanKeywords(jobPosting.description);
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       data: jobPosting,
-      keywords: scanKeywords(jobPosting.description),
+      keywords,
+      similarJobs: similarTitleJobs.rows,
+      companyJobs: relatedCompanyJobs.rows
+    };
+
+    // Cache the response
+    await setCached(cacheKey, JSON.stringify(responseBody), 3600); // Cache for 1 hour
+
+    return new Response(JSON.stringify(responseBody), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=7200',
+        'X-Robots-Tag': 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+        'Link': `<https://junera.us/job-postings/${id}>; rel="canonical"`,
+      }
     });
 
   } catch (error) {
-    console.error('Error fetching job posting:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch job posting' },
-      { status: 500 }
-    );
+    console.error('Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message 
+    }, { 
+      status: 500 
+    });
   }
-}
-
-async function getRelatedJobPostings(jobPosting) {
-  let job = await jobPosting;
-  if (!job) return null;
-
-  const pool = await getConnection();
-  const request = pool.request();
-  request.timeout = 2000; // 2 second timeout
-
-  // Ensure title is not null or empty
-  const title = job.title && job.title.trim() !== '' ? job.title.trim() : null;
-  console.log('Related Postings - Title:', title);
-
-  let similarPostings = [];
-  let companyPostings = [];
-
-
-
-  return {
-    similarPostings: similarPostings.recordset || [],
-    sameCompanyPostings: companyPostings.recordset || []
-  };
-}
-
-// Simplified bookmark check
-async function checkIfBookmarked(jobId, token) {
-  if (!token) return false;
-
-  try {
-    const decoded = jwt.verify(token, process.env.SESSION_SECRET);
-
-    const result = await query(`
-      SELECT 1 
-      FROM user_interactions 
-      WHERE user_id = $1 
-      AND job_posting_id = $2 
-      AND interaction_type = 'bookmark'
-      LIMIT 1
-    `, [decoded.id, jobId]);
-
-    return result.rows.length > 0;
-  } catch (error) {
-    console.error('Error checking bookmark:', error);
-    return false;
-  }
-}
-
-// Add a function to extract salary range from text
-function extractSalaryRange(text) {
-  const salaryRegex = /\$([\d,]+)\s*(?:to|\-)\s*\$([\d,]+)/;
-  const match = text.match(salaryRegex);
-  if (match) {
-    const salary = parseInt(match[1].replace(/,/g, ''), 10);
-    const salary_max = parseInt(match[2].replace(/,/g, ''), 10);
-    console.log('Parsed salary:', salary, salary_max);
-    return { salary, salary_max };
-  }
-  return { salary: null, salary_max: null };
 }

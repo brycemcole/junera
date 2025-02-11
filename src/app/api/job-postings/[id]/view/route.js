@@ -20,7 +20,7 @@ async function logInteraction(userId, jobId, interactionType) {
 export async function POST(req, { params }) {
   try {
     console.log('Tracking job view...');
-    const { id } = params;
+    const { id } = await params;
     const authHeader = req.headers.get('Authorization');
 
     if (!authHeader) {

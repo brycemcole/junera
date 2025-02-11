@@ -53,6 +53,8 @@ import SearchParamsHandler from '@/components/SearchParamsHandler';
 import { set } from 'date-fns';
 import { throttle } from 'lodash';
 import { is } from 'date-fns/locale';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 // Add encryption utilities
 const encryptData = (data) => {
@@ -511,6 +513,72 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
+// Add this new component near the top with other component imports
+const TrendingJobCards = memo(function TrendingJobCards() {
+  const [trendingJobs, setTrendingJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchTrendingJobs = async () => {
+      try {
+        const response = await fetch('/api/job-postings/trending', { cache: 'force-cache' });
+        const data = await response.json();
+        if (data.ok) {
+          setTrendingJobs(data.trendingJobs);
+        }
+      } catch (error) {
+        console.error('Error fetching trending jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendingJobs();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors animate-pulse">
+            <CardHeader>
+              <div className="h-5 w-3/4 bg-muted rounded"></div>
+              <div className="h-4 w-1/2 bg-muted rounded mt-2"></div>
+              <div className="h-4 w-1/3 bg-muted rounded mt-1 hidden sm:block"></div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-2">
+      {trendingJobs.map((job) => (
+        <Card 
+          key={job.title} 
+          className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors"
+          onClick={() => {
+            const params = new URLSearchParams({ title: job.title });
+            router.push(`/job-postings?${params.toString()}`);
+          }}
+        >
+          <CardHeader className="p-4 py-2 sm:p-6">
+            <CardTitle className="text-base truncate">{job.title}</CardTitle>
+            <CardDescription>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-primary">{job.category}</span>
+                <span>{parseInt(job.count).toLocaleString()} new jobs in 30 days</span>
+              </div>
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+});
+
 export default function JobPostingsPage() {
   const { user, loading: authLoading, updatePreferences: updateUserPreferences } = useAuth();
   const router = useRouter();
@@ -654,7 +722,7 @@ export default function JobPostingsPage() {
     );
   }
 
-  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
+  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams, editComponent }) {
     const [activeTab, setActiveTab] = useState('all');
     const router = useRouter();
 
@@ -726,7 +794,8 @@ export default function JobPostingsPage() {
 
     return (
       <Tabs value={activeTab}>
-        <TabsList className="bg-transparent p-0 mb-4">
+        <TabsList className="bg-transparent p-0 mb-0">
+          {editComponent} {/* Changed from editComponent() to just editComponent */}
           <TabsTrigger
             value="all"
             onClick={() => handleTabClick('all')}
@@ -1410,7 +1479,10 @@ export default function JobPostingsPage() {
     async function fetchJobData(route) {
       const response = await fetch(route, {
         signal: controller.signal,
-        cache: 'force-cache',
+        headers: {
+          'Content-Type': 'application/json',
+          'cache-control': 'force-cache'
+        },
       });
       if (!response.ok) throw new Error("Network response was not ok");
       const data = await response.json();
@@ -1503,15 +1575,10 @@ export default function JobPostingsPage() {
           />
         </Suspense>
         <div className="z-0">
-          <Suspense fallback={<div>Loading...</div>}>
-            <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-0">
-                <span className="text-emerald-500 font-semibold">{count ? count.toLocaleString() : 0}</span>  {headerTitle}
-              </h1>
+          <div className="flex pt-10 pb-6 items-center gap-2">
+            <TrendingJobCards />
+          </div>     
 
-
-            </div>
-          </Suspense>
 
           {company && (
             <Suspense>
@@ -1525,26 +1592,34 @@ export default function JobPostingsPage() {
             <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
 
-          <div className="flex flex-row">
+          <div className="flex flex-row items-center flex-wrap sm:flex-nowrap gap-2">
             <TabComponent
               savedSearches={savedSearches}
               applySavedSearch={applySavedSearch}
               currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
+              editComponent={() => (!authLoading  && user && (
+                <EditProfileDialog
+                  fields={profileFields}
+                  initialData={{
+                    job_prefs_title: user?.jobPrefsTitle || [],
+                    job_prefs_location: user?.jobPrefsLocation || [],
+                    job_prefs_level: user?.jobPrefsLevel || [],
+                    job_prefs_salary: user?.jobPrefsSalary || null,
+                    job_prefs_relocatable: user?.jobPrefsRelocatable || false
+                  }}
+                  onSubmit={handleProfileUpdate}
+                  title={<Settings size={12} />}
+                />
+              ))}
             />
-            {!authLoading  && user && (
-            <EditProfileDialog
-              fields={profileFields}
-              initialData={{
-                job_prefs_title: user?.jobPrefsTitle || [],
-                job_prefs_location: user?.jobPrefsLocation || [],
-                job_prefs_level: user?.jobPrefsLevel || [],
-                job_prefs_salary: user?.jobPrefsSalary || null,
-                job_prefs_relocatable: user?.jobPrefsRelocatable || false
-              }}
-              onSubmit={handleProfileUpdate}
-              title={<Settings size={12} />}
-            />
-            )}
+          <Suspense fallback={<div>Loading...</div>}>
+
+              <h1 className="text-xs ml-auto font-[family-name:var(--font-geist-sans)] text-muted-foreground font-medium mb-0">
+                <span className="text-green-500 dark:text-green-200 font-semibold">
+                  {count ? count.toLocaleString() : 0}
+                </span>  {headerTitle}
+              </h1>
+          </Suspense>
           </div>
         </div>
 

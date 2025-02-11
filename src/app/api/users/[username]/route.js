@@ -19,7 +19,7 @@ export async function GET(req, { params }) {
         }
 
         // No need to await params.username since it's already a string
-        const username = params.username;
+        const username = await params.username;
         console.log('Fetching profile for username:', username); // Debug log
 
         // Get user's basic info (excluding sensitive information)

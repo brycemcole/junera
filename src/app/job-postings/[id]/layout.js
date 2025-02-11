@@ -39,20 +39,39 @@ export async function generateMetadata(props) {
     }
 
     const jobPosting = data.data;
+    const cleanTitle = jobPosting.title.replace(/[^\w\s-]/g, '');
+    const cleanCompany = jobPosting.company ? jobPosting.company.replace(/[^\w\s-]/g, '') : '';
+    const cleanLocation = jobPosting.location ? jobPosting.location.replace(/[^\w\s-]/g, '') : '';
 
     const metadata = {
       metadataBase: new URL('https://junera.us'),
-      title: `${jobPosting.title} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | junera jobs`,
-      description: `Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`,
+      title: `${cleanTitle} ${cleanLocation ? `in ${cleanLocation}` : ''} ${cleanCompany ? `at ${cleanCompany}` : ''} | junera jobs`,
+      description: `Apply now for ${cleanTitle} position ${cleanLocation ? 'in ' + cleanLocation : ''} ${cleanCompany ? 'at ' + cleanCompany : ''}. ${jobPosting.summary || 'View job details and apply today!'}`,
       openGraph: {
-        title: `${jobPosting.title} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | junera jobs`,
-        description: `Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`,
+        title: `${cleanTitle} ${cleanLocation ? `in ${cleanLocation}` : ''} ${cleanCompany ? `at ${cleanCompany}` : ''}`,
+        description: `Apply now for ${cleanTitle} position ${cleanLocation ? 'in ' + cleanLocation : ''} ${cleanCompany ? 'at ' + cleanCompany : ''}. ${jobPosting.summary || 'View job details and apply today!'}`,
         url: `/job-postings/${id}`,
         type: 'website',
+        siteName: 'Junera Jobs',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${cleanTitle} ${cleanCompany ? `at ${cleanCompany}` : ''}`,
+        description: `Apply now for ${cleanTitle} position ${cleanLocation ? 'in ' + cleanLocation : ''}.`,
       },
       robots: {
         index: true,
         follow: true,
+        'max-snippet': -1,
+        'max-image-preview': 'large',
+        'max-video-preview': -1,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-snippet': -1,
+          'max-image-preview': 'large',
+          'max-video-preview': -1,
+        },
       },
       alternates: {
         canonical: `/job-postings/${id}`,
@@ -66,7 +85,7 @@ export async function generateMetadata(props) {
         "@type": "JobPosting",
         "mainEntityOfPage": {
           "@type": "WebPage",
-          "@id": `/job-postings/${id}`
+          "@id": `https://junera.us/job-postings/${id}`
         },
         "title": jobPosting.title,
         "description": jobPosting.description,
@@ -82,7 +101,8 @@ export async function generateMetadata(props) {
         ...(jobPosting.company && {
           "hiringOrganization": {
             "@type": "Organization",
-            "name": jobPosting.company
+            "name": jobPosting.company,
+            "logo": jobPosting.company ? `https://logo.clearbit.com/${jobPosting.company.toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null
           }
         }),
         "employmentType": jobPosting.experienceLevel ? jobPosting.experienceLevel.toUpperCase() : "FULL_TIME",
@@ -96,11 +116,17 @@ export async function generateMetadata(props) {
             }
           }
         }),
+        "identifier": {
+          "@type": "PropertyValue",
+          "name": "Junera",
+          "value": id
+        },
         ...(jobPosting.location?.toLowerCase().includes('remote') && {
           "applicantLocationRequirements": {
             "@type": "Country",
             "name": "Remote"
-          }
+          },
+          "jobLocationType": "TELECOMMUTE"
         })
       };
     }

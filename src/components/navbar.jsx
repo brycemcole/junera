@@ -272,6 +272,7 @@ function DropdownMenuDemo() {
 export default function Navbar() {
   const { user, loading, initialized } = useAuth();
   const router = useRouter();
+  const productionEnv = process.env.NODE_ENV === 'production';
 
   if (!initialized) {
     return null; // Or return a minimal loading navbar
@@ -284,7 +285,10 @@ export default function Navbar() {
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
-          <span className="text-lg font-semibold font-[family-name:var(--font-geist-sans)]">junera</span>
+          <span className="text-lg font-semibold flex items-center gap-2 font-[family-name:var(--font-geist-sans)]">
+            junera
+            {!productionEnv && <Badge className="ml-1 bg-green-500/30 border backdrop-blur border-green-600/30 text-green-700 dark:text-green-100 rounded-lg">dev</Badge>}
+            </span>
         </div>
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
