@@ -59,7 +59,7 @@ export default function ViewStatusIndicator({ jobId }) {
                             </Badge>
                         </TooltipTrigger>
                         <TooltipContent className="border border-input bg-popover px-2 py-1 text-xs text-muted-foreground">
-                            <p>You've viewed this job</p>
+                            <p>You&apos;ve viewed this job</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
