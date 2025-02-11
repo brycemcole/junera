@@ -272,7 +272,7 @@ function DropdownMenuDemo() {
 export default function Navbar() {
   const { user, loading, initialized } = useAuth();
   const router = useRouter();
-  const productionEnv = process.env.NODE_ENV === 'production';
+  const productionEnv = process.env.PROD_ENV === 'prod';
 
   if (!initialized) {
     return null; // Or return a minimal loading navbar
