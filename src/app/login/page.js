@@ -169,7 +169,7 @@ export default function Login() {
 
   return (
     <div className="flex justify-center p-4 sm:p-8">
-      <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[60%] sm:max-w-sm">
+      <main className="flex flex-col gap-8 my-48 mt-24 w-full max-w-[70%] sm:max-w-sm">
         {statusMessage.text && (
           <div className={`rounded-lg border px-4 py-3 ${statusMessage.isError
             ? 'border-red-500/50 bg-red-600/20 text-red-600'

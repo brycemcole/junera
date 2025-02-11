@@ -134,7 +134,7 @@ function GitHubSection({ githubUser, onLink }) {
 }
 
 export default function ProfilePage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, updatePreferences } = useAuth();
     const router = useRouter();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -506,6 +506,14 @@ export default function ProfilePage() {
                 ...prev,
                 user: updatedUser
             }));
+
+            // Update the auth context with new preferences
+            updatePreferences({
+                job_prefs_title: updatedUser.job_prefs_title,
+                job_prefs_location: updatedUser.job_prefs_location,
+                job_prefs_level: updatedUser.job_prefs_level
+            });
+
             toast({
                 title: 'Success',
                 description: 'Profile updated successfully'

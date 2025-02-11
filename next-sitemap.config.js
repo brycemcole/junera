@@ -1,0 +1,86 @@
+/** @type {import('next-sitemap').IConfig} */
+const { query } = require('./src/lib/pgdb');
+
+module.exports = {
+  siteUrl: 'https://junera.us',
+  generateRobotsTxt: false, // We're managing robots.txt manually
+  changefreq: 'daily',
+  priority: 0.7,
+  sitemapSize: 7000,
+  exclude: [
+    '/login*',
+    '/register*', 
+    '/profile*', 
+    '/dashboard*',
+    '/notifications*',
+    '/api*'
+  ],
+  generateIndexSitemap: true,
+  additionalPaths: async (config) => {
+    const jobsPromise = query(`
+      SELECT job_id, updated_at 
+      FROM jobPostings 
+      WHERE created_at > NOW() - INTERVAL '30 days'
+      ORDER BY created_at DESC
+    `);
+
+    const companiesPromise = query(`
+      SELECT DISTINCT company, MAX(updated_at) as last_updated
+      FROM jobPostings
+      WHERE created_at > NOW() - INTERVAL '30 days'
+      GROUP BY company
+    `);
+
+    const [jobs, companies] = await Promise.all([jobsPromise, companiesPromise]);
+
+    const paths = [];
+
+    // Add job posting paths
+    jobs.rows.forEach((job) => {
+      paths.push({
+        loc: `/job-postings/${job.job_id}`,
+        lastmod: job.updated_at.toISOString(),
+        changefreq: 'daily',
+        priority: 0.9
+      });
+    });
+
+    // Add company paths
+    companies.rows.forEach((company) => {
+      paths.push({
+        loc: `/companies/${encodeURIComponent(company.company)}`,
+        lastmod: company.last_updated.toISOString(),
+        changefreq: 'daily',
+        priority: 0.8
+      });
+    });
+
+    return paths;
+  },
+  transform: async (config, path) => {
+    // Custom priority for different types of pages
+    let priority = 0.7;
+    let changefreq = 'daily';
+
+    if (path === '/') {
+      priority = 1.0;
+      changefreq = 'always';
+    } else if (path.startsWith('/job-postings/')) {
+      priority = 0.9;
+      changefreq = 'daily';
+    } else if (path.startsWith('/companies/')) {
+      priority = 0.8;
+      changefreq = 'daily';
+    } else if (path === '/job-postings') {
+      priority = 0.95;
+      changefreq = 'always';
+    }
+
+    return {
+      loc: path,
+      changefreq,
+      priority,
+      lastmod: new Date().toISOString(),
+    }
+  },
+}

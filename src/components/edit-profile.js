@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -17,10 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCharacterLimit } from "@/hooks/use-character-limit";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { Check, ImagePlus, X } from "lucide-react";
-import Image, { StaticImageData } from "next/image";
+import Image from "next/image";
 import { useState } from "react";
 
-// Define field types and their configurations
 const FIELD_TYPES = {
     TEXT: 'text',
     TEXTAREA: 'textarea',
@@ -28,7 +26,8 @@ const FIELD_TYPES = {
     TEL: 'tel',
     NUMBER: 'number',
     SELECT: 'select',
-    BOOLEAN: 'boolean'
+    BOOLEAN: 'boolean',
+    MULTISELECT: 'multiselect'
 };
 
 export default function EditProfileDialog({
@@ -39,6 +38,7 @@ export default function EditProfileDialog({
     description = "Make changes to your profile here."
 }) {
     const [formData, setFormData] = useState(initialData);
+    const [open, setOpen] = useState(false);
 
     const handleChange = (name, value) => {
         setFormData(prev => ({
@@ -49,11 +49,16 @@ export default function EditProfileDialog({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await onSubmit(formData);
+        try {
+            await onSubmit(formData);
+            setOpen(false);
+        } catch (err) {
+            console.error('Error submitting form:', err);
+        }
     };
 
     const renderField = (field) => {
-        const { type, name, label, options, placeholder, required, validation } = field;
+        const { type, name, label, options, placeholder, required } = field;
 
         switch (type) {
             case FIELD_TYPES.TEXTAREA:
@@ -81,13 +86,43 @@ export default function EditProfileDialog({
                             className="w-full rounded-md border border-input bg-background px-3 py-2"
                             required={required}
                         >
-                            <option value="">Select {label}</option>
+                            <option value="">Select an option</option>
                             {options?.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
                                     {opt.label}
                                 </option>
                             ))}
                         </select>
+                    </div>
+                );
+
+            case FIELD_TYPES.MULTISELECT:
+                return (
+                    <div className="space-y-2" key={name}>
+                        <Label htmlFor={`edit-${name}`}>{label}</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {options?.map((opt) => {
+                                const isSelected = Array.isArray(formData[name]) && formData[name].includes(opt.value);
+                                return (
+                                    <Button
+                                        key={opt.value}
+                                        type="button"
+                                        variant={isSelected ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => {
+                                            const currentValues = Array.isArray(formData[name]) ? formData[name] : [];
+                                            const newValues = isSelected
+                                                ? currentValues.filter(v => v !== opt.value)
+                                                : [...currentValues, opt.value];
+                                            handleChange(name, newValues);
+                                        }}
+                                    >
+                                        {opt.label}
+                                        {isSelected && <Check className="ml-2 h-4 w-4" />}
+                                    </Button>
+                                );
+                            })}
+                        </div>
                     </div>
                 );
 
@@ -123,34 +158,33 @@ export default function EditProfileDialog({
     };
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {
+                        setFormData(initialData);
+                        setOpen(true);
+                    }}
+                >
                     {title}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="flex flex-col gap-0 overflow-y-visible p-0 sm:max-w-lg">
-                <DialogHeader className="contents space-y-0 text-left">
-                    <DialogTitle className="border-b border-border px-6 py-4 text-base">
-                        {title}
-                    </DialogTitle>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>{typeof title === 'string' ? title : 'Edit Profile'}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <DialogDescription className="sr-only">
-                    {description}
-                </DialogDescription>
-                <div className="overflow-y-auto px-6 py-4">
-                    <form className="space-y-4" onSubmit={handleSubmit}>
-                        {fields.map(renderField)}
-                    </form>
-                </div>
-                <DialogFooter className="border-t border-border px-6 py-4">
-                    <DialogClose asChild>
-                        <Button type="button" variant="outline">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {fields.map(renderField)}
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                             Cancel
                         </Button>
-                    </DialogClose>
-                    <Button type="submit" onClick={handleSubmit}>Save changes</Button>
-                </DialogFooter>
+                        <Button type="submit">Save changes</Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

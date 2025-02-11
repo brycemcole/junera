@@ -15,44 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export function ButtonDemo() {
-  const { user, logout } = useAuth();
-  return (
-    <Button className="rounded-full h-8 py-0 ps-0 mr-3">
-      <div className="flex aspect-square h-full p-1.5">
-        <Image
-          className="h-auto w-full rounded-full"
-          src={`https://avatars.dicebear.com/api/avataaars/georgelucas.svg`}
-          alt="Profile image"
-          width={20}
-          height={20}
-          aria-hidden="true"
-        />
-      </div>
-      <span className="text-xs">
-      @{user?.username}
-      </span>
-    </Button>
-  );
-}
-
-
-function Dot({ className }) {
-  return (
-    <svg
-      width="6"
-      height="6"
-      fill="currentColor"
-      viewBox="0 0 6 6"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="3" cy="3" r="3" />
-    </svg>
-  );
-}
-
 function AvatarButton({ image, fullname, unreadCount }) {
   const getInitials = (name) => {
     if (!name) return '';
@@ -73,7 +35,6 @@ function AvatarButton({ image, fullname, unreadCount }) {
     </div>
   );
 }
-
 
 function DropdownMenuDemo2() {
   const { user, loading, logout } = useAuth();
@@ -103,7 +64,7 @@ function DropdownMenuDemo2() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group h-7 w-7"
+          className="group h-9 w-9"
           variant="ghost"
           size="icon"
           onClick={() => setOpen((prevState) => !prevState)}
@@ -189,7 +150,7 @@ function DropdownMenuDemo() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          className="group shadow-sm h-8 w-8"
+          className="group shadow-sm h-9 w-9"
           variant="outline"
           aria-expanded={open}
           aria-label={open ? "Close menu" : "Open menu"}
@@ -311,19 +272,23 @@ function DropdownMenuDemo() {
 export default function Navbar() {
   const { user, loading, initialized } = useAuth();
   const router = useRouter();
+  const productionEnv = process.env.PROD_ENV === 'prod';
 
   if (!initialized) {
     return null; // Or return a minimal loading navbar
   }
 
   return (
-    <nav className="backdrop-blur shadow-md bg-background/50 lg:max-w-[900px] max-w-4xl sm:mx-8 mx-4 lg:mx-auto shadow-sm z-50 m-4 border rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
-      <div className="flex flex-row justify-between px-4 py-2 z-100">
+    <nav className="backdrop-blur sm:shadow-md bg-background/50 sm:m-4 lg:max-w-[900px] max-w-4xl sm:mx-6 lg:mx-auto z-50 sm:border border-b sm:rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
+      <div className="flex flex-row justify-between px-6 py-3 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
             <span className="text-2xl">🌳</span>
           </Link>
-          <span className="text-sm font-[family-name:var(--font-geist-sans)]">junera</span>
+          <span className="text-lg font-semibold flex items-center gap-2 font-[family-name:var(--font-geist-sans)]">
+            junera
+            {!productionEnv && <Badge className="ml-1 bg-green-500/30 border backdrop-blur border-green-600/30 text-green-700 dark:text-green-100 rounded-lg">dev</Badge>}
+            </span>
         </div>
         <div className="hidden md:block space-x-4 z-1000 ml-auto">
           <NavbarMenu/>
@@ -334,7 +299,7 @@ export default function Navbar() {
               {user ? (
                 <DropdownMenuDemo2 />
               ) : (
-                <Button className="bg-green-500/20  border border-green-600/30 text-green-700 shadow-sm hover:text-primary hover:bg-green-500/30 rounded-lg px-2.5 py-1.5 h-8">
+                <Button className="bg-emerald-500/20 border border-emerald-600/30 text-emerald-700 shadow-sm hover:text-primary hover:bg-emerald-500/30 rounded-lg px-2.5 sm:px-7 py-1.5 h-9">
                   <Link href="/login">Login</Link>
                 </Button>
               )}

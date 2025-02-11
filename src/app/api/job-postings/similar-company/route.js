@@ -1,5 +1,4 @@
 import { query } from "@/lib/pgdb";
-import { getCompanies } from "@/lib/companyCache";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);

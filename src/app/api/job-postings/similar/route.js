@@ -1,5 +1,4 @@
 import { query } from "@/lib/pgdb";
-import { getCompanies } from "@/lib/companyCache";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +10,6 @@ export async function GET(req) {
   }
 
   try {
-    const companies = await getCompanies();
 
     // Get source job details first
     const sourceQuery = `

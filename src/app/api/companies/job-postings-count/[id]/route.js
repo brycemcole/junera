@@ -1,4 +1,3 @@
-import { createDatabaseConnection } from "@/lib/db";
 import { getCached, setCached } from '@/lib/cache';
 import { query } from "@/lib/pgdb";
 

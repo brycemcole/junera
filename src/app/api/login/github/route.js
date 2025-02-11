@@ -12,7 +12,7 @@ export async function GET(request) {
     const userId = searchParams.get('userId'); // Only present for linking
 
     if (!code) {
-        return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/login?error=github_auth_failed`);
+        return Response.redirect(`/login?error=github_auth_failed`);
     }
 
     try {
@@ -66,7 +66,7 @@ export async function GET(request) {
                 WHERE id = $5`,
                 [userData.id, userData.login, tokenData.access_token, userData.avatar_url, userId]
             );
-            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/settings/profile?github_linked=true`);
+            return Response.redirect(`/settings/profile?github_linked=true`);
         }
 
         // Check if user exists by GitHub ID or email
@@ -89,7 +89,7 @@ export async function GET(request) {
             };
 
             const encoded = Buffer.from(JSON.stringify(githubData)).toString('base64');
-            return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/register?github_data=${encoded}`);
+            return Response.redirect(`/register?github_data=${encoded}`);
         } else {
             user = result.rows[0];
             // Update existing user
@@ -116,9 +116,9 @@ export async function GET(request) {
         }, SECRET_KEY);
 
         // Redirect with token
-        return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}?token=${token}`);
+        return Response.redirect(`?token=${token}`);
     } catch (error) {
         console.error('GitHub auth error:', error);
-        return Response.redirect(`${process.env.NEXT_PUBLIC_API_URL}/login?error=github_auth_failed`);
+        return Response.redirect(`/login?error=github_auth_failed`);
     }
 }

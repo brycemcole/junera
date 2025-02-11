@@ -1,30 +1,31 @@
 import { query } from "@/lib/pgdb";
 import { findJobTitleGroup } from '@/lib/jobTitleMappings';
 import { getCached, setCached } from '@/lib/cache';
+import { getStateAbbreviation, getNearbyStates } from '@/lib/stateRelationships';
 
 export async function GET(req) {
   const { signal } = req;
   const url = req.url;
   const { searchParams } = new URL(url);
 
-  // Create cache key from search params
-  const cacheKey = `jobCount:${searchParams.toString()}`;
-
   try {
-    // Check cache first
-    const cachedCount = await getCached(cacheKey);
-    if (cachedCount) {
-      return Response.json({ count: parseInt(cachedCount), ok: true }, { status: 200 });
-    }
-
     // Extract query params
     let title = (searchParams.get("title") || "").trim();
     let location = (searchParams.get("location") || "").trim().toLowerCase();
     const company = (searchParams.get("company") || "").trim();
     let experienceLevel = (searchParams.get("experienceLevel") || "").trim().toLowerCase();
 
+    const cacheKey = `job-count:${title}:${location}:${company}:${experienceLevel}`;
+    const cachedResult = await getCached(cacheKey);
+    if (cachedResult) {
+      return Response.json(cachedResult, { status: 200 });
+    }
+
     // Get title group if title provided
     let titleGroup = title ? findJobTitleGroup(title) : [];
+
+    // Build location search terms using the same logic as the main route
+    let locationSearchTerms = location ? expandLocation(location) : [];
 
     // Use materialized view or indexed subquery for faster counting
     let queryText = `
@@ -46,10 +47,14 @@ export async function GET(req) {
       paramIndex += titleGroup.length;
     }
 
-    if (location) {
-      queryText += ` AND location_vector @@ to_tsquery('simple', $${paramIndex})`;
-      params.push(location.replace(/\s+/g, ' & '));
-      paramIndex++;
+    if (locationSearchTerms.length > 0) {
+      const locationConditions = locationSearchTerms.map((term, i) => {
+        const idx = paramIndex + i;
+        return `location_vector @@ to_tsquery('simple', $${idx})`;
+      });
+      queryText += ` AND (${locationConditions.join(' OR ')})`;
+      params.push(...locationSearchTerms.map(term => term.split(/\s+/).join(' & ')));
+      paramIndex += locationSearchTerms.length;
     }
 
     if (company) {
@@ -70,8 +75,8 @@ export async function GET(req) {
     const result = await query(queryText, params);
     const count = parseInt(result.rows[0]?.total_count || 0);
 
-    // Cache the count for 5 minutes
-    await setCached(cacheKey, count, 300);
+    // Store in cache
+    await setCached(cacheKey, { count, ok: true }, 60 * 60);
 
     return Response.json({ count, ok: true }, { status: 200 });
 
@@ -83,5 +88,45 @@ export async function GET(req) {
     return Response.json({ error: "Error fetching job posting count", ok: false }, { status: 500 });
   }
 }
+
+// Helper function to expand location search terms
+const expandLocation = (location) => {
+  if (!location) return [];
+  const lowercaseLocation = location.toLowerCase();
+  let searchTerms = [lowercaseLocation];
+
+  // Check if it's a state abbreviation or name to include nearby states
+  const stateAbbr = getStateAbbreviation(location);
+  if (stateAbbr) {
+    const nearbyStatesList = getNearbyStates(stateAbbr);
+    // Add both abbreviations and full names for all nearby states
+    nearbyStatesList.forEach(stateCode => {
+      searchTerms.push(stateCode.toLowerCase());
+    });
+  }
+
+  // Add partial matches for cities with state
+  const cityStateMatch = lowercaseLocation.match(/([^,]+),?\s*([a-z]{2}|[^,]+)$/i);
+  if (cityStateMatch) {
+    const [_, city, state] = cityStateMatch;
+    const trimmedCity = city.trim();
+    const trimmedState = state.trim();
+    
+    // Add the city by itself
+    searchTerms.push(trimmedCity);
+
+    // Get state abbreviation and nearby states
+    const stateAbbr = getStateAbbreviation(trimmedState);
+    if (stateAbbr) {
+      const nearbyStatesList = getNearbyStates(stateAbbr);
+      // Add city combinations with all nearby states
+      nearbyStatesList.forEach(nearbyState => {
+        searchTerms.push(`${trimmedCity}, ${nearbyState}`);
+      });
+    }
+  }
+
+  return [...new Set(searchTerms)]; // Remove duplicates
+};
 
 export const dynamic = 'force-dynamic';

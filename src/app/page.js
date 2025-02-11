@@ -17,7 +17,7 @@ export default function Home() {
     redirect("/dashboard");
   }
   return (
-    <div className="container py-10 px-6  mx-auto max-w-4xl md:px-0 w-full">
+    <div className="container py-10 px-6  mx-auto max-w-4xl w-full">
       <main className="space-y-4">
         <h1 className="text-3xl text-left font-semibold font-[family-name:var(--font-geist-sans)]">
           junera

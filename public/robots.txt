@@ -1,0 +1,35 @@
+# Global settings
+User-agent: *
+Allow: /
+
+# Set crawl priority
+Allow: /job-postings/
+Allow: /companies/
+Allow: /explore
+Allow: /about
+
+# Block private/auth routes
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /dashboard
+Disallow: /notifications
+Disallow: /api/
+
+# Rate limiting
+Crawl-delay: 2
+
+# Sitemaps
+Sitemap: https://junera.us/sitemap-index.xml
+Sitemap: https://junera.us/api/sitemap/jobs
+Sitemap: https://junera.us/api/sitemap/companies
+
+# Additional directives for Google
+User-agent: Googlebot
+Disallow: /api/
+Crawl-delay: 1
+
+# Additional directives for Bing
+User-agent: Bingbot
+Disallow: /api/
+Crawl-delay: 1

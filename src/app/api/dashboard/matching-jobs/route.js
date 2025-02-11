@@ -1,6 +1,7 @@
 import { query } from "@/lib/pgdb";
 import jwt from 'jsonwebtoken';
 import { getCached, setCached } from '@/lib/cache';
+import { processJobPostings } from '@/lib/job-utils';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
@@ -86,25 +87,19 @@ export async function GET(req) {
 
     const result = await query(combinedQuery, params);
 
-    // Transform the results to include matching criteria
-    const jobsWithCriteria = result.rows.map(job => {
-      // Find which saved search matched this job
-      const matchedSearch = savedSearchesResult.rows.find(search => {
+    // Transform the results using processJobPostings and add matching criteria
+    const processedJobs = processJobPostings(result.rows);
+    const jobsWithCriteria = processedJobs.map(job => ({
+      ...job,
+      matchedSearch: savedSearchesResult.rows.find(search => {
         const criteria = search.search_criteria;
         return (
           (!criteria.title || job.title.toLowerCase().includes(criteria.title.toLowerCase())) &&
-          (!criteria.experienceLevel || job.experiencelevel.toLowerCase() === criteria.experienceLevel.toLowerCase()) &&
+          (!criteria.experienceLevel || job.experienceLevel.toLowerCase() === criteria.experienceLevel.toLowerCase()) &&
           (!criteria.location || job.location.toLowerCase().includes(criteria.location.toLowerCase()))
         );
-      });
-
-
-      return {
-        ...job,
-        matchedSearch: matchedSearch ? matchedSearch.search_name : 'Any',
-        matchingCriteria: matchedSearch ? matchedSearch.search_criteria : null
-      };
-    });
+      })?.search_name || 'Any'
+    }));
 
     setCached(cacheKey, JSON.stringify({
       jobs: jobsWithCriteria,

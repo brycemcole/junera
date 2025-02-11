@@ -101,10 +101,10 @@ export default function About() {
                   <div className="space-y-1">
                     <p className="text-sm font-medium leading-none w-full mx-auto dark:text-neutral-300">Email</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      <a href="bryce@junera.us">bryce@junera.us</a>
+                      <a href="mailto:bryce@junera.us">bryce@junera.us</a> (<a href="https://bryce3.me" target="_blank" rel="noopener" className="hover:underline">bryce</a>)
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      <a href="cy@junera.us">cy@junera.us</a>
+                      <a href="mailto:cy@junera.us">cy@junera.us</a> 
                     </p>
                   </div>
                 </div>

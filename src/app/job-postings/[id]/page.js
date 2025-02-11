@@ -1,16 +1,19 @@
 'use client';
-require('dotenv').config(); // Ensure you have dotenv installed and configured
+require('dotenv').config();
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { React, use } from 'react';
-import { formatDistanceToNow, set } from "date-fns";
+import { formatDistanceToNow, set, format, formatDistanceStrict } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
-import SharePopover from "./share-popover";
+import SharePopover from "@/components/share-popover";
 import { TextShimmer } from '@/components/core/text-shimmer';
+import ReportPopover from "@/components/report-popover";
+import { trackJobView } from '@/app/actions/trackJobView';
 
 import {
   Accordion,
@@ -28,7 +31,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import EnhanceJobPopover from "./enhance-popover";
 import Link from "next/link";
-import Button24 from "@/components/button24"
+import BookmarkButton from "@/components/bookmark-button"
 import {
   Avatar,
   AvatarFallback,
@@ -42,7 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text } from "lucide-react";
+import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text, Eye, HandCoins } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -55,47 +58,9 @@ import {
 } from "@/components/ui/popover"
 import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { JobCard } from "../../../components/job-posting";
-import { CollapsibleJobs } from "./collapsible";
-import { StickyNavbar } from './navbar';
-const stripHTML = (str) => {
-  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'u', 'b', 'i', 'strong', 'em'];
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(str, 'text/html');
-
-  // Remove disallowed tags
-  const elements = doc.body.querySelectorAll('*');
-  elements.forEach((el) => {
-    if (!allowedTags.includes(el.tagName.toLowerCase())) {
-      el.replaceWith(document.createTextNode(el.textContent));
-    }
-  });
-
-  // Cap font sizes
-  const allElements = doc.body.querySelectorAll('*');
-  allElements.forEach((el) => {
-    const computedStyle = window.getComputedStyle(el);
-    const fontSize = parseFloat(computedStyle.getPropertyValue('font-size'));
-    if (fontSize > 24) { // Cap font size to 24px
-      el.style.fontSize = '24px';
-    }
-  });
-
-  return doc.body.innerHTML;
-};
-const decodeHTMLEntities = (str) => {
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = str;
-  return textarea.value;
-};
-
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { Check, Copy } from "lucide-react";
 import { redirect } from 'next/navigation';
+import { decodeHTMLEntities, stripHTML, stateMap } from '@/lib/job-utils';
 
-// Create a separate component for Similar Jobs
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,32 +119,7 @@ const CompanySimilarJobs = ({ company }) => {
 };
 
 
-
-function InsightsButton({ onClick }) {
-  return (
-    <Button variant="outline" onClick={onClick}>
-      Show Insights
-      <Sparkles className="-me-1 ms-2" size={16} strokeWidth={2} aria-hidden="true" />
-    </Button>
-  );
-}
-
-// ### Updated Utility Function: Extract Salary ###
-/**
- * Extracts salary information from a given text.
- * Handles various formats such as:
- * - 'USD $100,000-$200,000'
- * - '$100k-120k'
- * - '55/hr - 65/hr'
- * - '$4200 monthly'
- * - etc.
- *
- * @param {string} text - The text to extract salary from.
- * @returns {string} - The extracted salary string or an empty string if not found.
- */
-
-
-function Summarization({ title, message, loading, error }) {
+const Summarization = ({ title, message, loading, error }) => {
   return (
 
     <div className="flex gap-3 mb-4">
@@ -224,7 +164,7 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="ml-auto w-9 h-9" size="default">
+        <Button variant="outline" className="w-9 h-9" size="default">
           <Ellipsis
             className="text-foreground"
             size={16}
@@ -255,6 +195,25 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
   );
 };
 
+const getStateFromLocation = (location) => {
+  if (!location) return null;
+  const lowercaseLocation = location.toLowerCase();
+  
+  // First check if it's already a state abbreviation
+  const stateAbbr = Object.values(stateMap).find(abbr => 
+    lowercaseLocation.includes(abbr.toLowerCase())
+  );
+  if (stateAbbr) return stateAbbr;
+
+  // Then check for full state names
+  for (const [stateName, abbr] of Object.entries(stateMap)) {
+    if (lowercaseLocation.includes(stateName)) {
+      return abbr;
+    }
+  }
+  return null;
+};
+
 export default function JobPostingPage({ params }) {
   const { id } = use(params);
   const { toast } = useToast();
@@ -265,128 +224,18 @@ export default function JobPostingPage({ params }) {
   const { user } = useAuth();
   const [showAlert, setShowAlert] = useState(false);
   const [llmResponse, setLlmResponse] = useState("");
-  const [loadingLLMReponse, setLoadingLLMResponse] = useState(false);
+  const [loadingLLMReponse, setLoadingLLMReponse] = useState(false);
   const [errorLLMResponse, setErrorLLMResponse] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isViewed, setIsViewed] = useState(false);
+  const [viewedAt, setViewedAt] = useState(null);
 
-  const handleInghtsClick = () => {
-    setInsightsShown(!insightsShown);
-  };
-
-
-  const handleBadgeClick = () => {
-    setShowAlert(true);
-  };
-
-  const handlePredefinedQuestion = async (query) => {
-    if (!user) return;
-    let question = q;
-    if (!question) return;
-    console.log('Predefined question:', question);
-
-    if (!userProfile) {
-      setLlmResponse("Loading user profile...");
-      return;
-    }
-    const jobPosting = data.jobPosting;
-
-    const technicalSkills = userProfile.user.technical_skills || 'None specified';
-    const softSkills = userProfile.user.soft_skills || 'None specified';
-    const otherSkills = userProfile.user.other_skills || 'None specified';
-
-    const modifiedQuestion = `Does ${userProfile.user.firstname} qualify for the job titled "${jobPosting.title}" at ${jobPosting.company}? Please provide a match score out of 100 and a brief explanation.`;
-    const matchSchema = {
-      type: "json_schema",
-      json_schema: {
-        name: "job_match",
-        schema: {
-          type: "object",
-          properties: {
-            field: { type: "string" },
-          },
-          required: [
-            "field"
-          ]
-        }
-      }
-    };
-    const systemMessage = {
-      role: "system",
-      content: `
-You are a helpful career assistant evaluating job fit for ${userProfile.user.firstname} ${userProfile.user.lastname}.
-
-### User Profile:
-- **Professional Summary:** ${userProfile.user.professionalSummary || 'No summary available.'}
-- **Technical Skills:** ${technicalSkills}
-- **Soft Skills:** ${softSkills}
-- **Other Skills:** ${otherSkills}
-- **Desired Job Title:** ${userProfile.user.desired_job_title || 'Not specified'}
-- **Preferred Location:** ${userProfile.user.desired_location || 'Any location'}
-- **Preferred Salary:** $${userProfile.user.jobPreferredSalary || 'Not specified'}
-- **Employment Type:** ${userProfile.user.employment_type || 'Not specified'}
-- **Preferred Industries:** ${userProfile.user.preferred_industries || 'Not specified'}
-- **Willing to Relocate:** ${userProfile.user.willing_to_relocate ? 'Yes' : 'No'}
-
-### Work Experience
-${userProfile.experience && userProfile.experience.length > 0
-          ? userProfile.experience.map(exp =>
-            `- **${exp.title}** at **${exp.company}** (${new Date(exp.startDate).toLocaleDateString()} - ${exp.isCurrent ? 'Present' : new Date(exp.endDate).toLocaleDateString()})
-- **Location**: ${exp.location || 'Not specified'}
-- **Description**: ${exp.description || 'No description available'}
-- **Tags**: ${exp.tags || 'No tags available'}`).join('\n\n')
-          : 'No work experience available.'}
-
-### Education
-${userProfile.education && userProfile.education.length > 0
-          ? userProfile.education.map(edu =>
-            `- **${edu.degree} in ${edu.fieldOfStudy}** from **${edu.institutionName}**
-- **Duration**: ${new Date(edu.startDate).toLocaleDateString()} - ${edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
-- **Grade**: ${edu.grade || 'Not specified'}
-- **Activities**: ${edu.activities || 'No activities specified'}`).join('\n\n')
-          : 'No education details available.'}
-
-### Job Posting Details:
-${JSON.stringify(jobPosting)}
-
-Please assess the qualifications and provide a brief explanation of whether the user is a good fit for this job.
-            `,
-    };
-    console.log('System message:', systemMessage.content);
-
-    const userMessage = { role: "user", content: modifiedQuestion };
-    const newMessages = [systemMessage, userMessage];
-    setLlmResponse("Loading...");
-
-    try {
-      setLoadingLLMResponse(true);
-      const response = await fetch("http://192.168.86.240:1234/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "qwen2-7b-instruct",
-          messages: newMessages,
-          temperature: 0.7,
-          max_tokens: 500,
-          stream: false,
-        }),
-      });
-
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || "No response.";
-      setLlmResponse(content);
-      setLoadingLLMResponse(false);
-    } catch (error) {
-      console.error("Error fetching LLM response:", error);
-      setLlmResponse("Failed to get a response. Please try again.");
-      setErrorLLMResponse(error.message);
-    }
-  };
 
   const handleSummarizationQuery = async () => {
     if (!user) return;
     const jobPosting = data.data;
     setLlmResponse(""); // Initialize as empty string for streaming
-    setLoadingLLMResponse(true);
+    setLoadingLLMReponse(true);
     let fullResponse = ""; // Track complete response
 
     try {
@@ -479,7 +328,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
         variant: "destructive"
       });
     } finally {
-      setLoadingLLMResponse(false);
+      setLoadingLLMReponse(false);
     }
   };
 
@@ -490,27 +339,12 @@ Please assess the qualifications and provide a brief explanation of whether the 
     let isMounted = true;
     const controller = new AbortController();
 
-    async function fetchUserProfile() {
-      if (!user || !isMounted) return;
-      try {
-        const response = await fetch('/api/user/profile', {
-          headers: { 'Authorization': `Bearer ${user.token}` },
-          signal: controller.signal
-        });
-        const profile = await response.json();
-        if (isMounted) setUserProfile(profile);
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-        if (isMounted) console.error('Error fetching user profile:', error);
-      }
-    }
-
-    async function fetchCompanyJobCount(companyName) {
+    // Split into separate effect for company job count
+    async function fetchCompanyJobCount(companyName, signal) {
       try {
         const response = await fetch(`/api/companies/job-postings-count/${companyName}`, {
-          signal: controller.signal
+          signal: signal
         });
-        console.log('Company job count response:', response);
         const { jobPostingsCount } = await response.json();
         if (isMounted) {
           setData(prevData => ({
@@ -518,61 +352,64 @@ Please assess the qualifications and provide a brief explanation of whether the 
             jobPostingsCount
           }));
         }
-
       } catch (error) {
         if (error.name === 'AbortError') return;
         if (isMounted) console.error('Error fetching company job count:', error);
       }
     }
 
-    async function fetchJobData() {
-      try {
-        const token = localStorage.getItem('token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    // Execute all main data fetching in parallel immediately
+    const promises = [
+      fetch(`/api/job-postings/${id}`, {
+        headers: localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {},
+        signal: controller.signal
+      }).then(res => res.json()),
+      user ? fetch('/api/user/profile', {
+        headers: { 'Authorization': `Bearer ${user.token}` },
+        signal: controller.signal
+      }).then(res => res.json()) : Promise.resolve(null),
+      localStorage.getItem('token') ? fetch(`/api/job-postings/${id}/view-status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        signal: controller.signal
+      }).then(res => res.json()) : Promise.resolve(null)
+    ];
 
-        // Fetch job data
-        const response = await fetch(`/api/job-postings/${id}`, {
-          headers,
-          signal: controller.signal
-        });
+    Promise.all(promises)
+      .then(([jobResult, profile, viewData]) => {
+        if (!isMounted) return;
 
-        const result = await response.json();
-        if (isMounted) {
-          setData(result);
-          setLoading(false);
-          fetchCompanyJobCount(result.data.company);
+        setData(jobResult);
+        if (profile) setUserProfile(profile);
+        if (viewData) {
+          setIsViewed(viewData.isViewed);
+          if (viewData.viewedAt) {
+            setViewedAt(new Date(viewData.viewedAt));
+          }
 
-          // Only track view if we successfully fetched the job data and have a token
-          if (token && !sessionStorage.getItem(`viewed-${id}`)) {
-            try {
-              await fetch(`/api/job-postings/${id}/view`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                signal: controller.signal
-              });
-              // Mark this job as viewed in this session
-              sessionStorage.setItem(`viewed-${id}`, 'true');
-            } catch (viewError) {
-              if (viewError.name !== 'AbortError') {
-                console.error('Error tracking view:', viewError);
-              }
-            }
+          if (!viewData.isViewed)  {
+            trackJobView(id);
+            setIsViewed(true);
+            setViewedAt(new Date());
           }
         }
-      } catch (err) {
+        setLoading(false);
+
+        // Fetch company job count after we have the company name
+        if (jobResult?.data?.company) {
+          fetchCompanyJobCount(jobResult.data.company, controller.signal);
+        }
+      })
+      .catch(err => {
         if (err.name === 'AbortError') return;
         if (isMounted) {
-          console.error('Error fetching job data:', err);
+          console.error('Error fetching data:', err);
           setError(err.message);
           setLoading(false);
         }
-      }
-    }
-    fetchJobData();
-    fetchUserProfile();
+      });
+
     return () => {
       isMounted = false;
       controller.abort();
@@ -646,171 +483,189 @@ Please assess the qualifications and provide a brief explanation of whether the 
 
   return (
     <>
-      <title>{`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`}</title>
-      <meta name="description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
-      <meta name="robots" content="index, follow" />
-      <meta property="og:type" content="website" />
-      <meta property="og:title" content={`junera ${jobPosting.title ? `| ${jobPosting.title}` : ''} ${jobPosting.location ? `in ${jobPosting.location}` : ''} ${jobPosting.company ? `at ${jobPosting.company}` : ''} | jobs`} />
-      <meta property="og:description" content={`Find ${jobPosting.title || ''} jobs ${jobPosting.location ? 'in ' + jobPosting.location : ''} ${jobPosting.company ? 'at ' + jobPosting.company : ''}. Browse through job listings and apply today!`} />
-      <meta property="og:url" content={`https://junera.ai/job-postings/${id}`} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "JobPosting",
-            "mainEntityOfPage": {
-              "@type": "WebPage",
-              "@id": `https://junera.us/job-postings/${id}`
-            },
-            "title": jobPosting.title,
-            "description": jobPosting.description,
-            "datePosted": jobPosting.created_at,
-            "validThrough": jobPosting.valid_through || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            "jobLocation": {
-              "@type": "Place",
-              "address": {
-                "@type": "PostalAddress",
-                "addressRegion": jobPosting.location || "Multiple Locations"
-              }
-            },
-            "hiringOrganization": {
-              "@type": "Organization",
-              "name": jobPosting.company
-            },
-            "employmentType": jobPosting.experienceLevel ? jobPosting.experienceLevel.toUpperCase() : "FULL_TIME",
-            "baseSalary": jobPosting.salary_range_str ? {
-              "@type": "MonetaryAmount",
-              "currency": "USD",
-              "value": {
-                "@type": "QuantitativeValue",
-                "value": jobPosting.salary_range_str
-              }
-            } : undefined,
-            "applicantLocationRequirements": jobPosting.location?.toLowerCase().includes('remote') ? {
-              "@type": "Country",
-              "name": "Remote"
-            } : undefined
-          }, null, 2),
-        }}
-      />
-      <div className="container mx-auto py-0 p-6 max-w-4xl">
-        <div className="flex flex-row items-center justify-between gap-4 mb-4">
-          <div>
-            <Link className="hover:underline underline-offset-4" href={`/companies/${jobPosting.company}`}>{jobPosting.company}</Link>
-            <h1 data-scroll-title className="text-lg font-[family-name:var(--font-geist-sans)] font-medium">
-
-              {jobPosting.title}
-            </h1>
-          </div>
-
-          <Avatar alt={jobPosting.company} className="w-12 h-12 rounded-xl">
-            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-            <AvatarFallback className="rounded-xl">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-        </div>
-        <div className="mb-4 flex flex-col gap-y-2 text-md text-foreground items-start">
-          {jobPosting?.salary ? (
-            <div className="flex items-center gap-2">
-              <BriefcaseBusiness className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.salary}
-              </span>
-            </div>
-          ) : jobPosting?.salary_range_str ? (
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.salary_range_str}
-              </span>
-            </div>
-          ) : null}
-          {/*
-          <div className="flex items-center gap-2">
-
-            <User
-              className={`h-[14px] w-[14px] sm:h-4 sm:w-4 ${jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"
-                }`}
-            />
-            <span
-              className={jobPosting.applicants === 0 ? "text-green-600" : "text-muted-foreground"}
-            >
-              {jobPosting.applicants === 0
-                ? "Be the first applicant"
-                : `${jobPosting.applicants} applicants`}
-            </span>
-          </div>
-          */}
-          {jobPosting.location && (
-            <div className="flex items-center gap-2">
-              <MapPin className="h-3 w-3 text-foreground" />
-              <span>
-                {jobPosting.location?.toLowerCase().includes('remote')
-                  ? jobPosting.location
-                  : `${jobPosting.location}`
+      <div className="container mx-auto py-0 pt-10 p-6 max-w-4xl">
+        {/* Add structured job data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "JobPosting",
+              "title": jobPosting.title,
+              "description": stripHTML(decodeHTMLEntities(jobPosting.description)),
+              "datePosted": jobPosting.created_at,
+              "validThrough": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              "employmentType": jobPosting.experienceLevel?.toUpperCase() || "FULL_TIME",
+              "hiringOrganization": {
+                "@type": "Organization",
+                "name": jobPosting.company,
+                "logo": jobPosting.company ? `https://logo.clearbit.com/${jobPosting.company.toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null
+              },
+              "jobLocation": {
+                "@type": "Place",
+                "address": {
+                  "@type": "PostalAddress",
+                  "addressRegion": jobPosting.location
                 }
-              </span>
-            </div>
-          )}
+              },
+              "baseSalary": jobPosting.salary ? {
+                "@type": "MonetaryAmount",
+                "currency": "USD",
+                "value": {
+                  "@type": "QuantitativeValue",
+                  "value": jobPosting.salary
+                }
+              } : undefined
+            })
+          }}
+        />
+        <div className="bg-background rounded-lg mb-8">
+          
+          <div className="flex items-start justify-between gap-4 mb-5">
+            
+            <div className="flex-grow">
+              
+              <div className="flex items-center gap-4 mb-4">
+              <Avatar alt={jobPosting.company} className="w-14 h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
+              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+              <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+              <div> 
 
-          {keywords && keywords.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Tag className="h-3 w-3" />
-              <span>{keywords.join(', ')}</span>
-            </div>
-          )}
-
-          {jobPosting.location?.toLowerCase().includes('remote') && (
-            <div className="flex items-center gap-2">
-              <MapIcon className="h-3 w-3 text-green-500" />
-              <span>Remote Available</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Timer className="h-3 w-3 text-foreground" />
-            <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
-          </div>
-
-          {jobPosting?.experiencelevel && jobPosting?.experiencelevel !== "null" && (
-            <>
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-3 w-3 text-foreground" />
-                <span>{jobPosting.experiencelevel}</span>
+                <Link
+                  href={`/companies/${jobPosting.company}`}
+                  className="text-md font-semibold text-foreground/80 hover:underline underline-offset-4"
+                >
+                  {jobPosting.company}
+                </Link>
+              <h1 className="text-2xl font-bold tracking-tight"> 
+                {jobPosting.title}
+              </h1>
+              </div>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> 
+              {isViewed && viewedAt && (
+                  <div className="flex items-center text-blue-500 gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    Viewed <span>{formatDistanceToNow(viewedAt, { addSuffix: true })}</span>
+                  </div>
+                )}
+                {jobPosting.salary && (
+                  <div className="flex items-center gap-1.5">
+                    <HandCoins className="h-4 w-4" /> 
+                    <span>{jobPosting.salary}</span>
+                  </div>
+                )}
+                {jobPosting.location && (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" /> 
+                    <span>{jobPosting.location}</span>
+                  </div>
+                )}
+                {jobPosting?.experiencelevel != 'null' && (
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="h-4 w-4" />
+                    <span>{jobPosting.experiencelevel}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Timer className="h-4 w-4" />
+                  <span>{formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}</span>
+                </div>
               </div>
 
-            </>
-          )}
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:underline underline-offset-4">
-            <Link href={`/companies/${jobPosting.company}`}>
-              {loading ?
-                `View jobs at ${jobPosting.company}`
-                :
-                companyJobCount !== undefined ?
-                  `View ${companyJobCount} jobs`
-                  :
-                  `View jobs`} at {jobPosting.company}
-            </Link>
-          </div>
-        </div>
+              {/* Keywords */}
+              {keywords && keywords.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {keywords.map((keyword, index) => (
+                    <Badge key={index} className="text-sm text-green-800 border-green-600/20 bg-green-600/10 px-2" variant="outline">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        <div className="flex flex-wrap flex-col gap-2 mb-6">
-          <div className="flex gap-3">
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-left gap-2 mt-2"> {/* Adjusted margin */}
             <Link
-              href={`${jobPosting.source_url}`}
+              href={jobPosting.source_url}
               target="_blank"
-              className="w-full md:w-auto max-w-64"
-              onClick={handleApplyClick} // Add onClick handler
+              onClick={handleApplyClick}
+              className="flex-1 sm:flex-none"
             >
-              <Button className="group w-full md:w-48 max-w-64 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
+              <Button className="w-full sm:w-auto min-w-28 text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
                 Apply
               </Button>
             </Link>
-            <Button24 jobId={id} />
-            <SharePopover title={`${jobPosting.title} at ${jobPosting.company}`} />
-            <JobDropdown handleSummarizationQuery={handleSummarizationQuery} jobId={id} title={jobPosting.title} company={jobPosting.company} companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`} location={jobPosting.location} />
+            <BookmarkButton jobId={id} />
+            <ReportPopover jobId={id} />
+            <JobDropdown
+              handleSummarizationQuery={handleSummarizationQuery}
+              jobId={id}
+              title={jobPosting.title}
+              company={jobPosting.company}
+              companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
+              location={jobPosting.location}
+            />
+          </div>
 
+          {/* Quick Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&strictSearch=false`}>
+              <Button variant="secondary" size="sm" className="text-sm">
+                <Telescope className="w-4 h-4 mr-2" />
+                Similar Titles
+              </Button>
+            </Link>
+            {jobPosting.location && (
+              <>
+                <Link href={`/job-postings?location=${encodeURIComponent(jobPosting.location)}`}>
+                  <Button variant="secondary" size="sm" className="text-sm">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Jobs in {jobPosting.location}
+                  </Button>
+                </Link>
+                {getStateFromLocation(jobPosting.location) && (
+                  <Link href={`/job-postings?location=${encodeURIComponent(getStateFromLocation(jobPosting.location))}`}>
+                    <Button variant="secondary" size="sm" className="text-sm">
+                      <House className="w-4 h-4 mr-2" />
+                      All {getStateFromLocation(jobPosting.location)} Jobs
+                    </Button>
+                  </Link>
+                )}
+                <Link 
+                  href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&location=${encodeURIComponent(jobPosting.location)}&strictSearch=false`}
+                >
+                  <Button variant="secondary" size="sm" className="text-sm">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Similar Jobs Here
+                  </Button>
+                </Link>
+              </>
+            )}
+            {jobPosting.experiencelevel && jobPosting.experiencelevel !== 'null' && (
+              <Link href={`/job-postings?experienceLevel=${encodeURIComponent(jobPosting.experiencelevel)}`}>
+                <Button variant="secondary" size="sm" className="text-sm">
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  {jobPosting.experiencelevel} Jobs
+                </Button>
+              </Link>
+            )}
+            {jobPosting.company && (
+              <Link href={`/companies/${encodeURIComponent(jobPosting.company)}`}>
+                <Button variant="secondary" size="sm" className="text-sm">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  More at {jobPosting.company}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
+
+        {/* Rest of the content */}
         {(jobPosting.summary || loadingLLMReponse || llmResponse) && (
           <Summarization
             title="Summary"
@@ -883,120 +738,7 @@ Please assess the qualifications and provide a brief explanation of whether the 
           <CompanySimilarJobs company={jobPosting.company} />
         </Suspense>
 
-
-        {user && insightsShown && (
-          <>
-            <h3 className="text-md font-semibold mb-3">Quick Insights</h3>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-                <Sparkle size={14} strokeWidth={2} className="text-muted-foreground" />
-              </Badge>
-              <Badge onClick={handlePredefinedQuestion} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-foreground/10" variant="secondary">
-                <User size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-                <p className="text-sm px-1 py-0.5 font-medium text-muted-foreground">
-                  Am I a good fit?
-                </p>
-              </Badge>
-              <Badge onClick={handleBadgeClick} className="cursor-pointer bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-foreground/10" variant="secondary">
-                <Briefcase size={14} strokeWidth={2} className="text-muted-foreground mr-2" />
-
-                <p className="text-sm px-1 py-0.5 font-semibold text-muted-foreground">
-                  What should I say in my cover letter?
-                </p>
-              </Badge>
-
-            </div>
-
-            {showAlert && <AlertDemo />}
-          </>
-        )}
-
       </div>
     </>
-  );
-}
-
-function ReportPopover() {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="outline"><Flag /></Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 mx-4">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Report Job Posting</h4>
-            <p className="text-sm text-muted-foreground">
-              Report an issue with this job posting
-            </p>
-          </div>
-          <form className="grid gap-4">
-            <div className="grid gap-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="missingInformation"
-                  name="issueType"
-                  value="missingInformation"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="missingInformation" className="text-sm">
-                  Missing Information
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="inactiveJob"
-                  name="issueType"
-                  value="inactiveJob"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="inactiveJob" className="text-sm">
-                  Inactive Job Posting
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="incorrectDetails"
-                  name="issueType"
-                  value="incorrectDetails"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="incorrectDetails" className="text-sm">
-                  Incorrect Job Details
-                </label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="other"
-                  name="issueType"
-                  value="other"
-                  className="h-4 w-4"
-                />
-                <label htmlFor="other" className="text-sm">
-                  Other
-                </label>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="comments" className="text-sm font-medium">
-                Additional Comments (optional)
-              </label>
-              <textarea
-                id="comments"
-                rows="3"
-                className="w-full mt-1 p-2 border border-gray-300 rounded-md"
-                placeholder="Provide more details here..."
-              ></textarea>
-            </div>
-            <Button type="submit">Submit Report</Button>
-          </form>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 }

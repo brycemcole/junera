@@ -7,50 +7,59 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from '@/hooks/use-toast';
 
-// New custom hook to detect if element is on screen
-function useOnScreen(ref) {
-  const [isVisible, setIsVisible] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsVisible(entry.isIntersecting);
-    });
-    observer.observe(ref.current);
-    return () => {
-      observer.disconnect();
-    };
-  }, [ref]);
-  return isVisible;
-}
+const sizeVariants = {
+    default: {
+        button: "size-9",
+        icon: 16
+    },
+    small: {
+        button: "w-8 h-8 min-w-0 sm:size-9",
+        icon: 14
+    }
+};
 
-export default function Button24({ jobId }) {
+export default function BookmarkButton({ jobId, size = "default" }) {
     const [bookmarked, setBookmarked] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [hasChecked, setHasChecked] = useState(false);
     const { user } = useAuth();
     const { toast } = useToast();
-    const containerRef = useRef(null);
-    const isVisible = useOnScreen(containerRef);
+    const componentRef = useRef(null);
 
     useEffect(() => {
-        const checkBookmarkStatus = async () => {
-            if (!jobId || !user || !user?.token) return;
-            try {
-                const response = await fetch(`/api/bookmarks?jobId=${jobId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${user.token}`
-                    }
-                });
-                const data = await response.json();
-                setBookmarked(data.isBookmarked);
-            } catch (error) {
-                console.error('Error checking bookmark status:', error);
-            }
-        };
+        if (!componentRef.current || hasChecked || !jobId || !user || !user?.token) return;
 
-        if (isVisible) {
-            checkBookmarkStatus();
-        }
-    }, [jobId, user?.token, user, isVisible]);
+        const observer = new IntersectionObserver(
+            async (entries) => {
+                const [entry] = entries;
+                if (entry.isIntersecting && !hasChecked) {
+                    setHasChecked(true);
+                    try {
+                        const response = await fetch(`/api/bookmarks?jobId=${jobId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${user.token}`
+                            }
+                        });
+                        const data = await response.json();
+                        setBookmarked(data.isBookmarked);
+                    } catch (error) {
+                        console.error('Error checking bookmark status:', error);
+                    }
+                }
+            },
+            {
+                root: null,
+                rootMargin: '50px',
+                threshold: 0.1
+            }
+        );
+
+        observer.observe(componentRef.current);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [jobId, user?.token, user, hasChecked]);
 
     const handleToggle = async (pressed) => {
         if (!user) {
@@ -71,7 +80,7 @@ export default function Button24({ jobId }) {
         }
 
         const isAddingBookmark = !bookmarked;  // Determine action based on current state
-        
+
         try {
             const response = await fetch(
                 isAddingBookmark ? '/api/bookmarks' : `/api/bookmarks?jobPostingId=${jobId}`,
@@ -81,8 +90,8 @@ export default function Button24({ jobId }) {
                         'Authorization': `Bearer ${user.token}`,
                         'Content-Type': 'application/json',
                     },
-                    ...(isAddingBookmark && { 
-                        body: JSON.stringify({ jobPostingId: jobId }) 
+                    ...(isAddingBookmark && {
+                        body: JSON.stringify({ jobPostingId: jobId })
                     })
                 }
             );
@@ -111,7 +120,7 @@ export default function Button24({ jobId }) {
 
     if (!user) return null;
     return (
-        <div ref={containerRef}>
+        <div ref={componentRef}>
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -121,17 +130,17 @@ export default function Button24({ jobId }) {
                             className="text-foreground"
                         >
                             <Toggle
-                                className="group size-9 border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500"
+                                className={`group ${sizeVariants[size].button} border rounded-lg shadow-sm hover:bg-green-500/10 hover:text-green-600 data-[state=on]:border-green-500/20 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 dark:data-[state=on]:bg-green-500/10 dark:data-[state=on]:text-green-500`}
                                 aria-label="Bookmark this"
                                 pressed={bookmarked || isHovered}
                                 onPressedChange={handleToggle}
                                 onClick={handleClick}
                             >
-                                <Bookmark 
-                                    size={16} 
-                                    strokeWidth={2} 
+                                <Bookmark
+                                    size={sizeVariants[size].icon}
+                                    strokeWidth={2}
                                     aria-hidden="true"
-                                    className={isHovered ? "fill-current " : bookmarked ? "fill-current" : ""}
+                                    className={isHovered ? "fill-current" : bookmarked ? "fill-current" : "text-foreground"}
                                 />
                             </Toggle>
                         </div>

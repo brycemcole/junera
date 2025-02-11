@@ -1,15 +1,14 @@
 "use client";
-import React, { memo, useState, Fragment, useEffect, useCallback, useRef, Suspense } from 'react';
+import React, { memo, useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { JobList } from "@/components/JobPostings";
-import { unstable_cache } from 'next/cache'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EditProfileDialog from '@/components/edit-profile'
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobPostingsChart } from "@/components/job-postings-chart";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { buttonVariants } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import {
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -38,16 +37,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
 import { BriefcaseBusiness } from "lucide-react";
-import { useDebounce } from 'use-debounce';
-import { MapPin } from 'lucide-react';
-
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Plus } from 'lucide-react';
-import { Bookmark } from 'lucide-react';
-import { Label } from "@/components/ui/label";
 import { Check, ChevronDown } from "lucide-react";
 import {
   Command,
@@ -63,6 +53,8 @@ import SearchParamsHandler from '@/components/SearchParamsHandler';
 import { set } from 'date-fns';
 import { throttle } from 'lodash';
 import { is } from 'date-fns/locale';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 // Add encryption utilities
 const encryptData = (data) => {
@@ -159,7 +151,6 @@ const states = {
   "null": "Any",
   "remote": "Remote",
   "new york": "New York",
-  "new york": "New York",
   "california": "California",
   "texas": "Texas",
   "florida": "Florida",
@@ -209,45 +200,6 @@ const states = {
   "wyoming": "Wyoming",
 };
 
-
-function SavedSearchButton({ name, title, experienceLevel, location }) {
-  const router = useRouter();
-
-  // Function to get badge color based on search type
-  const getBadgeColor = () => {
-    if (title) return "bg-blue-500";
-    if (experienceLevel) return "bg-emerald-500";
-    if (location) return "bg-purple-500";
-    return "bg-gray-500";
-  };
-
-  const redirectToSearch = () => {
-    const params = {
-      title: title || "",
-      location: location || "",
-      explevel: experienceLevel || ""
-    };
-    const newParams = new URLSearchParams(params);
-    const newUrl = `/job-postings?${newParams.toString()}`;
-    if (newUrl !== window.location.search) {
-      router.push(newUrl);
-    }
-  };
-
-  return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 px-2 cursor-pointer hover:bg-accent"
-      onClick={redirectToSearch}
-    >
-      <span
-        className={`size-1.5 rounded-full ${getBadgeColor()}`}
-        aria-hidden="true"
-      />
-      {name}
-    </Badge>
-  );
-}
 
 
 const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
@@ -511,15 +463,6 @@ const SearchInsightsSheet = memo(function SearchInsightsSheet({ isOpen, onClose,
   );
 });
 
-const JobCount = memo(function JobCount({ count, className }) {
-  return (
-    <span className={className}>
-      <div className="flex items-center gap-2 text-sm mb-4 mt-3 font-[family-name:var(--font-geist-mono)] text-muted-foreground">
-        <span>{count} jobs</span>
-      </div>
-    </span>
-  );
-});
 
 const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, companies }) {
   if (!company) return null;
@@ -570,8 +513,74 @@ const SearchSynonymsInfo = memo(function SearchSynonymsInfo({ title, synonyms })
   );
 });
 
+// Add this new component near the top with other component imports
+const TrendingJobCards = memo(function TrendingJobCards() {
+  const [trendingJobs, setTrendingJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchTrendingJobs = async () => {
+      try {
+        const response = await fetch('/api/job-postings/trending', { cache: 'force-cache' });
+        const data = await response.json();
+        if (data.ok) {
+          setTrendingJobs(data.trendingJobs);
+        }
+      } catch (error) {
+        console.error('Error fetching trending jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendingJobs();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors animate-pulse">
+            <CardHeader>
+              <div className="h-5 w-3/4 bg-muted rounded"></div>
+              <div className="h-4 w-1/2 bg-muted rounded mt-2"></div>
+              <div className="h-4 w-1/3 bg-muted rounded mt-1 hidden sm:block"></div>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-2">
+      {trendingJobs.map((job) => (
+        <Card 
+          key={job.title} 
+          className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors"
+          onClick={() => {
+            const params = new URLSearchParams({ title: job.title });
+            router.push(`/job-postings?${params.toString()}`);
+          }}
+        >
+          <CardHeader className="p-4 py-2 sm:p-6">
+            <CardTitle className="text-base truncate">{job.title}</CardTitle>
+            <CardDescription>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-primary">{job.category}</span>
+                <span>{parseInt(job.count).toLocaleString()} new jobs in 30 days</span>
+              </div>
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+});
+
 export default function JobPostingsPage() {
-  const { user, loading, authLoading } = useAuth();
+  const { user, loading: authLoading, updatePreferences: updateUserPreferences } = useAuth();
   const router = useRouter();
   const enabled = false;
 
@@ -647,13 +656,15 @@ export default function JobPostingsPage() {
         <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
           <div className="space-y-3">
             <div className="space-y-4">
-              <p className="text-[13px] font-medium">Filter job postings</p>
-              <p className="text-xs text-muted-foreground">
+              <div>
+              <p className="text-sm font-medium">Filter job postings</p>
+              <p className="text-muted-foreground text-xs">
                 Filter through over {count} job postings!
               </p>
+              </div>
               <div className="space-y-2">
                 <div>
-                  <span className="text-foreground">Company</span>
+                  <span className="text-foreground text-sm">Company</span>
                   <p className="text-xs text-muted-foreground">Filter by specific company names</p>
                 </div>
                 <Suspense fallback={<div>Loading...</div>}>
@@ -711,7 +722,7 @@ export default function JobPostingsPage() {
     );
   }
 
-  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams }) {
+  function TabComponent({ savedSearches, applySavedSearch, currentSearchParams, editComponent }) {
     const [activeTab, setActiveTab] = useState('all');
     const router = useRouter();
 
@@ -783,7 +794,8 @@ export default function JobPostingsPage() {
 
     return (
       <Tabs value={activeTab}>
-        <TabsList className="bg-transparent p-0 mb-4">
+        <TabsList className="bg-transparent p-0 mb-0">
+          {editComponent} {/* Changed from editComponent() to just editComponent */}
           <TabsTrigger
             value="all"
             onClick={() => handleTabClick('all')}
@@ -792,7 +804,7 @@ export default function JobPostingsPage() {
             All
           </TabsTrigger>
 
-          {!loading && user && (
+          {!authLoading && user && (
             <>
               <TabsTrigger
                 value="preferences"
@@ -891,6 +903,131 @@ export default function JobPostingsPage() {
         .catch(error => console.error('Error fetching saved searches:', error));
     }
   }, [user, authLoading, dataLoading]);
+
+  const profileFields = [
+    {
+      type: 'multiselect',
+      name: 'job_prefs_title',
+      label: 'Desired Job Titles',
+      placeholder: 'preferred job title',
+      options: [
+        { value: 'Software Engineer', label: 'Software Engineer' },
+        { value: 'Frontend Developer', label: 'Frontend Developer' },
+        { value: 'Backend Developer', label: 'Backend Developer' },
+        { value: 'Full Stack Developer', label: 'Full Stack Developer' },
+        { value: 'DevOps Engineer', label: 'DevOps Engineer' },
+        { value: 'Project Manager', label: 'Project Manager' },
+        // Add more options as needed
+      ]
+    },
+    {
+      type: 'multiselect',
+      name: 'job_prefs_location',
+      label: 'Preferred Locations',
+      placeholder: 'preferred location',
+      options: [
+        { value: 'New York', label: 'New York' },
+        { value: 'San Francisco', label: 'San Francisco' },
+        { value: 'Remote', label: 'Remote' },
+        // Add more location options as needed
+      ]
+    },
+    /*
+    {
+      type: 'text',
+      name: 'job_prefs_industry',
+      label: 'test',
+      placeholder: 'e.g. Technology, Finance'
+    },
+    {
+      type: 'text',
+      name: 'job_prefs_language',
+      label: 'test',
+      placeholder: 'e.g. English'
+    },
+    */
+    {
+      type: 'multiselect',
+      name: 'job_prefs_level',
+      label: 'Experience Level',
+      options: [
+        { value: 'Internship', label: 'Internship' },
+        { value: 'Entry Level', label: 'Entry Level' },
+        { value: 'Mid Level', label: 'Mid Level' },
+        { value: 'Senior Level', label: 'Senior Level' },
+        { value: 'Lead', label: 'Lead' },
+        { value: 'Manager', label: 'Manager' }
+      ]
+    },
+    {
+      type: 'number',
+      name: 'job_prefs_salary',
+      label: 'Expected Salary (Annual)',
+      placeholder: 'Enter expected salary'
+    },
+    {
+      type: 'boolean',
+      name: 'job_prefs_relocatable',
+      label: 'Willing to Relocate'
+    }
+  ];
+
+  const handleProfileUpdate = async (formData) => {
+    try {
+      // Ensure all array fields are properly formatted
+      const processedData = {
+        ...formData,
+        job_prefs_title: formData.job_prefs_title
+          ? (Array.isArray(formData.job_prefs_title)
+            ? formData.job_prefs_title
+            : [formData.job_prefs_title])
+          : [],
+        job_prefs_location: formData.job_prefs_location
+          ? (Array.isArray(formData.job_prefs_location)
+            ? formData.job_prefs_location
+            : [formData.job_prefs_location])
+          : [],
+        job_prefs_level: formData.job_prefs_level
+          ? (Array.isArray(formData.job_prefs_level)
+            ? formData.job_prefs_level
+            : [formData.job_prefs_level])
+          : [],
+        job_prefs_salary: formData.job_prefs_salary
+          ? parseInt(formData.job_prefs_salary, 10)
+          : null,
+        job_prefs_relocatable: Boolean(formData.job_prefs_relocatable)
+      };
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(processedData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      const { user: updatedUser } = await response.json();
+
+      // Update the auth context with new preferences
+      if (updateUserPreferences) {
+        await updateUserPreferences({
+          job_prefs_title: updatedUser.job_prefs_title,
+          job_prefs_location: updatedUser.job_prefs_location,
+          job_prefs_level: updatedUser.job_prefs_level
+        });
+      }
+
+      router.refresh();
+    } catch (err) {
+      console.error('Error updating preferences:', err);
+      throw err;
+    }
+  };
 
   const applySavedSearch = (searchParamsStr) => {
     const params = JSON.parse(searchParamsStr);
@@ -1200,11 +1337,8 @@ export default function JobPostingsPage() {
       throttledScrollHandler.cancel();
     };
   }, [handleScroll]);
-
-  const isFirstRenderRef = useRef(true);
-
+  useRef(true);
   useEffect(() => {
-    let isFirstRender = true;
     const controller = new AbortController();
     lastRequestRef.current = controller;
 
@@ -1308,7 +1442,7 @@ export default function JobPostingsPage() {
           setHasMore(cachedPages.length >= pageNum * limit);
           setCurrentPage(pageNum);
         } else {
-          const jobData = await fetchJobData(route, params);
+          const jobData = await fetchJobData(route);
           await storeResponseInLocalStorage(route, jobData);
           updateJobDataState(jobData);
         }
@@ -1342,10 +1476,13 @@ export default function JobPostingsPage() {
       return cachedData && Date.now() - cachedData.timestamp < 15 * 60 * 1000;
     }
 
-    async function fetchJobData(route, params) {
+    async function fetchJobData(route) {
       const response = await fetch(route, {
         signal: controller.signal,
-        cache: 'force-cache',
+        headers: {
+          'Content-Type': 'application/json',
+          'cache-control': 'force-cache'
+        },
       });
       if (!response.ok) throw new Error("Network response was not ok");
       const data = await response.json();
@@ -1380,44 +1517,6 @@ export default function JobPostingsPage() {
         })
         .catch(console.error);
     }
-
-    const restoreFromSession = () => {
-      try {
-        const storedState = sessionStorage.getItem('jobListingsState');
-        if (!storedState) return false;
-
-        const { data: storedData, page, params, timestamp } = JSON.parse(storedState);
-        console.log(storedData);
-        console.log('ATTEMPTING TO RESTORE SESSION DATA');
-
-        // Check if data is still fresh
-        if (!isDataFresh(timestamp)) {
-          sessionStorage.removeItem('jobListingsState');
-          return false;
-        }
-
-        // Check if params match current state
-        if (
-          params.title === title &&
-          params.experienceLevel === experienceLevel &&
-          params.location === location &&
-          params.company === company &&
-          params.saved === saved
-        ) {
-          console.log('Restoring from session');
-          setData(storedData);
-          console.log(storedData);
-          return true;
-        }
-      } catch (error) {
-        console.error('Error restoring session data:', error);
-        sessionStorage.removeItem('jobListingsState');
-      }
-      return false;
-    };
-
-
-
     fetchData();
 
     return () => {
@@ -1442,7 +1541,7 @@ export default function JobPostingsPage() {
       sessionStorage.removeItem('jobListingsState');
       setDataTimestamp(null);
     }
-  }, [title, experienceLevel, location, company, saved]);
+  }, [title, experienceLevel, location, company, saved, currentPage]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -1476,18 +1575,10 @@ export default function JobPostingsPage() {
           />
         </Suspense>
         <div className="z-0">
-          <Suspense fallback={<div>Loading...</div>}>
-            <div className="mb-6">
-              <h1 className="text-lg font-[family-name:var(--font-geist-mono)] font-medium mb-1">{headerTitle}</h1>
-              <p className="text-sm text-muted-foreground">
-                <small className="text-sm text-muted-foreground">
-                  {count} results
-                </small>
-              </p>
+          <div className="flex pt-10 pb-6 items-center gap-2">
+            <TrendingJobCards />
+          </div>     
 
-
-            </div>
-          </Suspense>
 
           {company && (
             <Suspense>
@@ -1501,13 +1592,35 @@ export default function JobPostingsPage() {
             <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
           </Suspense>
 
-          <TabComponent
-            savedSearches={savedSearches}
-            applySavedSearch={applySavedSearch}
-            currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
-          />
+          <div className="flex flex-row items-center flex-wrap sm:flex-nowrap gap-2">
+            <TabComponent
+              savedSearches={savedSearches}
+              applySavedSearch={applySavedSearch}
+              currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
+              editComponent={() => (!authLoading  && user && (
+                <EditProfileDialog
+                  fields={profileFields}
+                  initialData={{
+                    job_prefs_title: user?.jobPrefsTitle || [],
+                    job_prefs_location: user?.jobPrefsLocation || [],
+                    job_prefs_level: user?.jobPrefsLevel || [],
+                    job_prefs_salary: user?.jobPrefsSalary || null,
+                    job_prefs_relocatable: user?.jobPrefsRelocatable || false
+                  }}
+                  onSubmit={handleProfileUpdate}
+                  title={<Settings size={12} />}
+                />
+              ))}
+            />
+          <Suspense fallback={<div>Loading...</div>}>
 
-
+              <h1 className="text-xs ml-auto font-[family-name:var(--font-geist-sans)] text-muted-foreground font-medium mb-0">
+                <span className="text-green-500 dark:text-green-200 font-semibold">
+                  {count ? count.toLocaleString() : 0}
+                </span>  {headerTitle}
+              </h1>
+          </Suspense>
+          </div>
         </div>
 
         <Suspense fallback={<div>Loading...</div>}>
@@ -1522,6 +1635,7 @@ export default function JobPostingsPage() {
               </div>
             </>
           )}
+
 
 
           <div>

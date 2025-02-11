@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://junera.us/api/sitemap/jobs</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://junera.us/api/sitemap/companies</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://junera.us/sitemap.xml</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+  </sitemap>
+</sitemapindex>
