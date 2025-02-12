@@ -539,7 +539,7 @@ const TrendingJobCards = memo(function TrendingJobCards() {
 
   if (loading) {
     return (
-      <div className="flex gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors animate-pulse">
             <CardHeader>
@@ -554,11 +554,11 @@ const TrendingJobCards = memo(function TrendingJobCards() {
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2">
+    <div className="flex gap-4 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {trendingJobs.map((job) => (
         <Card 
           key={job.title} 
-          className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors"
+          className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-muted-foreground transition-colors"
           onClick={() => {
             const params = new URLSearchParams({ title: job.title });
             router.push(`/job-postings?${params.toString()}`);
@@ -795,7 +795,7 @@ export default function JobPostingsPage() {
     return (
       <Tabs value={activeTab}>
         <TabsList className="bg-transparent p-0 mb-0">
-          {editComponent} {/* Changed from editComponent() to just editComponent */}
+          {editComponent}
           <TabsTrigger
             value="all"
             onClick={() => handleTabClick('all')}
@@ -1461,15 +1461,39 @@ export default function JobPostingsPage() {
     }
 
     function buildQueryParams() {
-      return new URLSearchParams({
-        ...(title || user?.jobPrefsTitle ? { title: title || user?.jobPrefsTitle[0] } : {}),
-        ...(experienceLevel && { experienceLevel }),
-        ...(location || user?.jobPrefsLocation ? { location: (location || user?.jobPrefsLocation[0] || '').toLowerCase() } : {}),
-        ...(company && { company }),
-        strictSearch,
-        page: currentPage.toString(),
-        limit: limit.toString()
-      });
+      const params = new URLSearchParams();
+      
+      // Handle title preferences
+      if (title) {
+        params.append('title', title);
+      } else if (user?.jobPrefsTitle?.length) {
+        // Add all preferred titles as separate parameters
+        user.jobPrefsTitle.forEach(t => params.append('title', t));
+      }
+
+      // Handle experience level
+      if (experienceLevel) {
+        params.append('experienceLevel', experienceLevel);
+      } else if (user?.jobPrefsLevel?.length) {
+        // Add all preferred levels as separate parameters
+        user.jobPrefsLevel.forEach(l => params.append('experienceLevel', l));
+      }
+
+      // Handle location preferences
+      if (location) {
+        params.append('location', location.toLowerCase());
+      } else if (user?.jobPrefsLocation?.length) {
+        // Add all preferred locations as separate parameters
+        user.jobPrefsLocation.forEach(l => params.append('location', l.toLowerCase()));
+      }
+
+      // Add remaining parameters
+      if (company) params.append('company', company);
+      params.append('strictSearch', strictSearch.toString());
+      params.append('page', currentPage.toString());
+      params.append('limit', limit.toString());
+
+      return params;
     }
 
     function isCacheValid(cachedData) {
@@ -1575,7 +1599,7 @@ export default function JobPostingsPage() {
           />
         </Suspense>
         <div className="z-0">
-          <div className="flex pt-10 pb-6 items-center gap-2">
+          <div className="flex pt-6 pb-6 items-center gap-2">
             <TrendingJobCards />
           </div>     
 
@@ -1597,7 +1621,7 @@ export default function JobPostingsPage() {
               savedSearches={savedSearches}
               applySavedSearch={applySavedSearch}
               currentSearchParams={{ title, explevel: experienceLevel, location, saved }}
-              editComponent={() => (!authLoading  && user && (
+              editComponent={!authLoading && user && (
                 <EditProfileDialog
                   fields={profileFields}
                   initialData={{
@@ -1610,7 +1634,7 @@ export default function JobPostingsPage() {
                   onSubmit={handleProfileUpdate}
                   title={<Settings size={12} />}
                 />
-              ))}
+              )}
             />
           <Suspense fallback={<div>Loading...</div>}>
 

@@ -1,4 +1,5 @@
-import OpenAI from 'openai';
+import ModelClient from "@azure-rest/ai-inference";
+import { AzureKeyCredential } from "@azure/core-auth";
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
@@ -37,46 +38,26 @@ export async function POST(request) {
             content: `Please provide a brief summary of the job posting titled "${jobPosting.title}" at ${jobPosting.company}.`
         };
 
-        const openai = new OpenAI({
-            apiKey: process.env.NVIDIA_KEY,
-            baseURL: 'https://integrate.api.nvidia.com/v1',
+        const client = new ModelClient(
+            process.env.AZURE_INFERENCE_SDK_ENDPOINT ?? "https://junera-ai-services.services.ai.azure.com/models",
+            new AzureKeyCredential(process.env.AZURE_INFERENCE_SDK_KEY)
+        );
+
+        const response = await client.path("chat/completions").post({
+            body: {
+                messages: [systemMessage, userMessage],
+                max_tokens: 200,
+                temperature: 0.2,
+                model: process.env.AZURE_DEPLOYMENT_NAME ?? "gpt-4o-mini",
+                stream: true,
+            },
         });
 
-        // Create response stream
-        const stream = new ReadableStream({
-            async start(controller) {
-                try {
-                    const completion = await openai.chat.completions.create({
-                        model: "meta/llama-3.3-70b-instruct",
-                        messages: [systemMessage, userMessage],
-                        temperature: 0.2,
-                        max_tokens: 200,
-                        stream: true,
-                    });
-
-                    for await (const chunk of completion) {
-                        console.log(chunk);
-                        // Extract content from the chunk
-                        const content = chunk.choices[0]?.delta?.content || '';
-                        if (content) {
-                            // Format as SSE data
-                            const data = `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
-                            controller.enqueue(new TextEncoder().encode(data));
-                        }
-                    }
-                } catch (error) {
-                    console.error('Streaming error:', error);
-                    controller.error(error);
-                } finally {
-                    controller.close();
-                }
-            }
-        });
-
-        return new Response(stream, {
+        // Return the stream directly with SSE headers
+        return new Response(response.body, {
             headers: {
                 'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
             },
         });
@@ -84,7 +65,7 @@ export async function POST(request) {
     } catch (error) {
         console.error('Error in AI route:', error);
         return new Response(
-            JSON.stringify({ error: 'Internal Server Error' }),
+            JSON.stringify({ error: 'Internal Serveokar Error' }),
             {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }

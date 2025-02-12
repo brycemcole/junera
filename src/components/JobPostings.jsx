@@ -140,7 +140,6 @@ export const JobList = ({ data, loading, error }) => {
                         <div className="flex flex-row gap-2 items-center">
                         <Link
                                     href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
-                                    onClick={() => handleJobClick(job.id)}
                                     className="ml-auto"
                                 >
                                     <Button variant="outline" size="sm" className="sm:w-36 h-8 sm:h-9 sm:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
