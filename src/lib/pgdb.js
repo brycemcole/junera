@@ -86,9 +86,14 @@ cron.schedule('0 * * * *', () => {
     expireCache();
 });
 
+const end = async () => {
+    await pool.end();
+};
+
 module.exports = {
     query,
     longQuery,
     checkDB,
     pool, // Export pool for graceful shutdown
+    end, // Add end function to exports
 };
