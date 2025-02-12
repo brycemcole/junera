@@ -272,7 +272,7 @@ function DropdownMenuDemo() {
 export default function Navbar() {
   const { user, loading, initialized } = useAuth();
   const router = useRouter();
-  const productionEnv = process.env.PROD_ENV === 'prod';
+  const productionEnv = process.env.NEXT_PUBLIC_PROD_ENV === 'prod';
 
   if (!initialized) {
     return null; // Or return a minimal loading navbar
@@ -283,7 +283,7 @@ export default function Navbar() {
       <div className="flex flex-row justify-between px-6 py-3 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
-            <span className="text-2xl">🌳</span>
+          <Image src="/apple-icon.png" alt="junera" width={28} height={28} />
           </Link>
           <span className="text-lg font-semibold flex items-center gap-2 font-[family-name:var(--font-geist-sans)]">
             junera

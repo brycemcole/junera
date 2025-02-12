@@ -272,8 +272,8 @@ export default function JobPostingPage({ params }) {
 
             try {
               const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.content;
-              if (content) {
+              if (parsed.choices?.[0]?.delta?.content) {
+                const content = parsed.choices[0].delta.content;
                 fullResponse += content;
                 setLlmResponse(prev => prev + content);
               }

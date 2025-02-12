@@ -79,7 +79,7 @@ export function NavbarMenu() {
                 <NavigationMenuLink asChild>
                   <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-emerald-50 dark:bg-emerald-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
                     <div className="mb-2 mt-4 text-lg font-medium">
-                      🌳 junera
+                      junera
                     </div>
                     <p className="text-sm leading-tight text-muted-foreground">
                       A new job search experience, powering the future of work.

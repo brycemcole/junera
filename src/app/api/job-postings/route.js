@@ -140,7 +140,6 @@ export async function GET(req) {
   const { searchParams } = new URL(url);
 
   try {
-    // Pagination params
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 20;
     const strictParam = searchParams.get("strictSearch");
@@ -152,21 +151,20 @@ export async function GET(req) {
 
     const offset = (page - 1) * limit;
 
-    // Extract and sanitize query params
-    const title = searchParams.get("title")?.trim() || "";
-    const location = searchParams.get("location")?.trim().toLowerCase() || "";
+    // Get all values for multi-value parameters
+    const titles = searchParams.getAll("title").filter(Boolean);
+    const locations = searchParams.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
+    const experienceLevels = searchParams.getAll("experienceLevel").filter(Boolean);
     const company = searchParams.get("company")?.trim() || "";
-    const experienceLevel = searchParams.get("experienceLevel")?.trim().toLowerCase() || "";
 
-    const cacheKey = `job-search:${title}:${location}:${company}:${experienceLevel}:${page}:${limit}`;
-    const cachedResult = await getCached(cacheKey);
-
-    if (cachedResult) {
-      return Response.json(cachedResult);
+    const cacheKey = `jobPostings-${titles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}`;
+    const cachedResponse = await getCached(cacheKey);
+    if (cachedResponse) {
+      return Response.json(cachedResponse);
     }
 
     let queryText = `
-      SELECT 
+      SELECT DISTINCT ON (job_id)
         job_id,
         title,
         company,
@@ -182,14 +180,31 @@ export async function GET(req) {
     
     const params = [];
     
-    if (title) {
-      params.push(`%${title}%`);
-      queryText += ` AND LOWER(title) LIKE LOWER($${params.length})`;
+    // Handle multiple titles
+    if (titles.length > 0) {
+      const titleConditions = titles.map((_, idx) => {
+        params.push(`%${titles[idx]}%`);
+        return `LOWER(title) LIKE LOWER($${params.length})`;
+      });
+      queryText += ` AND (${titleConditions.join(' OR ')})`;
     }
 
-    if (location) {
-      params.push(`%${location}%`);
-      queryText += ` AND LOWER(location) LIKE LOWER($${params.length})`;
+    // Handle multiple locations
+    if (locations.length > 0) {
+      const locationConditions = locations.map((_, idx) => {
+        params.push(`%${locations[idx]}%`);
+        return `LOWER(location) LIKE LOWER($${params.length})`;
+      });
+      queryText += ` AND (${locationConditions.join(' OR ')})`;
+    }
+
+    // Handle multiple experience levels
+    if (experienceLevels.length > 0) {
+      const levelConditions = experienceLevels.map((_, idx) => {
+        params.push(experienceLevels[idx]);
+        return `LOWER(experiencelevel) = LOWER($${params.length})`;
+      });
+      queryText += ` AND (${levelConditions.join(' OR ')})`;
     }
 
     if (company) {
@@ -197,14 +212,9 @@ export async function GET(req) {
       queryText += ` AND company = $${params.length}`;
     }
 
-    if (experienceLevel) {
-      params.push(experienceLevel);
-      queryText += ` AND LOWER(experiencelevel) = $${params.length}`;
-    }
-
     // Add pagination parameters last
     params.push(limit, offset);
-    queryText += ` ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    queryText += ` ORDER BY job_id, created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
     console.log('Query:', queryText);
     console.log('Params:', params);
@@ -221,13 +231,7 @@ export async function GET(req) {
     };
     await setCached(cacheKey, response, 60 * 5);
     
-    return Response.json({ 
-      jobPostings: processJobPostings(result.rows),
-      ok: true,
-      page,
-      limit,
-      total: result.rows.length
-    });
+    return Response.json(response);
 
   } catch (error) {
     console.error("Database error:", error);

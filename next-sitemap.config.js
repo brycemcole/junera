@@ -18,14 +18,15 @@ module.exports = {
   generateIndexSitemap: true,
   additionalPaths: async (config) => {
     const jobsPromise = query(`
-      SELECT job_id, updated_at 
+      SELECT job_id, created_at as last_modified
       FROM jobPostings 
       WHERE created_at > NOW() - INTERVAL '30 days'
       ORDER BY created_at DESC
     `);
 
     const companiesPromise = query(`
-      SELECT DISTINCT company, MAX(updated_at) as last_updated
+      SELECT DISTINCT company, 
+             MAX(created_at) as last_modified
       FROM jobPostings
       WHERE created_at > NOW() - INTERVAL '30 days'
       GROUP BY company
@@ -35,11 +36,17 @@ module.exports = {
 
     const paths = [];
 
+    // Format date to valid W3C format
+    const formatDate = (date) => {
+      if (!date) return new Date().toISOString();
+      return new Date(date).toISOString();
+    };
+
     // Add job posting paths
     jobs.rows.forEach((job) => {
       paths.push({
         loc: `/job-postings/${job.job_id}`,
-        lastmod: job.updated_at.toISOString(),
+        lastmod: formatDate(job.last_modified),
         changefreq: 'daily',
         priority: 0.9
       });
@@ -49,7 +56,7 @@ module.exports = {
     companies.rows.forEach((company) => {
       paths.push({
         loc: `/companies/${encodeURIComponent(company.company)}`,
-        lastmod: company.last_updated.toISOString(),
+        lastmod: formatDate(company.last_modified),
         changefreq: 'daily',
         priority: 0.8
       });
@@ -76,11 +83,12 @@ module.exports = {
       changefreq = 'always';
     }
 
+    // Ensure valid date format for lastmod
     return {
       loc: path,
       changefreq,
       priority,
-      lastmod: new Date().toISOString(),
+      lastmod: new Date().toISOString()
     }
   },
 }

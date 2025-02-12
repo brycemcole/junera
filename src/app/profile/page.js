@@ -60,7 +60,7 @@ function ExperienceAvatar({ image, username }) {
     return (
         <Avatar className="rounded-lg">
             <AvatarImage src={image} alt={`${username}'s avatar`} />
-            <AvatarFallback>KK</AvatarFallback>
+            <AvatarFallback>{username[0].toUpperCase()}</AvatarFallback>
         </Avatar>
     );
 }
