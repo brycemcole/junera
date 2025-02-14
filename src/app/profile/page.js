@@ -92,8 +92,19 @@ function CancelDialog({ experience, onConfirm }) {
 const handleGitHubLink = (e) => {
     const userId = e.target.getAttribute('data-user-id');
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    // Use window.location.origin to get the current domain
-    const returnUrl = encodeURIComponent(`${window.location.origin}/api/auth/github/callback?userId=${userId}`);
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    
+    if (!GITHUB_CLIENT_ID) {
+        console.error('GitHub client ID not configured');
+        toast({
+            title: 'Configuration Error',
+            description: 'GitHub integration is not properly configured',
+            variant: 'destructive'
+        });
+        return;
+    }
+
+    const returnUrl = encodeURIComponent(`${APP_URL}/api/auth/github/callback?userId=${userId}`);
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=read:user,user:email`;
 };
 

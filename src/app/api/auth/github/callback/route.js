@@ -3,25 +3,29 @@ import { NextResponse } from 'next/server';
 
 const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://dev.junera.us';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const userId = searchParams.get('userId');
 
+    console.log('GitHub callback received:', { code, userId });
+
     if (!code) {
-        return NextResponse.redirect(`/profile?error=github_no_code`);
+        return NextResponse.redirect(`${APP_URL}/profile?error=github_no_code`);
     }
 
     if (!userId) {
-        return NextResponse.redirect(`/profile?error=invalid_user`);
+        return NextResponse.redirect(`${APP_URL}/profile?error=invalid_user`);
     }
 
     try {
         // Verify user exists
         const userCheck = await query('SELECT id FROM users WHERE id = $1', [userId]);
         if (userCheck.rows.length === 0) {
-            return NextResponse.redirect(`/profile?error=invalid_user`);
+            console.error('User not found:', userId);
+            return NextResponse.redirect(`${APP_URL}/profile?error=invalid_user`);
         }
 
         // Exchange code for access token
@@ -42,7 +46,7 @@ export async function GET(request) {
         
         if (tokenData.error) {
             console.error('GitHub token error:', tokenData);
-            return NextResponse.redirect(`/profile?error=github_token_failed`);
+            return NextResponse.redirect(`${APP_URL}/profile?error=github_token_failed&github_error=${encodeURIComponent(tokenData.error)}`);
         }
 
         // Get GitHub user data
@@ -53,8 +57,9 @@ export async function GET(request) {
         });
 
         if (!userResponse.ok) {
-            console.error('GitHub API error:', await userResponse.text());
-            return NextResponse.redirect(`/profile?error=github_api_failed`);
+            const errorText = await userResponse.text();
+            console.error('GitHub API error:', errorText);
+            return NextResponse.redirect(`${APP_URL}/profile?error=github_api_failed`);
         }
 
         const userData = await userResponse.json();
@@ -69,9 +74,9 @@ export async function GET(request) {
             [userData.login, tokenData.access_token, userId]
         );
 
-        return NextResponse.redirect('/profile?github=connected');
+        return NextResponse.redirect(`${APP_URL}/profile?github=connected`);
     } catch (error) {
         console.error('GitHub auth error:', error);
-        return NextResponse.redirect(`/profile?error=github_auth_failed&message=${encodeURIComponent(error.message)}`);
+        return NextResponse.redirect(`${APP_URL}/profile?error=github_auth_failed&message=${encodeURIComponent(error.message)}`);
     }
 }
