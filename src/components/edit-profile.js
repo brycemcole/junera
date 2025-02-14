@@ -10,14 +10,27 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCharacterLimit } from "@/hooks/use-character-limit";
 import { useImageUpload } from "@/hooks/use-image-upload";
-import { Check, ImagePlus, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Check, ImagePlus, Key, Loader2, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 const FIELD_TYPES = {
     TEXT: 'text',
@@ -31,7 +44,7 @@ const FIELD_TYPES = {
 };
 
 export default function EditProfileDialog({
-    fields,
+    fields = [],
     initialData = {},
     onSubmit,
     title = "Edit Profile",
@@ -161,8 +174,8 @@ export default function EditProfileDialog({
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button 
-                    variant="ghost" 
-                    size="icon"
+                    variant={typeof title === 'string' ? 'default' : 'ghost'}
+                    size={typeof title === 'string' ? 'default' : 'icon'}
                     onClick={() => {
                         setFormData(initialData);
                         setOpen(true);
@@ -177,7 +190,7 @@ export default function EditProfileDialog({
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {fields.map(renderField)}
+                    {Array.isArray(fields) && fields.map(renderField)}
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                             Cancel
@@ -283,4 +296,138 @@ function Avatar({ defaultImage }) {
             </div>
         </div>
     );
+}
+
+export function ChangePasswordDialog() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    },
+    resolver: zodResolver(
+      z.object({
+        oldPassword: z.string().min(6, "Current password is required"),
+        newPassword: z.string().min(6, "Password must be at least 6 characters"),
+        confirmPassword: z.string()
+      }).refine((data) => data.newPassword === data.confirmPassword, {
+        message: "Passwords don't match",
+        path: ["confirmPassword"],
+      })
+    )
+  });
+
+  const onSubmit = async (data) => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          oldPassword: data.oldPassword,
+          newPassword: data.newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to change password');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Password changed successfully'
+      });
+      setOpen(false);
+      form.reset();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Key className="w-4 h-4 mr-2" />
+          Change Password
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Password</DialogTitle>
+          <DialogDescription>
+            Enter your current password and choose a new one.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="oldPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Change Password
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
 }

@@ -108,7 +108,8 @@ const compressData = async (data) => {
         }
       }
 
-      return btoa(compressed);
+      // Ensure proper base64 encoding
+      return btoa(unescape(encodeURIComponent(compressed)));
     }
   } catch (error) {
     console.error('Compression error:', error);
@@ -126,20 +127,26 @@ const decompressData = async (compressed) => {
       return JSON.parse(decoded);
     } else {
       // Fallback decompression
-      const decompressed = atob(compressed);
-      let result = '';
-      let i = 0;
+      // Ensure proper base64 decoding
+      try {
+        const decompressed = decodeURIComponent(escape(atob(compressed)));
+        let result = '';
+        let i = 0;
 
-      while (i < decompressed.length) {
-        let count = '';
-        while (/\d/.test(decompressed[i])) {
-          count += decompressed[i++];
+        while (i < decompressed.length) {
+          let count = '';
+          while (/\d/.test(decompressed[i])) {
+            count += decompressed[i++];
+          }
+          result += decompressed[i].repeat(count ? parseInt(count) : 1);
+          i++;
         }
-        result += decompressed[i].repeat(count ? parseInt(count) : 1);
-        i++;
-      }
 
-      return JSON.parse(result);
+        return JSON.parse(result);
+      } catch (e) {
+        console.error('Base64 decoding error:', e);
+        return null;
+      }
     }
   } catch (error) {
     console.error('Decompression error:', error);

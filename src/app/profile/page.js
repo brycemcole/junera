@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { redirect, useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CircleAlert, Edit2, LoaderCircle, PlusCircle, X } from 'lucide-react';
-import EditProfileDialog from '@/components/edit-profile'
+import { CircleAlert, Edit2, Globe2, Loader2, PlusCircle, X } from 'lucide-react';
+import EditProfileDialog, { ChangePasswordDialog } from '@/components/edit-profile'
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import GitHubCalendar from 'react-github-calendar'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { differenceInYears, differenceInMonths, parseISO } from 'date-fns';
 import {
@@ -110,7 +111,101 @@ const handleGitHubLink = (e) => {
 
 function GitHubSection({ githubUser, onLink }) {
     const { user, loading } = useAuth();
-    console.log(user);
+    const { toast } = useToast();
+
+    const handleGitHubConnection = (e) => {
+        const userId = e.target.getAttribute('data-user-id');
+        const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        
+        if (!GITHUB_CLIENT_ID) {
+            console.error('GitHub client ID not configured');
+            toast({
+                title: 'Configuration Error',
+                description: 'GitHub integration is not properly configured',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        const returnUrl = encodeURIComponent(`${APP_URL}/api/auth/github/callback?userId=${userId}`);
+        window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=read:user,user:email`;
+    };
+
+    const handleDisconnect = async () => {
+        try {
+            const response = await fetch('/api/user/github', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+
+            if (response.ok) {
+                toast({
+                    title: 'Success',
+                    description: 'GitHub account disconnected successfully',
+                });
+                onLink(null);
+            } else {
+                const data = await response.json();
+                toast({
+                    title: 'Error',
+                    description: data.error || 'Failed to disconnect GitHub account',
+                    variant: 'destructive'
+                });
+            }
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to disconnect GitHub account',
+                variant: 'destructive'
+            });
+        }
+    };
+
+    // Check URL parameters for GitHub connection status on component mount
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get('error');
+        const github = params.get('github');
+
+        if (error && error.startsWith('github_')) {
+            let errorMessage = 'Failed to connect GitHub account';
+            switch (error) {
+                case 'github_no_code':
+                    errorMessage = 'No authorization code received from GitHub';
+                    break;
+                case 'github_token_failed':
+                    errorMessage = 'Failed to get access token from GitHub';
+                    break;
+                case 'github_api_failed':
+                    errorMessage = 'Failed to fetch GitHub user data';
+                    break;
+                case 'github_auth_failed':
+                    const message = params.get('message');
+                    errorMessage = message || 'GitHub authentication failed';
+                    break;
+            }
+            toast({
+                title: 'GitHub Connection Failed',
+                description: errorMessage,
+                variant: 'destructive'
+            });
+        } else if (github === 'connected') {
+            toast({
+                title: 'Success',
+                description: 'GitHub account connected successfully'
+            });
+        }
+
+        // Clean up URL parameters
+        if (error || github) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, [toast]);
+
     return (
         <div className="mb-6">
             <h3 className="text-md font-semibold mb-2">GitHub Account</h3>
@@ -122,7 +217,7 @@ function GitHubSection({ githubUser, onLink }) {
                         variant="outline"
                         size="sm"
                         className="ml-auto"
-                        onClick={() => onLink(null)}
+                        onClick={handleDisconnect}
                     >
                         Disconnect
                     </Button>
@@ -133,7 +228,7 @@ function GitHubSection({ githubUser, onLink }) {
                         <Button
                             variant="outline"
                             data-user-id={user.id}
-                            onClick={handleGitHubLink}
+                            onClick={handleGitHubConnection}
                         >
                             <Github className="mr-2 h-4 w-4" />
                             Connect GitHub Account
@@ -380,7 +475,19 @@ export default function ProfilePage() {
             type: 'text',
             name: 'project_url',
             label: 'Project URL',
-            placeholder: 'Project website or repository'
+            placeholder: 'Project website'
+        },
+        {
+            type: 'text',
+            name: 'github_url',
+            label: 'GitHub URL',
+            placeholder: 'GitHub repository URL'
+        },
+        {
+            type: 'text',
+            name: 'producthunt_url',
+            label: 'ProductHunt URL',
+            placeholder: 'ProductHunt project URL'
         }
     ];
 
@@ -918,22 +1025,13 @@ export default function ProfilePage() {
 
     return (
         <div className="container mx-auto py-0 px-6 max-w-4xl">
-            <section className="mb-4">
-                <h1 className="text-xl font-[family-name:var(--font-geist-sans)] font-medium mb-1">
-                    Profile
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                    View and edit your profile information.
-                </p>
-
-            </section>
 
             {/* Personal Information */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20">
-                            <AvatarImage src={profile.user.avatar_url} />
+                        <Avatar className="h-20 w-20 rounded-lg">
+                            <AvatarImage src={profile.user.avatar} />
                             <AvatarFallback>{profile.user.full_name?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -943,33 +1041,50 @@ export default function ProfilePage() {
                             )}
                         </div>
                     </div>
-                    <EditProfileDialog
-                        fields={profileFields}
-                        initialData={profile?.user}
-                        onSubmit={handleProfileUpdate}
-                        title={<Edit2 size={12} />}
-                    />
+                    <div className="flex gap-2">
+                        <ChangePasswordDialog />
+                        <EditProfileDialog
+                            fields={profileFields}
+                            initialData={profile?.user}
+                            onSubmit={handleProfileUpdate}
+                            title={<Edit2 size={14} />}
+                        />
+                    </div>
                 </div>
                 {profile.user.email && (
                     <p className="text-sm text-muted-foreground">{profile.user.email}</p>
                 )}
             </div>
 
-            {/* Job Preferences */}
-            {(profile.user.job_prefs_title || profile.user.job_prefs_location || profile.user.job_prefs_level || profile.user.job_prefs_salary) && (
-                <div className="mb-8">
-                    <h2 className="text-md font-semibold mb-4">Job Preferences <small className="float-right text-muted-foreground">Only visible to you</small></h2>
-                    <p className="text-sm text-muted-foreground">
-                        Looking for {profile.user.job_prefs_title || 'any'} positions
-                        {profile.user.job_prefs_location ? ` in ${profile.user.job_prefs_location}` : ''}
-                        {profile.user.job_prefs_level ? ` at ${profile.user.job_prefs_level} level` : ''}
-                        {profile.user.job_prefs_salary ? ` with compensation around ${profile.user.job_prefs_salary}` : ''}.
-                        {profile.user.job_prefs_relocatable && ' Open to relocation.'}
-                    </p>
-                </div>
+            {/* GitHub Account */}
+            {profile.user.github_user && (
+                <>
+                <header className="flex items-center justify-between mb-4">
+                    <h2 className="text-md font-semibold">GitHub Activity</h2>
+                    <Link className="text-sm text-blue-600 hover:underline" href={`https://github.com/${profile.user.github_user}`} passHref>
+                            View GitHub Profile
+                    </Link>
+                </header>   
+            <GitHubCalendar username={profile.user.github_user} />
+            </>
             )}
 
-            {/* Work Experience */}
+                        {(profile.user.job_prefs_title?.length > 0 || profile.user.job_prefs_location || profile.user.job_prefs_level || profile.user.job_prefs_salary) && (
+                            <div className="mb-8">
+                                <h2 className="text-md font-semibold mb-4">Job Preferences <small className="float-right text-muted-foreground">Only visible to you</small></h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Looking for {Array.isArray(profile.user.job_prefs_title) ? 
+                                        profile.user.job_prefs_title.join(' or ') : 
+                                        'any'} positions
+                                    {profile.user.job_prefs_location ? ` in ${profile.user.job_prefs_location}` : ''}
+                                    {profile.user.job_prefs_level ? ` at ${profile.user.job_prefs_level} level` : ''}
+                                    {profile.user.job_prefs_salary ? ` with compensation around ${profile.user.job_prefs_salary}` : ''}.
+                                    {profile.user.job_prefs_relocatable && ' Open to relocation.'}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Work Experience */}
             {profile.experience && profile.experience.length > 0 && (
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -1090,15 +1205,38 @@ export default function ProfilePage() {
                                             {proj.technologies_used}
                                         </p>
                                     )}
-                                    {proj.project_url && (
-                                        <Link
-                                            href={proj.project_url.startsWith('http') ? proj.project_url : `https://${proj.project_url}`}
-                                            target="_blank"
-                                            className="text-sm text-blue-500 hover:underline mt-1 block"
-                                        >
-                                            View Project
-                                        </Link>
-                                    )}
+                                    <div className="flex gap-3 mt-2">
+                                        {proj.project_url && (
+                                            <Link
+                                                href={proj.project_url.startsWith('http') ? proj.project_url : `https://${proj.project_url}`}
+                                                target="_blank"
+                                                className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <Globe2 className="h-4 w-4" />
+                                                Website
+                                            </Link>
+                                        )}
+                                        {proj.github_url && (
+                                            <Link
+                                                href={proj.github_url.startsWith('http') ? proj.github_url : `https://${proj.github_url}`}
+                                                target="_blank"
+                                                className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <Github className="h-4 w-4" />
+                                                GitHub
+                                            </Link>
+                                        )}
+                                        {proj.producthunt_url && (
+                                            <Link
+                                                href={proj.producthunt_url.startsWith('http') ? proj.producthunt_url : `https://${proj.producthunt_url}`}
+                                                target="_blank"
+                                                className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                            >
+                                                <img src="/producthunt.svg" alt="ProductHunt" className="h-4 w-4" />
+                                                ProductHunt
+                                            </Link>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

@@ -5,17 +5,6 @@ import { useProfile } from '@/hooks/use-profile';
 import ProfileContent from '@/components/profile/profile-content';
 import { useAuth } from '@/context/AuthContext';
 import { LoaderIcon, CircleAlert } from 'lucide-react';
-import { format, parseISO, differenceInYears, differenceInMonths } from 'date-fns';
-
-// Add these utility functions
-const formatStartDate = (date) => format(new Date(date), 'MMMM yyyy');
-const calculateDuration = (startDate, endDate) => {
-    const start = parseISO(startDate);
-    const end = endDate ? parseISO(endDate) : new Date();
-    const years = differenceInYears(end, start);
-    const months = differenceInMonths(end, start) % 12;
-    // ...rest of calculateDuration logic...
-};
 
 export default function PublicProfilePage({ params }) {
     const { user } = useAuth();
@@ -36,16 +25,25 @@ export default function PublicProfilePage({ params }) {
             <div className="container mx-auto py-10 px-4 text-center">
                 <CircleAlert className="mx-auto h-12 w-12 text-red-500" />
                 <h2 className="mt-4 text-xl font-semibold">Profile not found</h2>
-                <p className="mt-2 text-muted-foreground">The requested profile could not be found.</p>
+                <p className="mt-2 text-muted-foreground">{error}</p>
             </div>
         );
     }
+
+    if (!profile) {
+        return null;
+    }
+
+    const handleFollow = () => {
+        setIsFollowing(!isFollowing);
+        // TODO: Implement follow functionality
+    };
 
     return (
         <div className="container mx-auto py-0 px-6 max-w-4xl">
             <ProfileContent
                 profile={profile}
-                onFollow={() => {/* handle follow */}}
+                onFollow={handleFollow}
                 isFollowing={isFollowing}
                 user={user}
                 currentUsername={params.username}

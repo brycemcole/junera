@@ -43,8 +43,9 @@ export const POST = async (req) => {
         const insertQuery = `
             INSERT INTO user_projects (
                 user_id, project_name, start_date, end_date, 
-                is_current, description, technologies_used, project_url
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                is_current, description, technologies_used, project_url,
+                github_url, producthunt_url
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id
         `;
 
@@ -56,7 +57,9 @@ export const POST = async (req) => {
             project.is_current,
             project.description,
             project.technologies_used,
-            project.project_url
+            project.project_url,
+            project.github_url,
+            project.producthunt_url
         ]);
 
         return NextResponse.json({
@@ -90,8 +93,10 @@ export const PUT = async (req) => {
                 is_current = $4,
                 description = $5,
                 technologies_used = $6,
-                project_url = $7
-            WHERE id = $8 AND user_id = $9
+                project_url = $7,
+                github_url = $8,
+                producthunt_url = $9
+            WHERE id = $10 AND user_id = $11
         `;
 
         await query(updateQuery, [
@@ -102,6 +107,8 @@ export const PUT = async (req) => {
             project.description,
             project.technologies_used,
             project.project_url,
+            project.github_url,
+            project.producthunt_url,
             id,
             userId
         ]);

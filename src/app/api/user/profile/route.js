@@ -60,7 +60,8 @@ export async function GET(req) {
             Projects AS (
                 SELECT 
                     id, project_name, start_date, end_date, is_current, 
-                    description, technologies_used, project_url
+                    description, technologies_used, project_url, github_url,
+                    producthunt_url
                 FROM user_projects
                 WHERE user_id = $1
             ),

@@ -4,12 +4,13 @@ import { memo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Star, Bell, Share2, MapPin, Users, Github } from 'lucide-react';
+import { Star, Bell, Share2, MapPin, Users, Github, Globe2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import Link from 'next/link';
 import { formatDistanceToNow, format } from 'date-fns';
 import SuggestedUsers from '@/components/SuggestedUsers';
 import { EmptyState } from '@/components/empty-state';
+import GitHubCalendar from 'react-github-calendar';
 
 const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUsername }) => {
     const { toast } = useToast();
@@ -18,15 +19,6 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
 
     return (
         <>
-            <section className="mb-4">
-                <h1 className="text-xl font-[family-name:var(--font-geist-sans)] font-medium mb-1">
-                    {profile.user.full_name}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                    {profile.user.username}
-                </p>
-            </section>
-
             {/* Personal Information */}
             <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
@@ -49,6 +41,36 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
                         </div>
                     </div>
                 </div>
+
+                            {/* GitHub Integration */}
+            {profile.user.github_user && (
+                <>
+                    <div className="mb-8">
+                        <header className="flex items-center justify-between mb-4">
+                            <h2 className="text-md font-semibold">GitHub Activity</h2>
+                            <Link className="text-sm text-blue-600 hover:underline" 
+                                  href={`https://github.com/${profile.user.github_user}`} 
+                                  target="_blank">
+                                View GitHub Profile
+                            </Link>
+                        </header>
+                        <GitHubCalendar username={profile.user.github_user} />
+                    </div>
+                    <div className="mb-8">
+                        <h2 className="text-md font-semibold mb-4">Connected Accounts</h2>
+                        <div className="flex items-center gap-2">
+                            <Github size={20} />
+                            <span>
+                                GitHub: <Link href={`https://github.com/${profile.user.github_user}`} 
+                                           target="_blank" 
+                                           className="text-blue-500 hover:underline">
+                                    {profile.user.github_user}
+                                </Link>
+                            </span>
+                        </div>
+                    </div>
+                </>
+            )}
 
                 {/* Action Buttons */}
                 {user && user.username !== currentUsername && (
@@ -188,15 +210,61 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
                 </div>
             )}
 
-            {/* GitHub Integration */}
-            {profile.user.github_user && (
+            {/* Projects */}
+            {profile.projects?.length > 0 && (
                 <div className="mb-8">
-                    <h2 className="text-md font-semibold mb-4">Connected Accounts</h2>
-                    <div className="flex items-center gap-2">
-                        <Github size={20} />
-                        <span>
-                            GitHub: <Link href={`https://github.com/${profile.user.github_user}`} target="_blank" className="text-blue-500 hover:underline">{profile.user.github_user}</Link>
-                        </span>
+                    <h2 className="text-md font-semibold mb-4">Projects</h2>
+                    <div className="space-y-6">
+                        {profile.projects.map((proj) => (
+                            <div key={proj.id}>
+                                <h3 className="font-medium">{proj.project_name}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {format(new Date(proj.start_date), 'MMMM yyyy')} - {
+                                        proj.is_current ? 'Present' : format(new Date(proj.end_date), 'MMMM yyyy')
+                                    }
+                                </p>
+                                {proj.description && (
+                                    <p className="mt-2 text-sm">{proj.description}</p>
+                                )}
+                                {proj.technologies_used && (
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        {proj.technologies_used}
+                                    </p>
+                                )}
+                                <div className="flex gap-3 mt-2">
+                                    {proj.project_url && (
+                                        <Link
+                                            href={proj.project_url.startsWith('http') ? proj.project_url : `https://${proj.project_url}`}
+                                            target="_blank"
+                                            className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                        >
+                                            <Globe2 className="h-4 w-4" />
+                                            Website
+                                        </Link>
+                                    )}
+                                    {proj.github_url && (
+                                        <Link
+                                            href={proj.github_url.startsWith('http') ? proj.github_url : `https://${proj.github_url}`}
+                                            target="_blank"
+                                            className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                        >
+                                            <Github className="h-4 w-4" />
+                                            GitHub
+                                        </Link>
+                                    )}
+                                    {proj.producthunt_url && (
+                                        <Link
+                                            href={proj.producthunt_url.startsWith('http') ? proj.producthunt_url : `https://${proj.producthunt_url}`}
+                                            target="_blank"
+                                            className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+                                        >
+                                            <img src="/producthunt.svg" alt="ProductHunt" className="h-4 w-4" />
+                                            ProductHunt
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -204,7 +272,8 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
             {/* Show empty state if profile has no content */}
             {!profile.experience?.length &&
                 !profile.education?.length &&
-                !profile.certifications?.length && (
+                !profile.certifications?.length &&
+                !profile.projects?.length && (
                     <EmptyState type="profile" />
                 )}
 

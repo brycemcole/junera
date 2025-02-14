@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { id } from "date-fns/locale";
+import { clearCache } from '@/lib/cache';
 
 const SECRET_KEY = process.env.SESSION_SECRET;
 
@@ -27,13 +27,14 @@ const generateAuthToken = (user) => {
     fullName: user.fullName || user.full_name,
     avatar: user.avatar,
     githubUsername: user.github_user,
-    jobPrefsTitle: user.job_prefs_title,
-    jobPrefsLocation: user.job_prefs_location,
-    jobPrefsLevel: user.job_prefs_level,
-    jobPrefsIndustry: user.job_prefs_industry,
-    jobPrefsSalary: user.job_prefs_salary,
-    jobPrefsRelocatable: user.job_prefs_relocatable,
-    jobPrefsLanguage: user.job_prefs_language,
+    // Ensure consistent casing in the token
+    jobPrefsTitle: user.jobPrefsTitle || user.job_prefs_title || [],
+    jobPrefsLocation: user.jobPrefsLocation || user.job_prefs_location || [],
+    jobPrefsLevel: user.jobPrefsLevel || user.job_prefs_level || [],
+    jobPrefsIndustry: user.jobPrefsIndustry || user.job_prefs_industry || [],
+    jobPrefsSalary: user.jobPrefsSalary || user.job_prefs_salary || null,
+    jobPrefsRelocatable: user.jobPrefsRelocatable || user.job_prefs_relocatable || false,
+    jobPrefsLanguage: user.jobPrefsLanguage || user.job_prefs_language || [],
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
   }, SECRET_KEY);
 };
@@ -219,6 +220,14 @@ export async function updateGithubUserAction(userId, githubData) {
     // Validate inputs
     if (!userId || !githubData) {
       return { error: 'Missing required data' };
+    }
+
+    // Clear the user's profile cache before updating
+    try {
+      const cacheKey = `user-profile:${userId}`;
+      await clearCache(cacheKey);
+    } catch (cacheError) {
+      console.error('Cache clear error:', cacheError);
     }
 
     // Update user with GitHub information

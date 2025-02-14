@@ -16,19 +16,25 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         if (token) {
           const decoded = jwt.decode(token);
+          console.log('Token decoded during init:', decoded); // Debug log
+          
           if (decoded && decoded.exp * 1000 > Date.now()) {
-            setUser({
+            const userData = {
               token,
               fullName: decoded.fullName,
               email: decoded.email,
               username: decoded.username,
               id: decoded.id,
               avatar: decoded.avatar,
-              jobPrefsTitle: decoded.jobPrefsTitle,
-              jobPrefsLocation: decoded.jobPrefsLocation,
-              jobPrefsLevel: decoded.jobPrefsLevel
-            });
+              jobPrefsTitle: decoded.jobPrefsTitle || [],
+              jobPrefsLocation: decoded.jobPrefsLocation || [],
+              jobPrefsLevel: decoded.jobPrefsLevel || []
+            };
+            
+            console.log('Setting user data during init:', userData); // Debug log
+            setUser(userData);
           } else {
+            console.log('Token expired or invalid, removing from storage'); // Debug log
             localStorage.removeItem('token');
           }
         }
@@ -47,16 +53,27 @@ export const AuthProvider = ({ children }) => {
   const login = async (token, username, id, fullName, avatar, jobPrefsTitle, jobPrefsLocation, jobPrefsLevel) => {
     try {
       localStorage.setItem('token', token);
+      
+      // Decode the token to get ALL user data
+      const decoded = jwt.decode(token);
+      if (!decoded) {
+        throw new Error('Invalid token format');
+      }
+
       const userData = {
         token,
-        username,
-        id,
-        fullName,
-        avatar,
-        jobPrefsTitle,
-        jobPrefsLocation,
-        jobPrefsLevel
+        username: decoded.username || username,
+        id: decoded.id || id,
+        fullName: decoded.fullName || fullName,
+        email: decoded.email,
+        avatar: decoded.avatar || avatar,
+        // Ensure we get preferences from token or passed params, with proper array handling
+        jobPrefsTitle: decoded.jobPrefsTitle || jobPrefsTitle || [],
+        jobPrefsLocation: decoded.jobPrefsLocation || jobPrefsLocation || [],
+        jobPrefsLevel: decoded.jobPrefsLevel || jobPrefsLevel || []
       };
+
+      console.log('Setting user data:', userData); // Debug log
       setUser(userData);
       return true;
     } catch (error) {

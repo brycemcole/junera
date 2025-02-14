@@ -24,11 +24,24 @@ export function useProfile(username) {
                     return;
                 }
 
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+
+                // Add authorization header if user is logged in
+                if (user?.token) {
+                    headers['Authorization'] = `Bearer ${user.token}`;
+                }
+
                 const response = await fetch(`/api/users/${username}`, {
+                    headers,
                     signal: controller.signal
                 });
                 
-                if (!response.ok) throw new Error('Failed to fetch profile');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch profile');
+                }
                 
                 const data = await response.json();
                 if (isActive) {
@@ -37,6 +50,7 @@ export function useProfile(username) {
                 }
             } catch (err) {
                 if (isActive && err.name !== 'AbortError') {
+                    console.error('Profile fetch error:', err);
                     setError(err.message);
                 }
             } finally {
@@ -50,7 +64,7 @@ export function useProfile(username) {
             isActive = false;
             controller.abort();
         };
-    }, [username, user?.username, router]);
+    }, [username, user?.username, user?.token, router]);
 
     return { profile, loading, error };
 }
