@@ -1,6 +1,6 @@
 import { query } from '@/lib/pgdb';
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { generateAuthToken, updateGithubUserAction } from '@/app/actions/auth';
 
 const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
@@ -66,32 +66,23 @@ export async function GET(request) {
         const primaryEmail = emails.find(email => email.primary)?.email || emails[0]?.email;
 
         if (userId) {
-            // Connection flow - update existing user
-            const userCheck = await query('SELECT id FROM users WHERE id = $1', [userId]);
-            if (userCheck.rows.length === 0) {
-                console.error('User not found:', userId);
-                return NextResponse.redirect(`${APP_URL}/profile?error=invalid_user`);
-            }
+            // Connection flow - update existing user using the new action
+            const updateResult = await updateGithubUserAction(userId, {
+                username: userData.login,
+                id: userData.id,
+                access_token: tokenData.access_token,
+                avatar_url: userData.avatar_url
+            });
 
-            await query(
-                `UPDATE users 
-                 SET github_user = $1, 
-                     github_access_token = $2,
-                     updated_at = NOW()
-                 WHERE id = $3`,
-                [userData.login, tokenData.access_token, userId]
-            );
+            if (updateResult.error) {
+                return NextResponse.redirect(`${APP_URL}/profile?error=${encodeURIComponent(updateResult.error)}`);
+            }
 
             return NextResponse.redirect(`${APP_URL}/profile?github=connected`);
         } else {
-            // Login flow - check if user exists with all preferences
+            // Login flow - check if user exists
             const existingUser = await query(
-                `SELECT id, email, username, full_name, avatar, github_user,
-                        job_prefs_title, job_prefs_location, job_prefs_level,
-                        job_prefs_industry, job_prefs_salary, job_prefs_relocatable,
-                        job_prefs_language
-                 FROM users 
-                 WHERE github_user = $1 OR email = $2`,
+                `SELECT id FROM users WHERE github_user = $1 OR email = $2`,
                 [userData.login, primaryEmail]
             );
 
@@ -109,34 +100,20 @@ export async function GET(request) {
                 return NextResponse.redirect(`${APP_URL}/register?github_data=${encoded}`);
             }
 
-            // Existing user - update GitHub info and generate JWT
-            const user = existingUser.rows[0];
-            await query(
-                `UPDATE users 
-                 SET github_user = $1, 
-                     github_access_token = $2,
-                     last_login = NOW(),
-                     updated_at = NOW()
-                 WHERE id = $3`,
-                [userData.login, tokenData.access_token, user.id]
-            );
+            // Existing user - update GitHub info using the new action
+            const updateResult = await updateGithubUserAction(existingUser.rows[0].id, {
+                username: userData.login,
+                id: userData.id,
+                access_token: tokenData.access_token,
+                avatar_url: userData.avatar_url
+            });
 
-            // Generate JWT token with all user preferences
-            const token = jwt.sign({
-                id: user.id,
-                email: user.email,
-                username: user.username,
-                fullName: user.full_name,
-                avatar: user.avatar,
-                githubUsername: userData.login,
-                jobPrefsTitle: user.job_prefs_title,
-                jobPrefsLocation: user.job_prefs_location,
-                jobPrefsLevel: user.job_prefs_level,
-                exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-            }, SECRET_KEY);
+            if (updateResult.error) {
+                return NextResponse.redirect(`${APP_URL}/login?error=${encodeURIComponent(updateResult.error)}`);
+            }
 
             // Redirect with token
-            return NextResponse.redirect(`${APP_URL}/login?token=${token}`);
+            return NextResponse.redirect(`${APP_URL}/login?token=${updateResult.token}`);
         }
     } catch (error) {
         console.error('GitHub auth error:', error);

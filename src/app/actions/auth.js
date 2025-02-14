@@ -19,10 +19,32 @@ const validateInput = (data) => {
   return true;
 };
 
+const generateAuthToken = (user) => {
+  return jwt.sign({
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    fullName: user.fullName || user.full_name,
+    avatar: user.avatar,
+    githubUsername: user.github_user,
+    jobPrefsTitle: user.job_prefs_title,
+    jobPrefsLocation: user.job_prefs_location,
+    jobPrefsLevel: user.job_prefs_level,
+    jobPrefsIndustry: user.job_prefs_industry,
+    jobPrefsSalary: user.job_prefs_salary,
+    jobPrefsRelocatable: user.job_prefs_relocatable,
+    jobPrefsLanguage: user.job_prefs_language,
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+  }, SECRET_KEY);
+};
+
 async function loginUser(emailOrUsername, password) {
   try {
     const result = await query(`
-      SELECT id, password, username, full_name, avatar, email, job_prefs_title, job_prefs_location, job_prefs_level
+      SELECT id, password, username, full_name, avatar, email, 
+             job_prefs_title, job_prefs_location, job_prefs_level,
+             job_prefs_industry, job_prefs_salary, job_prefs_relocatable,
+             job_prefs_language, github_user
       FROM users
       WHERE email = $1 OR username = $1;
     `, [emailOrUsername]);
@@ -45,14 +67,19 @@ async function loginUser(emailOrUsername, password) {
     );
 
     return {
-      userId: user.id,
+      id: user.id,
       email: user.email,
       username: user.username,
       fullName: user.full_name,
       avatar: user.avatar || '/default.png',
+      githubUser: user.github_user,
       jobPrefsTitle: user.job_prefs_title,
       jobPrefsLocation: user.job_prefs_location,
-      jobPrefsLevel: user.job_prefs_level
+      jobPrefsLevel: user.job_prefs_level,
+      jobPrefsIndustry: user.job_prefs_industry,
+      jobPrefsSalary: user.job_prefs_salary,
+      jobPrefsRelocatable: user.job_prefs_relocatable,
+      jobPrefsLanguage: user.job_prefs_language
     };
   } catch (error) {
     console.error('Database error during login:', error);
@@ -72,26 +99,22 @@ export async function loginAction(data) {
       return { error: user.error };
     }
 
-    const token = jwt.sign({
-      id: user.userId,
-      email: user.email,
-      fullName: user.fullName,
-      username: user.username,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-      jobPrefsTitle: user.jobPrefsTitle,
-      jobPrefsLocation: user.jobPrefsLocation,
-      jobPrefsLevel: user.jobPrefsLevel
-    }, SECRET_KEY);
+    const token = generateAuthToken(user);
 
     return {
       token,
       username: user.username,
-      id: user.userId,
+      id: user.id,
       fullName: user.fullName,
       avatar: user.avatar,
+      githubUsername: user.githubUser,
       jobPrefsTitle: user.jobPrefsTitle,
       jobPrefsLocation: user.jobPrefsLocation,
-      jobPrefsLevel: user.jobPrefsLevel
+      jobPrefsLevel: user.jobPrefsLevel,
+      jobPrefsIndustry: user.jobPrefsIndustry,
+      jobPrefsSalary: user.jobPrefsSalary,
+      jobPrefsRelocatable: user.jobPrefsRelocatable,
+      jobPrefsLanguage: user.jobPrefsLanguage
     };
 
   } catch (error) {
@@ -168,13 +191,21 @@ export async function registerAction(formData) {
 
     const userId = result.rows[0].id;
 
-    const token = jwt.sign({
+    const token = generateAuthToken({
       id: userId,
       email,
       fullName: fullname,
       username,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-    }, SECRET_KEY);
+      avatar: avatarUrl,
+      github_user: githubUser,
+      job_prefs_title: null,
+      job_prefs_location: null,
+      job_prefs_level: null,
+      job_prefs_industry: null,
+      job_prefs_salary: null,
+      job_prefs_relocatable: null,
+      job_prefs_language: null
+    });
 
     return { token, username, userId };
   } catch (error) {
@@ -182,3 +213,65 @@ export async function registerAction(formData) {
     return { error: "An unexpected error occurred during registration" };
   }
 }
+
+export async function updateGithubUserAction(userId, githubData) {
+  try {
+    // Validate inputs
+    if (!userId || !githubData) {
+      return { error: 'Missing required data' };
+    }
+
+    // Update user with GitHub information
+    const result = await query(`
+      UPDATE users 
+      SET github_user = $1,
+          github_id = $2,
+          github_access_token = $3,
+          avatar = COALESCE($4, avatar),
+          updated_at = NOW()
+      WHERE id = $5
+      RETURNING id, email, username, full_name, avatar, github_user,
+                job_prefs_title, job_prefs_location, job_prefs_level,
+                job_prefs_industry, job_prefs_salary, job_prefs_relocatable,
+                job_prefs_language;
+    `, [
+      githubData.username,
+      githubData.id,
+      githubData.access_token,
+      githubData.avatar_url,
+      userId
+    ]);
+
+    if (result.rows.length === 0) {
+      return { error: 'User not found' };
+    }
+
+    const updatedUser = result.rows[0];
+    const token = generateAuthToken(updatedUser);
+
+    return {
+      token,
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        fullName: updatedUser.full_name,
+        avatar: updatedUser.avatar,
+        githubUsername: updatedUser.github_user,
+        jobPrefsTitle: updatedUser.job_prefs_title,
+        jobPrefsLocation: updatedUser.job_prefs_location,
+        jobPrefsLevel: updatedUser.job_prefs_level,
+        jobPrefsIndustry: updatedUser.job_prefs_industry,
+        jobPrefsSalary: updatedUser.job_prefs_salary,
+        jobPrefsRelocatable: updatedUser.job_prefs_relocatable,
+        jobPrefsLanguage: updatedUser.job_prefs_language
+      }
+    };
+
+  } catch (error) {
+    console.error('Error updating GitHub user:', error);
+    return { error: 'Failed to update GitHub user information' };
+  }
+}
+
+// Export the token generator for use in GitHub callback
+export { generateAuthToken };
