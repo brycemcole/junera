@@ -386,7 +386,7 @@ export function scanKeywords(text) {
 }
 
 export const stripHTML = (str) => {
-  const allowedTags = ['p', 'ul', 'li', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'u', 'b', 'i', 'strong', 'em'];
+  const allowedTags = ['p', 'ul', 'li', 'ol', 'u', 'b', 'i', 'strong', 'em'];
   const parser = new DOMParser();
   const doc = parser.parseFromString(str, 'text/html');
 

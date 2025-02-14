@@ -92,8 +92,8 @@ function CancelDialog({ experience, onConfirm }) {
 const handleGitHubLink = (e) => {
     const userId = e.target.getAttribute('data-user-id');
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    const returnUrl = encodeURIComponent(`https://dev.junera.us/api/login/github?mode=link&userId=${userId}`);
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}`;
+    const returnUrl = encodeURIComponent(`https://dev.junera.us/api/auth/github/callback?userId=${userId}`);
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${returnUrl}&scope=read:user,user:email`;
 };
 
 function GitHubSection({ githubUser, onLink }) {

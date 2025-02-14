@@ -9,6 +9,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const userId = searchParams.get('userId');
 
     if (!code) {
         return NextResponse.redirect('/profile?error=github_no_code');
@@ -46,7 +47,7 @@ export async function GET(request) {
              SET github_user = $1, 
                  github_access_token = $2
              WHERE id = $3`,
-            [userData.login, userData.id, state]
+            [userData.login, tokenData.access_token, userId]
         );
 
         return NextResponse.redirect('/profile?github=connected');
