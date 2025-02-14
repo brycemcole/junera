@@ -84,9 +84,14 @@ export async function GET(request) {
 
             return NextResponse.redirect(`${APP_URL}/profile?github=connected`);
         } else {
-            // Login flow - check if user exists
+            // Login flow - check if user exists with all preferences
             const existingUser = await query(
-                'SELECT * FROM users WHERE github_user = $1 OR email = $2',
+                `SELECT id, email, username, full_name, avatar, github_user,
+                        job_prefs_title, job_prefs_location, job_prefs_level,
+                        job_prefs_industry, job_prefs_salary, job_prefs_relocatable,
+                        job_prefs_language
+                 FROM users 
+                 WHERE github_user = $1 OR email = $2`,
                 [userData.login, primaryEmail]
             );
 
@@ -116,7 +121,7 @@ export async function GET(request) {
                 [userData.login, tokenData.access_token, user.id]
             );
 
-            // Generate JWT token
+            // Generate JWT token with all user preferences
             const token = jwt.sign({
                 id: user.id,
                 email: user.email,
@@ -124,6 +129,9 @@ export async function GET(request) {
                 fullName: user.full_name,
                 avatar: user.avatar,
                 githubUsername: userData.login,
+                jobPrefsTitle: user.job_prefs_title,
+                jobPrefsLocation: user.job_prefs_location,
+                jobPrefsLevel: user.job_prefs_level,
                 exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
             }, SECRET_KEY);
 
