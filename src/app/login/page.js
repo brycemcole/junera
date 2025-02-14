@@ -130,41 +130,48 @@ function InputForm() {
 
 
 export default function Login() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const router = useRouter();
   const [statusMessage, setStatusMessage] = useState({ text: '', isError: false });
 
   useEffect(() => {
     if (user) {
       router.push('/dashboard');
+      return;
     }
 
-    // Check for GitHub auth error
+    // Check URL parameters for GitHub auth
     const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
     const error = searchParams.get('error');
-    if (error === 'github_auth_failed') {
+    const errorMessage = searchParams.get('message');
+
+    if (token) {
+      // Handle successful GitHub login
+      const handleGitHubLogin = async () => {
+        try {
+          await login(token);
+          router.push('/dashboard');
+        } catch (err) {
+          setStatusMessage({
+            text: 'Failed to complete GitHub login',
+            isError: true
+          });
+        }
+      };
+      handleGitHubLogin();
+    } else if (error) {
+      // Handle GitHub auth error
       setStatusMessage({
-        text: 'GitHub authentication failed. Please try again or use another login method.',
+        text: errorMessage || 'GitHub authentication failed. Please try again.',
         isError: true
       });
     }
-  }, [user, router]);
+  }, [user, router, login]);
 
-  const handleGitHubLogin = (mode = 'login') => {
+  const handleGitHubLogin = () => {
     const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    const userId = user?.id; // Get current user ID if available
-    
-    const params = new URLSearchParams({
-      client_id: GITHUB_CLIENT_ID,
-      redirect_uri: 'https://dev.junera.us/api/login/github',
-    });
-
-    if (mode === 'link' && userId) {
-      params.append('mode', 'link');
-      params.append('userId', userId);
-    }
-
-    window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin + '/api/auth/github/callback')}`;
   };
 
   return (
