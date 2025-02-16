@@ -40,7 +40,7 @@ export default function PublicProfilePage({ params }) {
     };
 
     return (
-        <div className="container mx-auto py-0 px-6 max-w-4xl">
+        <div className="container mx-auto py-0 p-4 sm:px-6 max-w-4xl">
             <ProfileContent
                 profile={profile}
                 onFollow={handleFollow}

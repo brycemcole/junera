@@ -1604,7 +1604,7 @@ export default function JobPostingsPage() {
 
   return (
     <>
-      <div className="container mx-auto py-0 p-6 max-w-4xl">
+      <div className="container mx-auto py-0 p-4 sm:p-6 max-w-4xl">
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
@@ -1655,8 +1655,7 @@ export default function JobPostingsPage() {
               )}
             />
           <Suspense fallback={<div>Loading...</div>}>
-
-              <h1 className="text-xs ml-auto font-[family-name:var(--font-geist-sans)] text-muted-foreground font-medium mb-0">
+              <h1 className="hidden sm:block text-xs ml-auto font-[family-name:var(--font-geist-sans)] text-muted-foreground font-medium mb-0">
                 <span className="text-green-500 dark:text-green-200 font-semibold">
                   {count ? count.toLocaleString() : 0}
                 </span>  {headerTitle}
@@ -1684,6 +1683,13 @@ export default function JobPostingsPage() {
             <JobList data={data} loading={dataLoading} error={null} />
           </div>
         </Suspense>
+                  <Suspense fallback={<div>Loading...</div>}>
+                      <h1 className="flex sm:hidden items-center justify-center text-xs ml-auto w-full mx-auto font-[family-name:var(--font-geist-sans)] text-muted-foreground font-medium mb-0">
+                        <span className="text-green-500 dark:text-green-200 font-semibold">
+                          {count ? count.toLocaleString() : 0}
+                        </span>  {headerTitle}
+                      </h1>
+                  </Suspense>
       </div>
     </>
   );

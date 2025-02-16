@@ -93,7 +93,7 @@ export default function JobHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto py-0 p-6 max-w-4xl">
+    <div className="container mx-auto py-0 p-4 sm:p-6 max-w-4xl">
       <section className="mb-4">
         <h1 className="text-lg mb-6 font-[family-name:var(--font-geist-sans)] font-medium mb-1">
           Job History

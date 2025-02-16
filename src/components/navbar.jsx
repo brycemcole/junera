@@ -280,7 +280,7 @@ export default function Navbar() {
 
   return (
     <nav className="backdrop-blur sm:shadow-md bg-background/50 sm:m-4 lg:max-w-[900px] max-w-4xl sm:mx-6 lg:mx-auto z-50 sm:border border-b sm:rounded-xl mb-0 border-muted-accent/40 fixed top-0 left-0 right-0">
-      <div className="flex flex-row justify-between px-6 py-3 z-100">
+      <div className="flex flex-row justify-between px-4 sm:px-6 py-3 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
           <Image src="/apple-icon.png" alt="junera" width={28} height={28} />

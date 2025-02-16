@@ -357,7 +357,7 @@ export default function CompanyView({ companyName, page }) {
     }
 
     return (
-        <div className="container mx-auto py-6 px-6 sm:px-6 lg:px-8 max-w-4xl">
+        <div className="container mx-auto sm:py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Avatar className="h-12 w-12">

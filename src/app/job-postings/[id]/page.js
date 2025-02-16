@@ -496,7 +496,7 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 pt-10 p-6 max-w-4xl">
+      <div className="container mx-auto py-0 sm:pt-10 p-4 sm:p-6 max-w-4xl">
         {/* Add structured job data */}
         <script
           type="application/ld+json"
@@ -539,7 +539,7 @@ export default function JobPostingPage({ params }) {
             <div className="flex-grow">
               
               <div className="flex items-center gap-4 mb-4">
-              <Avatar alt={jobPosting.company} className="w-14 h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
+              <Avatar alt={jobPosting.company} className="h-10 w-10 sm:w-14 sm:h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}> {/* Larger Avatar */}
               <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
               <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
@@ -551,7 +551,7 @@ export default function JobPostingPage({ params }) {
                 >
                   {jobPosting.company}
                 </Link>
-              <h1 className="text-2xl font-bold tracking-tight"> 
+              <h1 className="text-xl font-bold tracking-tight"> 
                 {jobPosting.title}
               </h1>
               </div>
