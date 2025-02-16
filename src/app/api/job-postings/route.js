@@ -137,6 +137,7 @@ const expandLocation = (location) => {
 export async function GET(req) {
   const { signal } = req;
   const url = req.url;
+  console.log("URL:", url);
   const { searchParams } = new URL(url);
 
   try {
@@ -156,8 +157,12 @@ export async function GET(req) {
     const locations = searchParams.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
     const experienceLevels = searchParams.getAll("experienceLevel").filter(Boolean);
     const company = searchParams.get("company")?.trim() || "";
+    const keywords = searchParams.get("keywords")?.trim() || "";
+    console.log(searchParams);
+    console.log("Keywords:", keywords);
 
-    const cacheKey = `jobPostings-${titles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}`;
+    const cacheKey = `jobPostings-${titles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}-${keywords}`;
+
     const cachedResponse = await getCached(cacheKey);
     if (cachedResponse) {
       return Response.json(cachedResponse);
@@ -210,6 +215,17 @@ export async function GET(req) {
     if (company) {
       params.push(company);
       queryText += ` AND company = $${params.length}`;
+    }
+
+    if (keywords) {
+      const keywordArray = keywords.split('+').map(keyword => `%${keyword}%`);
+      console.log("Keyword Array:", keywordArray);
+      const keywordConditions = keywordArray.map((keyword, index) => {
+        params.push(keyword);
+        return `LOWER(description) LIKE LOWER($${params.length})`;
+      });
+      console.log("Keyword Conditions:", keywordConditions);
+      queryText += ` AND (${keywordConditions.join(' OR ')})`;
     }
 
     // Add pagination parameters last

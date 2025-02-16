@@ -8,12 +8,12 @@ import AlertDemo from "./AlertDemo";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
+import ViewStatusIndicator from '@/components/view-status-indicator';
 import OpenAI from "openai";
 import { JobList } from "@/components/JobPostings";
 import SharePopover from "@/components/share-popover";
 import { TextShimmer } from '@/components/core/text-shimmer';
 import ReportPopover from "@/components/report-popover";
-import { trackJobView } from '@/app/actions/trackJobView';
 
 import {
   Accordion,
@@ -358,6 +358,26 @@ export default function JobPostingPage({ params }) {
       }
     }
 
+    async function updateViewStatus(token) {
+      try {
+        const response = await fetch(`/api/job-postings/${id}/view-status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const viewData = await response.json();
+        if (isMounted) {
+          setIsViewed(viewData.isViewed);
+          if (viewData.viewedAt) {
+            setViewedAt(new Date(viewData.viewedAt));
+          }
+        }
+      } catch (error) {
+        console.error('Error updating view status:', error);
+      }
+    }
+
     // Execute all main data fetching in parallel immediately
     const promises = [
       fetch(`/api/job-postings/${id}`, {
@@ -367,33 +387,26 @@ export default function JobPostingPage({ params }) {
       user ? fetch('/api/user/profile', {
         headers: { 'Authorization': `Bearer ${user.token}` },
         signal: controller.signal
-      }).then(res => res.json()) : Promise.resolve(null),
-      localStorage.getItem('token') ? fetch(`/api/job-postings/${id}/view-status`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        signal: controller.signal
       }).then(res => res.json()) : Promise.resolve(null)
     ];
 
+    if (user?.token) {
+      promises.push(updateViewStatus(user.token));
+    } else {
+      promises.push(
+        fetch(`/api/job-postings/${id}/view-status`, {
+          headers: localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {},
+          signal: controller.signal
+        }).then(res => res.json())
+      );
+    }
+
     Promise.all(promises)
-      .then(([jobResult, profile, viewData]) => {
+      .then(([jobResult, profile]) => {
         if (!isMounted) return;
 
         setData(jobResult);
         if (profile) setUserProfile(profile);
-        if (viewData) {
-          setIsViewed(viewData.isViewed);
-          if (viewData.viewedAt) {
-            setViewedAt(new Date(viewData.viewedAt));
-          }
-
-          if (!viewData.isViewed)  {
-            trackJobView(id);
-            setIsViewed(true);
-            setViewedAt(new Date());
-          }
-        }
         setLoading(false);
 
         // Fetch company job count after we have the company name
@@ -544,12 +557,18 @@ export default function JobPostingPage({ params }) {
               </div>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-md mb-4"> 
-              {isViewed && viewedAt && (
-                  <div className="flex items-center text-blue-500 gap-1.5">
-                    <Eye className="h-3.5 w-3.5" />
-                    Viewed <span>{formatDistanceToNow(viewedAt, { addSuffix: true })}</span>
-                  </div>
-                )}
+              <ViewStatusIndicator 
+                jobId={id} 
+                onViewStatusChange={(isViewed, viewedAt) => {
+                  if (!isViewed || !viewedAt) return null;
+                  return (
+                    <div className="flex items-center text-blue-500 gap-1.5">
+                      <Eye className="h-3.5 w-3.5" />
+                      Viewed <span>{formatDistanceToNow(new Date(viewedAt), { addSuffix: true })}</span>
+                    </div>
+                  );
+                }}
+              />
                 {jobPosting.salary && (
                   <div className="flex items-center gap-1.5">
                     <HandCoins className="h-4 w-4" /> 
@@ -578,9 +597,11 @@ export default function JobPostingPage({ params }) {
               {keywords && keywords.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {keywords.map((keyword, index) => (
-                    <Badge key={index} className="text-sm text-green-800 border-green-600/20 bg-green-600/10 px-2" variant="outline">
-                      {keyword}
-                    </Badge>
+                    <Link key={index} href={`/job-postings?keywords=${encodeURIComponent(keyword)}`}>
+                      <Badge className="text-sm text-green-800 border-green-600/20 bg-green-600/10 px-2 hover:bg-green-600/20 hover:border-green-600/30 transition-colors" variant="outline">
+                        {keyword}
+                      </Badge>
+                    </Link>
                   ))}
                 </div>
               )}

@@ -14,6 +14,7 @@ import PropTypes from 'prop-types';
  * @param {Function} props.setLocation - Function to update the location state.
  * @param {Function} props.setCompany - Function to update the company state.
  * @param {Function} props.setCurrentPage - Function to update the current page state.
+ * @param {Function} props.setKeywords - Function to update the keywords state.
  */
 export default function SearchParamsHandler({
     setTitle,
@@ -22,6 +23,7 @@ export default function SearchParamsHandler({
     setCompany,
     setSaved,
     setCurrentPage,
+    setKeywords,
 }) {
     const searchParams = useSearchParams();
 
@@ -34,6 +36,7 @@ export default function SearchParamsHandler({
         setCompany(params.company || "");
         setSaved(params.saved === 'true');
         setCurrentPage(parseInt(params.page, 10) || 1);
+        setKeywords(params.keywords || "");
     }, [
         searchParams,
         setTitle,
@@ -42,6 +45,7 @@ export default function SearchParamsHandler({
         setCompany,
         setSaved,
         setCurrentPage,
+        setKeywords,
     ]);
 
     return null; // This component doesn't render anything visible
@@ -53,5 +57,6 @@ SearchParamsHandler.propTypes = {
     setLocation: PropTypes.func.isRequired,
     setCompany: PropTypes.func.isRequired,
     setSaved: PropTypes.func.isRequired,
-    setCurrentPage: PropTypes.func.isRequired,  
+    setCurrentPage: PropTypes.func.isRequired,
+    setKeywords: PropTypes.func.isRequired,
 };

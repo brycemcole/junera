@@ -53,13 +53,18 @@ export async function GET() {
           AND created_at >= NOW() - INTERVAL '30 days'
           GROUP BY title
           HAVING COUNT(*) > 5
+        ),
+        top_jobs AS (
+          SELECT 
+            title,
+            count,
+            '${category}' as category
+          FROM job_counts
+          ORDER BY count DESC
+          LIMIT 10
         )
-        SELECT 
-          title,
-          count,
-          '${category}' as category
-        FROM job_counts
-        ORDER BY count DESC
+        SELECT * FROM top_jobs
+        ORDER BY RANDOM()
         LIMIT 1;
       `;
 
@@ -69,8 +74,8 @@ export async function GET() {
       }
     }
 
-    // Store in cache
-    await setCached(cacheKey, { trendingJobs: results, ok: true }, 60 * 60);
+    // Store in cache with a shorter duration since we want more variety
+    await setCached(cacheKey, { trendingJobs: results, ok: true }, 30 * 60); // Cache for 30 minutes instead of 1 hour
     
     return Response.json({ 
       trendingJobs: results,

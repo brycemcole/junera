@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from 'next/link';
 import ViewStatus from '@/components/ViewStatus';
@@ -139,18 +139,33 @@ export const JobList = ({ data, loading, error }) => {
                         <div className="flex flex-row gap-2 items-center justify-between">
                         <div className="flex flex-row gap-2 items-center">
                         <Link
-                                    href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
-                                    className="ml-auto"
-                                >
-                                    <Button variant="outline" size="sm" className="sm:w-36 h-8 sm:h-9 sm:text-[14px] text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500">
-                                        View Job
-                                    </Button>
-                                </Link>
-                                <SharePopover jobId={job.id} size={'small'} />
-                                {user ? (
-                                    <BookmarkButton jobId={job.id} size={'small'} />
-                                ) : null}
-                            </div>
+                            href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
+                            className="ml-auto"
+                        >
+                            <ViewStatusIndicator 
+                                jobId={job.id} 
+                                onViewStatusChange={(isViewed) => {
+                                    return (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className={`sm:w-36 h-8 sm:h-9 sm:text-[14px] ${
+                                                isViewed 
+                                                ? 'text-muted-foreground bg-muted/50 border-muted hover:bg-muted hover:text-muted-foreground' 
+                                                : 'text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500'
+                                            }`}
+                                        >
+                                            {isViewed ? 'Viewed' : 'View Job'}
+                                        </Button>
+                                    );
+                                }}
+                            />
+                        </Link>
+                        <SharePopover jobId={job.id} size={'small'} />
+                        {user ? (
+                            <BookmarkButton jobId={job.id} size={'small'} />
+                        ) : null}
+                        </div>
                             <div className="text-sm flex flex-col gap-2 flex-end">
                                 <div className="flex flex-row flex-wrap gap-2 items-center">
                                     {job?.salary || job?.salary_range_str ? (
@@ -159,8 +174,6 @@ export const JobList = ({ data, loading, error }) => {
                                         </Badge>
                                     ) : null}
                                 </div>
-                                <ViewStatusIndicator jobId={job.id} />
-
                             </div>
 
 

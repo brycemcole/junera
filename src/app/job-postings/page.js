@@ -615,6 +615,7 @@ export default function JobPostingsPage() {
   const [hasMore, setHasMore] = useState(true);
   const lastRequestRef = useRef(null);
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [keywords, setKeywords] = useState("");
 
   // Add new state for tracking data freshness
   const [dataTimestamp, setDataTimestamp] = useState(null);
@@ -716,6 +717,7 @@ export default function JobPostingsPage() {
                   setExperienceLevel("");
                   setSaved(false);
                   setLocation("");
+                  setKeywords("");
                   setCurrentPage(1);
                   router.push(`/job-postings`);
                 }}>
@@ -1041,6 +1043,7 @@ export default function JobPostingsPage() {
     const newTitle = params.jobTitle || params.title || '';
     const newExp = params.explevel || params.experienceLevel || '';
     const newLoc = params.location || '';
+    const newKeywords = params.keywords || '';
     const saved = params.saved || false;
 
     if (saved) {
@@ -1050,20 +1053,23 @@ export default function JobPostingsPage() {
       }
       return;
     }
+    
     setTitle(newTitle);
     setExperienceLevel(newExp);
     setLocation(newLoc);
+    setKeywords(newKeywords);
     setCurrentPage(1);
 
-    const newParams = {
+    const newParams = new URLSearchParams({
       ...(newTitle && { title: newTitle }),
       ...(newExp && { explevel: newExp }),
       ...(newLoc && { location: newLoc }),
+      ...(newKeywords && { keywords: newKeywords }),
       page: '1',
       saved: false,
-    };
-    const qs = new URLSearchParams(newParams).toString();
-    const newUrl = `/job-postings?${qs}`;
+    });
+    
+    const newUrl = `/job-postings?${newParams.toString()}`;
     if (newUrl !== router.asPath) {
       router.push(newUrl);
     }
@@ -1077,7 +1083,8 @@ export default function JobPostingsPage() {
         const params = {
           ...Object.fromEntries(new URLSearchParams(window.location.search)),
           title: val,
-          page: '1'
+          page: '1',
+          keywords: keywords
         };
         // Remove empty params
         Object.keys(params).forEach(key => !params[key] && delete params[key]);
@@ -1088,7 +1095,7 @@ export default function JobPostingsPage() {
         }
       }
     },
-    [router, title]
+    [router, title, keywords]
   );
 
   const handleLocationSearch = useCallback(
@@ -1423,6 +1430,7 @@ export default function JobPostingsPage() {
 
         const params = buildQueryParams();
         const route = `/api/job-postings?${params.toString()}`;
+        console.log('route:', route);
         const cachedData = await isDataInLocalStorage(route);
 
         if (isCacheValid(cachedData)) {
@@ -1499,6 +1507,7 @@ export default function JobPostingsPage() {
       params.append('strictSearch', strictSearch.toString());
       params.append('page', currentPage.toString());
       params.append('limit', limit.toString());
+      if (keywords) params.append('keywords', keywords);
 
       return params;
     }
@@ -1563,7 +1572,8 @@ export default function JobPostingsPage() {
     company,
     strictSearch,
     saved,
-    fetchBookmarkedJobs
+    fetchBookmarkedJobs,
+    keywords // Add keywords to dependency array
   ]);
 
   // Clear stored data when search parameters change
@@ -1603,6 +1613,7 @@ export default function JobPostingsPage() {
             setCompany={setCompany}
             setSaved={setSaved}
             setCurrentPage={setCurrentPage}
+            setKeywords={setKeywords}
           />
         </Suspense>
         <div className="z-0">
@@ -1617,7 +1628,7 @@ export default function JobPostingsPage() {
             </Suspense>
           )}
           <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} />
+            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} keywords={keywords} />
           </Suspense>
           <Suspense fallback={<div>Loading...</div>}>
             <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
@@ -1639,7 +1650,7 @@ export default function JobPostingsPage() {
                     job_prefs_relocatable: user?.jobPrefsRelocatable || false
                   }}
                   onSubmit={handleProfileUpdate}
-                  title={<Settings size={12} />}
+                  title={<Settings size={16} />}
                 />
               )}
             />
