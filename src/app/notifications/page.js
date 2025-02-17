@@ -53,7 +53,7 @@ export default function Notifications() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, isLoading]);
 
   useEffect(() => {
     if (!authLoading && !user) {

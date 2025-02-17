@@ -99,7 +99,7 @@ function InputForm() {
         console.error('Error parsing GitHub data:', error);
       }
     }
-  }, []);
+  }, [form]);
 
   async function onSubmit(data) {
     setStatusMessage({ text: '', isError: false });

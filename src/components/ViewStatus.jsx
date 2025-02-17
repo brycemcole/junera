@@ -9,7 +9,7 @@ export default function ViewStatus({ jobId, showAlways = false }) {
   const [hasChecked, setHasChecked] = useState(false);
   const componentRef = useRef(null);
 
-  const checkViewStatus = async () => {
+  const checkViewStatus = React.useCallback(async () => {
     try {
       const response = await fetch(`/api/job-postings/${jobId}/view-status`);
       const data = await response.json();
@@ -17,7 +17,7 @@ export default function ViewStatus({ jobId, showAlways = false }) {
     } catch (error) {
       console.error('Error checking view status:', error);
     }
-  };
+  }, [jobId]);
 
   useEffect(() => {
     if (showAlways) {
@@ -44,7 +44,7 @@ export default function ViewStatus({ jobId, showAlways = false }) {
 
     observer.observe(componentRef.current);
     return () => observer.disconnect();
-  }, [jobId, hasChecked, showAlways]);
+  }, [jobId, hasChecked, showAlways, checkViewStatus]);
 
   if (!isViewed) return null;
 

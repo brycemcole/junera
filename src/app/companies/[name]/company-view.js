@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
     Avatar,
@@ -160,13 +160,6 @@ export default function CompanyView({ companyName, page }) {
         }
     };
 
-    // Update the useEffect to re-fetch when user changes
-    useEffect(() => {
-        if (companyName) {
-            fetchReviews();
-        }
-    }, [companyName, user]); // Add user as dependency
-
     const fetchExperiences = async () => {
         try {
             const response = await fetch(`/api/companies/${encodeURIComponent(companyName)}/experiences`);
@@ -179,11 +172,22 @@ export default function CompanyView({ companyName, page }) {
         }
     };
 
+    // Move fetch functions inside useCallback to prevent infinite loops
+    const fetchReviewsCallback = useCallback(fetchReviews, [companyName, user]);
+    const fetchExperiencesCallback = useCallback(fetchExperiences, [companyName]);
+
+    // Update the effect hooks to use the memoized callbacks
     useEffect(() => {
         if (companyName) {
-            fetchExperiences();
+            fetchReviewsCallback();
         }
-    }, [companyName]);
+    }, [companyName, fetchReviewsCallback]);
+
+    useEffect(() => {
+        if (companyName) {
+            fetchExperiencesCallback();
+        }
+    }, [companyName, fetchExperiencesCallback]);
 
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.total_pages && newPage !== page) {

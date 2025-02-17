@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
 import Link from 'next/link';
 import { Github } from "lucide-react";
+import Image from 'next/image';
 
 function formatStartDate(date, locale = enUS) {
     try {
@@ -1232,7 +1233,12 @@ export default function ProfilePage() {
                                                 target="_blank"
                                                 className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
                                             >
-                                                <img src="/producthunt.svg" alt="ProductHunt" className="h-4 w-4" />
+                                                <Image 
+                                                    src="/producthunt.svg" 
+                                                    alt="ProductHunt" 
+                                                    width={16} 
+                                                    height={16}
+                                                />
                                                 ProductHunt
                                             </Link>
                                         )}

@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/components/ui/toast";
 import { ToastViewport } from "@/components/ui/toast";
 import Footer from "@/components/footer";
+import Script from "next/script";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -76,9 +77,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-w-full root`}
       >
-                <script
-          crossOrigin="anonymous"
+        <Script
           src="//unpkg.com/react-scan/dist/auto.global.js"
+          strategy="lazyOnload"
+          crossOrigin="anonymous"
         />
         <ToastProvider>
           <AuthProvider>
