@@ -169,18 +169,20 @@ export async function GET(req) {
     }
 
     let queryText = `
-      SELECT DISTINCT ON (job_id)
-        job_id,
-        title,
-        company,
-        location,
-        description,
-        salary,
-        experiencelevel,
-        created_at,
-        source_url
-      FROM jobPostings
-      WHERE 1=1
+      WITH RankedJobs AS (
+        SELECT 
+          job_id,
+          title,
+          company,
+          location,
+          description,
+          salary,
+          experiencelevel,
+          created_at,
+          source_url,
+          ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
+        FROM jobPostings
+        WHERE 1=1
     `;
     
     const params = [];
@@ -228,9 +230,24 @@ export async function GET(req) {
       queryText += ` AND (${keywordConditions.join(' OR ')})`;
     }
 
-    // Add pagination parameters last
+    // Close the CTE and select from it
+    queryText += `) 
+      SELECT 
+        job_id,
+        title,
+        company,
+        location,
+        description,
+        salary,
+        experiencelevel,
+        created_at,
+        source_url
+      FROM RankedJobs 
+      WHERE rn = 1 
+      ORDER BY created_at DESC 
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+
     params.push(limit, offset);
-    queryText += ` ORDER BY job_id, created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
     console.log('Query:', queryText);
     console.log('Params:', params);
