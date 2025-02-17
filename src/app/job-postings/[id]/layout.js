@@ -147,11 +147,11 @@ export async function generateMetadata(props) {
 export default function Layout({ children }) {
   return (
     <div>
-      <Script
+      {/*<Script
         src="//unpkg.com/react-scan/dist/auto.global.js"
         strategy="lazyOnload"
         crossOrigin="anonymous"
-      />
+      />*/}
       {children}
     </div>
   )

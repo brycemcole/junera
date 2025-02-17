@@ -77,11 +77,11 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-w-full root`}
       >
-        <Script
-          src="//unpkg.com/react-scan/dist/auto.global.js"
-          strategy="lazyOnload"
-          crossOrigin="anonymous"
-        />
+      {/*<Script
+        src="//unpkg.com/react-scan/dist/auto.global.js"
+        strategy="lazyOnload"
+        crossOrigin="anonymous"
+      />*/}
         <ToastProvider>
           <AuthProvider>
             <ThemeProvider
