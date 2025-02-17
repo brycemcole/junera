@@ -143,5 +143,13 @@ export async function generateMetadata(props) {
 }
 
 export default function Layout({ children }) {
-  return children;
+  return (
+    <div>
+              <script
+          crossOrigin="anonymous"
+          src="//unpkg.com/react-scan/dist/auto.global.js"
+        />
+      {children}
+    </div>
+  )
 }

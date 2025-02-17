@@ -3,18 +3,9 @@ import "./globals.css";
 import Navbar from "@/components/navbar";
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/AuthContext";
-import Link from "next/link";
-import Image from "next/image";
-import { Code } from "lucide-react";
-import { Pin } from "lucide-react";
-import { User } from "lucide-react";
-import { BriefcaseBusiness } from "lucide-react";
 import { ToastProvider } from "@/components/ui/toast";
 import { ToastViewport } from "@/components/ui/toast";
 import Footer from "@/components/footer";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { Head } from 'next/head';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -85,6 +76,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-w-full root`}
       >
+                <script
+          crossOrigin="anonymous"
+          src="//unpkg.com/react-scan/dist/auto.global.js"
+        />
         <ToastProvider>
           <AuthProvider>
             <ThemeProvider

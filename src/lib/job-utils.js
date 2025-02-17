@@ -522,3 +522,51 @@ export function processJobPostings(jobs) {
     };
   });
 }
+
+export const getStateFromLocation = (location) => {
+  if (!location) return null;
+  const lowercaseLocation = location.toLowerCase();
+  
+  // First check if it's already a state abbreviation
+  const stateAbbr = Object.values(stateMap).find(abbr => 
+    lowercaseLocation.includes(abbr.toLowerCase())
+  );
+  if (stateAbbr) return stateAbbr;
+
+  // Then check for full state names
+  for (const [stateName, abbr] of Object.entries(stateMap)) {
+    if (lowercaseLocation.includes(stateName)) {
+      return abbr;
+    }
+  }
+  return null;
+};
+
+export const getFullStateFromLocation = (location) => {
+  if (!location) return null;
+  const lowercaseLocation = location.toLowerCase();
+  
+  // First check if it's a state abbreviation
+  const stateAbbr = Object.values(stateMap).find(abbr => 
+    lowercaseLocation.includes(abbr.toLowerCase())
+  );
+  
+  if (stateAbbr) {
+    // Find the full state name from the abbreviation
+    const fullStateName = Object.entries(stateMap).find(([_, abbr]) => abbr === stateAbbr)?.[0];
+    if (fullStateName) {
+      return fullStateName.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+  }
+
+  // Then check for full state names
+  const stateName = Object.keys(stateMap).find(name => 
+    lowercaseLocation.includes(name.toLowerCase())
+  );
+  
+  if (stateName) {
+    return stateName.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+  
+  return null;
+};
