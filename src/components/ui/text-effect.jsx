@@ -116,8 +116,9 @@ const AnimationComponent = React.memo(({ segment, variants, per, segmentWrapperC
 AnimationComponent.displayName = 'AnimationComponent';
 
 const splitText = (text, per) => {
-  if (per === 'line') return text.split('\n');
-  return text.split(/(\s+)/);
+  const textStr = typeof text === 'string' ? text : text.toString();
+  if (per === 'line') return textStr.split('\n');
+  return textStr.split(/(\s+)/);
 };
 
 const hasTransition = variant => {

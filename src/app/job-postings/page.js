@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings, BriefcaseBusinessIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { BriefcaseBusiness } from "lucide-react";
 import { Check, ChevronDown } from "lucide-react";
@@ -55,6 +55,7 @@ import { throttle } from 'lodash';
 import { is } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import JobPreviewModal from '../../components/JobPreviewModal';
 
 // Add encryption utilities
 const encryptData = (data) => {
@@ -242,7 +243,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent"
+            className="relative w-full items-center justify-between text-muted-foreground ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent max-w-[250px]"
           >
             {value ? (
               <span className="flex min-w-0 items-center gap-2">
@@ -256,6 +257,7 @@ const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCo
               </span>
             ) : (
               <span className="flex min-w-0 text-muted-foreground items-center gap-2">
+                <Factory size={14} strokeWidth={2} className="shrink-0" />
                 <span className="truncate">Company</span>
               </span>
             )}
@@ -382,13 +384,17 @@ const ExperienceLevelSelect = memo(function ExperienceLevelSelect({ onChange, va
 
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent [&_[data-desc]]:hidden">
+      <SelectTrigger className="relative ps-4 rounded-lg border shadow-sm bg-background hover:bg-accent [&_[data-desc]]:hidden max-w-[250px]">
         {value ? (
           <span className="text-foreground truncate">
+                        <BriefcaseBusinessIcon size={14} strokeWidth={2} className="shrink-0 float-left mr-2 vertical-middle" />
             <SelectValue placeholder={value} />
           </span>
         ) : (
-          <SelectValue className="text-muted-foreground truncate" placeholder="Level" />
+          <span className="text-muted-foreground flex flex-row items-center justify-center truncate">
+            <BriefcaseBusinessIcon size={14} strokeWidth={2} className="shrink-0 float-left mr-2 vertical-middle" />
+          <SelectValue className="text-muted-foreground truncate" placeholder="Experience Level" />
+          </span>
         )}
       </SelectTrigger>
       <SelectContent className="bg-background w-[250px] rounded-lg shadow-lg [&_*[role=option]>span]:end-2 [&_*[role=option]>span]:start-auto [&_*[role=option]]:pe-8 [&_*[role=option]]:ps-2">
@@ -478,7 +484,7 @@ const CompanyInfo = memo(function CompanyInfo({ company, resetCompanyData, compa
   if (!companyObject) return null;
 
   return (
-    <div className="z-[100] max-w-[400px] mb-4 rounded-xl border border-emerald-700/20 bg-emerald-500/20 px-2 py-2">
+    <div className="z-[100] mb-4 rounded-xl border border-emerald-700/20 bg-emerald-500/20 px-2 py-2">
       <div className="flex items-center gap-2">
         <Avatar className="w-6 h-6">
           <AvatarImage src={companyObject.logo} />
@@ -586,18 +592,262 @@ const TrendingJobCards = memo(function TrendingJobCards() {
   );
 });
 
+  const FilterPopover = ({ experienceLevel, location, company, companies, searchCompanyId, title, router, saved }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            className={`h-8 w-8 ${experienceLevel || location || company
+              ? 'text-blue-600 bg-green-50 dark:bg-green-600/30 dark:text-green-300'
+              : 'hover:bg-background/90 dark:hover:bg-muted/30'
+              }`}
+          >
+            <Filter size={14} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="max-w-[200px] py-3 bg-background/60 backdrop-blur mr-4 mt-2 shadow-none" side="top">
+          <div className="space-y-3">
+            <div className="space-y-4">
+              <div>
+              <p className="text-sm font-medium">Filter job postings</p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground text-sm">Company</span>
+                </div>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
+                </Suspense>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <span className="text-foreground">Experience Level</span>
+                </div>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <ExperienceLevelSelect
+                    onChange={(value) => {
+                      const newExp = value === "any" ? "" : value;
+                      if (newExp !== experienceLevel) {
+                        const params = {
+                          title,
+                          explevel: newExp,
+                          location,
+                          company,
+                          page: "1"
+                        };
+                        const newParams = new URLSearchParams(params);
+                        const newUrl = `/job-postings?${newParams.toString()}`;
+                        if (newUrl !== router.asPath) {
+                          router.push(newUrl);
+                        }
+                      }
+                    }}
+                    value={experienceLevel}
+                  />
+                </Suspense>
+              </div>
+
+              {(title || experienceLevel || location || company || saved) && (
+                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
+                  // setCompanyData([]);
+                  // setCompany("");
+                  // setTitle("");
+                  // setExperienceLevel("");
+                  // setSaved(false);
+                  // setLocation("");
+                  // setKeywords("");
+                  // setCurrentPage(1);
+                  router.push(`/job-postings`);
+                }}>
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  const Input26 = memo(function Input26Base({ onSearch, value, experienceLevel, location, company, companies, searchCompanyId, title, router }) {
+    const [searchValue, setSearchValue] = useState(value || "");
+    const [loading, setLoading] = useState(false);
+    const [timer, setTimer] = useState(null);
+    const isFirstRender = useRef(true);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Clear existing timer
+        if (timer) {
+          clearTimeout(timer);
+        }
+        setLoading(true);
+        // Immediately set location on Enter
+        onSearch(searchValue).finally(() => setLoading(false));
+      }
+    };
+
+    const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+
+      // If the search value is empty, trigger the search immediately
+      if (newValue === "") {
+        onSearch("");
+      }
+    };
+
+    useEffect(() => {
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
+
+      if (searchValue.trim() === "") {
+        return;
+      }
+
+      setLoading(true);
+
+      const handler = setTimeout(async () => {
+        try {
+          await onSearch(searchValue);
+        } catch (error) {
+          console.error("Search failed:", error);
+        } finally {
+          setLoading(false);
+        }
+      }, 5000); // increased to 5 seconds delay
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [searchValue, onSearch]);
+
+    useEffect(() => {
+      setSearchValue(value || "");
+    }, [value]);
+
+    return (
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
+            placeholder={"Search for a job title"}
+            onKeyDown={handleKeyDown}
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+          />
+          <Suspense fallback={<div>Loading...</div>}>
+            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
+              <FilterPopover 
+                experienceLevel={experienceLevel} 
+                location={location} 
+                company={company} 
+                companies={companies}
+                searchCompanyId={searchCompanyId}
+                title={title}
+                router={router}
+              />
+            </span>
+          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>
+            <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+              <Search size={16} strokeWidth={2} />
+            </div>
+          </Suspense>
+        </div>
+    );
+  });
+
+  const LocationSearch = memo(function LocationSearchBase({ location, setLocation }) {
+    const [searchValue, setSearchValue] = useState(location || "");
+    const [timer, setTimer] = useState(null);
+
+
+    const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setSearchValue(newValue);
+
+      // Clear any existing timer
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      // If the input is empty, set location to blank immediately
+      if (newValue === "") {
+        setLocation("");
+        return;
+      }
+
+      // Set a new timer for non-empty values
+      const newTimer = setTimeout(() => {
+        setLocation(newValue);
+      }, 5000);
+
+      setTimer(newTimer);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        // Clear existing timer
+        if (timer) {
+          clearTimeout(timer);
+        }
+        // Immediately set location on Enter
+        setLocation(searchValue);
+      }
+    };
+
+    // Update local state when prop changes
+    useEffect(() => {
+      setSearchValue(location || "");
+    }, [location]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+      return () => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      };
+    }, [timer]);
+
+    return (
+        <div className="relative">
+          <Input
+            id="input-26"
+            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
+            placeholder={"Search for a location"}
+            type="search"
+            value={searchValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+          />
+          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
+            <Map size={16} strokeWidth={2} />
+          </div>
+        </div>
+    );
+  });
+
 export default function JobPostingsPage() {
   const { user, loading: authLoading, updatePreferences: updateUserPreferences } = useAuth();
   const router = useRouter();
-  const enabled = false;
-
+  const searchParams = useSearchParams();
+  const [previewJobId, setPreviewJobId] = useState(null);
+  const [company , setCompany] = useState("");
+  const [location, setLocation] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [strictSearch, setStrictSearch] = useState(true);
+  const [enabled, setEnabled] = useState(false);
   const [data, setData] = useState([]);
   const [title, setTitle] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [location, setLocation] = useState("");
-  const [company, setCompany] = useState("");
-  const [strictSearch, setStrictSearch] = useState(true);
   const [count, setCount] = useState(0);
   const limit = 30;
   const [savedSearches, setSavedSearches] = useState([]);
@@ -619,6 +869,29 @@ export default function JobPostingsPage() {
 
   // Add new state for tracking data freshness
   const [dataTimestamp, setDataTimestamp] = useState(null);
+
+  const closePreviewSidebar = () => {
+    router.push('/job-postings', { shallow: true });
+    setPreviewJobId(null);
+  };
+
+    useEffect(() => {
+        const cid = searchParams.get('cid');
+        if (cid) {
+          console.log(cid);
+            setPreviewJobId(cid);
+        }
+    }, [searchParams]);
+
+  // Remove any existing scroll restoration code and replace with this
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Disable the browser's default scroll restoration
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+    }
+  }, []);
 
   // Modify the data storage to include timestamp
   const storeDataInSession = (data, page, params) => {
@@ -647,89 +920,6 @@ export default function JobPostingsPage() {
     return Date.now() - timestamp < TEN_MINUTES;
   };
 
-  const FilterPopover = ({ experienceLevel, location, company }) => {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            className={`h-8 w-8 ${experienceLevel || location || company
-              ? 'text-blue-600 bg-blue-50 dark:bg-blue-600/30 dark:text-blue-300'
-              : 'hover:bg-background/90 dark:hover:bg-muted/30'
-              }`}
-          >
-            <Filter size={14} />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="max-w-[280px] py-3 mr-4 mt-2 shadow-none" side="top">
-          <div className="space-y-3">
-            <div className="space-y-4">
-              <div>
-              <p className="text-sm font-medium">Filter job postings</p>
-              <p className="text-muted-foreground text-xs">
-                Filter through over {count} job postings!
-              </p>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-foreground text-sm">Company</span>
-                  <p className="text-xs text-muted-foreground">Filter by specific company names</p>
-                </div>
-                <Suspense fallback={<div>Loading...</div>}>
-                  <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
-                </Suspense>
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <span className="text-foreground">Experience Level</span>
-                  <p className="text-xs text-muted-foreground">Select required years of experience</p>
-                </div>
-                <Suspense fallback={<div>Loading...</div>}>
-                  <ExperienceLevelSelect
-                    onChange={(value) => {
-                      const newExp = value === "any" ? "" : value;
-                      if (newExp !== experienceLevel) {
-                        const params = {
-                          title,
-                          explevel: newExp,
-                          location,
-                          company,
-                          page: "1"
-                        };
-                        const newParams = new URLSearchParams(params);
-                        const newUrl = `/job-postings?${newParams.toString()}`;
-                        if (newUrl !== router.asPath) {
-                          router.push(newUrl);
-                        }
-                      }
-                    }}
-                    value={experienceLevel}
-                  />
-                </Suspense>
-              </div>
-
-              {(title || experienceLevel || location || company || saved) && (
-                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => {
-                  setCompanyData([]);
-                  setCompany("");
-                  setTitle("");
-                  setExperienceLevel("");
-                  setSaved(false);
-                  setLocation("");
-                  setKeywords("");
-                  setCurrentPage(1);
-                  router.push(`/job-postings`);
-                }}>
-                  Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  }
 
   function TabComponent({ savedSearches, applySavedSearch, currentSearchParams, editComponent }) {
     const [activeTab, setActiveTab] = useState('all');
@@ -752,14 +942,14 @@ export default function JobPostingsPage() {
           location: user.jobPrefsLocation,
           explevel: user.jobPrefsLevel
         });
-        router.push(`/job-postings?${params.toString()}`);
+        router.push(`/job-postings?${params.toString()}`, { shallow: true });
         return;
       }
 
       if (searchId === 'all') {
         // Handle all jobs tab
         setActiveTab('all');
-        router.push('/job-postings');
+        router.push('/job-postings', { shallow: true });
         return;
       }
 
@@ -1154,168 +1344,7 @@ export default function JobPostingsPage() {
     router.push('/job-postings/saved-searches');
   };
 
-  function Input26({ onSearch, value, userPreferredTitle = "" }) {
-    const [searchValue, setSearchValue] = useState(value || "");
-    const [loading, setLoading] = useState(false);
-    const [timer, setTimer] = useState(null);
-    const isFirstRender = useRef(true);
 
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        // Clear existing timer
-        if (timer) {
-          clearTimeout(timer);
-        }
-        setLoading(true);
-        // Immediately set location on Enter
-        onSearch(searchValue).finally(() => setLoading(false));
-      }
-    };
-
-    const handleInputChange = (e) => {
-      const newValue = e.target.value;
-      setSearchValue(newValue);
-
-      // If the search value is empty, trigger the search immediately
-      if (newValue === "") {
-        onSearch("");
-      }
-    };
-
-    useEffect(() => {
-      if (isFirstRender.current) {
-        isFirstRender.current = false;
-        return;
-      }
-
-      if (searchValue.trim() === "") {
-        return;
-      }
-
-      setLoading(true);
-
-      const handler = setTimeout(async () => {
-        try {
-          await onSearch(searchValue);
-        } catch (error) {
-          console.error("Search failed:", error);
-        } finally {
-          setLoading(false);
-        }
-      }, 5000); // increased to 5 seconds delay
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [searchValue, onSearch]);
-
-    useEffect(() => {
-      setSearchValue(value || "");
-    }, [value]);
-
-    return (
-      <div className="space-y-2 mb-2">
-        <div className="relative">
-          <Input
-            id="input-26"
-            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
-            placeholder={"Search for a job title"}
-            onKeyDown={handleKeyDown}
-            type="search"
-            value={searchValue}
-            onChange={handleInputChange}
-          />
-          <Suspense fallback={<div>Loading...</div>}>
-            <span className="absolute top-1/2 -translate-y-1/2 right-0 mr-2">
-              <FilterPopover experienceLevel={experienceLevel} location={location} company={company} />
-            </span>
-          </Suspense>
-          <Suspense fallback={<div>Loading...</div>}>
-            <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-              <Search size={16} strokeWidth={2} />
-            </div>
-          </Suspense>
-        </div>
-      </div>
-    );
-  }
-
-  function LocationSearch({ location, setLocation }) {
-    const [searchValue, setSearchValue] = useState(location || "");
-    const [timer, setTimer] = useState(null);
-
-
-    const handleInputChange = (e) => {
-      const newValue = e.target.value;
-      setSearchValue(newValue);
-
-      // Clear any existing timer
-      if (timer) {
-        clearTimeout(timer);
-      }
-
-      // If the input is empty, set location to blank immediately
-      if (newValue === "") {
-        setLocation("");
-        return;
-      }
-
-      // Set a new timer for non-empty values
-      const newTimer = setTimeout(() => {
-        setLocation(newValue);
-      }, 5000);
-
-      setTimer(newTimer);
-    };
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter') {
-        // Clear existing timer
-        if (timer) {
-          clearTimeout(timer);
-        }
-        // Immediately set location on Enter
-        setLocation(searchValue);
-      }
-    };
-
-    // Update local state when prop changes
-    useEffect(() => {
-      setSearchValue(location || "");
-    }, [location]);
-
-    // Cleanup timer on unmount
-    useEffect(() => {
-      return () => {
-        if (timer) {
-          clearTimeout(timer);
-        }
-      };
-    }, [timer]);
-
-    return (
-      <div className="space-y-2 mb-4">
-        <div className="relative">
-          <Input
-            id="input-26"
-            className="peer pr-24 z-1 ps-9 h-11 rounded-xl text-[16px]"
-            placeholder={"Search for a location"}
-            type="search"
-            value={searchValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-          />
-          <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-0 flex items-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-            <Map size={16} strokeWidth={2} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const MemoizedInput26 = memo(Input26);
-  const MemoizedLocationSearch = memo(LocationSearch);
 
   const activeFilters = [
     { label: 'Title', value: title },
@@ -1584,27 +1613,73 @@ export default function JobPostingsPage() {
     }
   }, [title, experienceLevel, location, company, saved, currentPage]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      sessionStorage.setItem('jobListingsScrollPos', window.scrollY.toString());
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    // Also save on page hide (mobile browsers)
-    window.addEventListener('pagehide', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handleBeforeUnload);
-    };
-  }, []);
 
 
 
   return (
     <>
-      <div className="container mx-auto py-0 p-4 sm:p-6 max-w-4xl">
+    <div className="flex flex-col md:flex-row mx-auto max-w-6xl">
+      <main className="flex-1 order-2 md:order-none">
+        <div className={`container ${previewJobId ? 'max-w-xl' : 'max-w-6xl'} w-full py-0 p-4 sm:p-6`}>
+                    <div className="flex flex-col pb-4 gap-2">
+                      <h2 className="text-lg mb-2 font-semibold">Job Search</h2>
+                      <div className="flex flex-col gap-2 space-y-2">
+                        <Input26 
+                          onSearch={handleTitleSearch} 
+                          value={title} 
+                          userPreferredTitle={user?.jobPrefsTitle} 
+                          experienceLevel={experienceLevel}
+                          location={location}
+                          company={company}
+                          companies={companies}
+                          searchCompanyId={searchCompanyId}
+                          title={title}
+                          router={router}
+                        />
+                        <LocationSearch location={location} setLocation={handleLocationSearch} />
+                        <div className="flex-row gap-2 hidden md:flex">
+                        <span className="hidden md:flex">
+                          <Suspense fallback={<div>Loading...</div>}>
+                        <ExperienceLevelSelect
+                          onChange={(value) => {
+                            const newExp = value === "any" ? "" : value;
+                            if (newExp !== experienceLevel) {
+                              const params = {
+                                title,
+                                explevel: newExp,
+                                location,
+                                company,
+                                page: "1"
+                              };
+                              const newParams = new URLSearchParams(params);
+                              const newUrl = `/job-postings?${newParams.toString()}`;
+                              if (newUrl !== router.asPath) {
+                                router.push(newUrl);
+                              }
+                            }
+                          }}
+                          value={experienceLevel}
+                        />
+                        </Suspense>
+                        </span>
+                        <span className="hidden md:flex">
+                          <Suspense fallback={<div>Loading...</div>}>
+                        <CompaniesSelect companies={companies} currentCompany={company} searchCompanyId={searchCompanyId} />
+                       </Suspense>  
+                        </span>
+                        </div>
+                      </div>
+                    </div>
+                    {user && (
+                    <div className="flex flex-col gap-2">
+                      <h2 className="text-lg font-semibold">Saved Searches</h2>
+                      <div className="flex flex-col gap-2">
+                        <Button variant="outline" size="sm" onClick={userSavedSearches}>
+                          View Saved Searches
+                        </Button>
+                      </div>
+                    </div>
+                    )}
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
@@ -1617,7 +1692,7 @@ export default function JobPostingsPage() {
           />
         </Suspense>
         <div className="z-0">
-          <div className="flex pt-6 pb-6 items-center gap-2">
+          <div className="flex py-4 items-center gap-2">
             <TrendingJobCards />
           </div>     
 
@@ -1627,12 +1702,6 @@ export default function JobPostingsPage() {
               <CompanyInfo company={company} resetCompanyData={resetCompanyData} companies={companies} />
             </Suspense>
           )}
-          <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedInput26 onSearch={handleTitleSearch} value={title} count={count} userPreferredTitle={user?.jobPrefsTitle} keywords={keywords} />
-          </Suspense>
-          <Suspense fallback={<div>Loading...</div>}>
-            <MemoizedLocationSearch location={location} setLocation={handleLocationSearch} userPreferredLocation={user?.jobPrefsLocation} />
-          </Suspense>
 
           <div className="flex flex-row items-center flex-wrap sm:flex-nowrap gap-2">
             <TabComponent
@@ -1680,7 +1749,7 @@ export default function JobPostingsPage() {
 
 
           <div>
-            <JobList data={data} loading={dataLoading} error={null} />
+            <JobList data={data} loading={dataLoading} error={null} setCid={setPreviewJobId} />
           </div>
         </Suspense>
                   <Suspense fallback={<div>Loading...</div>}>
@@ -1691,6 +1760,17 @@ export default function JobPostingsPage() {
                       </h1>
                   </Suspense>
       </div>
+      </main>
+      {previewJobId && (
+        <aside className="hidden md:block w-1/2 pl-4">
+          <div className="sticky top-24">
+                            <JobPreviewModal jobId={previewJobId} onClose={closePreviewSidebar} isSidebar={true} />
+                        </div>
+        </aside>
+                    )}
+                    </div>
+      
+      
     </>
   );
 }

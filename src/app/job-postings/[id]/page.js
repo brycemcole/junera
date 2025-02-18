@@ -863,7 +863,7 @@ export default function JobPostingPage({ params }) {
     []
   );
 
-  if (loading) return <div className="container mx-auto py-2 px-4 max-w-4xl">
+  if (loading) return <div className="container mx-auto py-2 px-4 max-w-6xl">
     <div className="animate-pulse">
       <div className="flex flex-row items-center gap-4">
         <div className="h-16 bg-gray-200 dark:bg-gray-900 rounded-xl w-full mb-4"></div>
@@ -889,7 +889,7 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 sm:pt-10 p-4 sm:p-6 max-w-4xl">
+      <div className="container mx-auto py-0 sm:pt-10 p-4 sm:p-6 max-w-6xl">
         {/* Add structured job data */}
         <script
           type="application/ld+json"

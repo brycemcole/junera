@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LoaderCircle, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { fullStripHTML, decodeHTMLEntities, parseUSLocations } from "@/lib/job-utils";
 import DOMPurify from 'dompurify';
 import ViewStatusIndicator from '@/components/view-status-indicator';
+import JobPreviewModal from './JobPreviewModal';
 
 function DateDisplay({ postedDate }) {
     if (!postedDate) {
@@ -27,11 +28,23 @@ function DateDisplay({ postedDate }) {
     );
 }
 
-export const JobList = ({ data, loading, error }) => {
+const JobCard = ({ job, onClick }) => {
+    return (
+        <div className="p-4 border rounded mb-2 cursor-pointer" onClick={() => onClick(job)}>
+            <h3 className="font-bold">{job.title}</h3>
+            <p>{job.company} - {job.location}</p>
+            {/* ...other job details... */}
+        </div>
+    );
+};
+
+export const JobList = ({ data, loading, error, setCid }) => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const user = useAuth();
     const [expandedSummaries, setExpandedSummaries] = useState(new Set());
     const [summaryThreshold, setSummaryThreshold] = useState(160);
+    const [previewJobId, setPreviewJobId] = useState(null);
 
     useEffect(() => {
         const handleResize = () => {
@@ -56,6 +69,49 @@ export const JobList = ({ data, loading, error }) => {
         });
     };
 
+    const handleViewJob = async (job) => {
+        if (user) {
+            try {
+                await fetch('/api/job-postings/track-view', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${user.token}`,
+                    },
+                    body: JSON.stringify({ jobId: job.id }),
+                });
+    
+                // Dispatch view status change event
+                const event = new CustomEvent('jobViewed', {
+                    detail: { jobId: job.id, isViewed: true }
+                });
+                window.dispatchEvent(event);
+    
+                // Ensure modal content is scrolled to top
+                setTimeout(() => {
+                    const modalContent = document.getElementById('modal-content');
+                    if (modalContent) {
+                        modalContent.scrollTop = 0;
+                    }
+                }, 0);
+            } catch (error) {
+                console.error('Error tracking view:', error);
+            }
+        }
+    
+        // Check screen size and redirect or set Cid accordingly
+        if (window.innerWidth < 768) {
+            router.push(`/job-postings/${job.id}`);
+        } else {
+            setCid(job.id);
+        }
+    };
+
+    const closePreviewSidebar = () => {
+        router.push('/job-postings', { shallow: true });
+        setPreviewJobId(null);
+    };
+
     if (error) {
         return <p className="text-red-500">{error}</p>;
     }
@@ -71,125 +127,120 @@ export const JobList = ({ data, loading, error }) => {
 
 
     return (
-        <div className="md:px-0 border-none space-y-4 md:shadow-none max-w-full">
-            {data.map((job, index) => (
-                <div
-                    key={job.id || index} // Use job.id if available, otherwise index
-                    className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out max-w-[100vw] md:max-w-4xl border-gray-200/50 last:border-none relative" // Added relative positioning
-                >
-                    <div className="flex flex-col min-w-0 gap-0 flex-grow">
-                        <div className="flex flex-row items-start gap-2">
-                            <div className="flex flex-col gap-1">
-                                <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex"> {/* Removed items-center */}
-                                    {job.company ? (
-                                        <Link href={{ pathname: `/companies/${job.company}`, query: router.query }} className="inline-flex items-center">
-                                            <Avatar className="w-6 h-6 rounded-full flex-shrink-0 mr-2">
-                                                <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-                                                <AvatarFallback className="rounded-full">
+        <>
+        <div className="w-full">
+            <div className="w-full">
+                {data.map((job, index) => (
+                    <div
+                        key={job.id || index} // Use job.id if available, otherwise index
+                        className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
+                    >
+                        <div className="flex flex-col min-w-0 gap-0 flex-grow overflow-hidden">
+                            <div className="flex flex-row items-start gap-2">
+                                <div className="flex flex-col gap-1 w-full">
+                                    <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex overflow-hidden"> {/* Removed items-center */}
+                                        {job.company ? (
+                                            <Link href={{ pathname: `/companies/${job.company}`, query: router.query }} className="inline-flex items-center flex-shrink-0">
+                                                <Avatar className="w-6 h-6 rounded-full flex-shrink-0 mr-2">
+                                                    <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
+                                                    <AvatarFallback className="rounded-full">
+                                                        {job.company?.charAt(0).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </Link>
+                                        ) : (
+                                            <Avatar className="w-5 h-5 flex-shrink-0 mr-2">
+                                                <AvatarFallback>
                                                     {job.company?.charAt(0).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-                                        </Link>
-                                    ) : (
-                                        <Avatar className="w-5 h-5 flex-shrink-0 mr-2">
-                                            <AvatarFallback>
-                                                {job.company?.charAt(0).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                    <div className="text-lg">
-                                        <span className="font-semibold text-gray-500 company-name">{job?.company || "No company name available"}</span>
-                                        <span className="mx-[3px]"></span>
-                                        <span className="">{job?.title || "No job titles available"}
-                                            <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
-                                        </span>
-
-                                    </div>
-                                </h3>
-
-                                {job?.summary ? (
-                                    <div className="mb-1">
-                                        <p className={`text-muted-foreground text-[16px] break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
-                                            {job.summary}
-                                        </p>
-                                        {job.summary.length > summaryThreshold && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    toggleSummary(job.id);
-                                                }}
-                                                className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
-                                            >
-                                                {expandedSummaries.has(job.id) ? 'Hide summary' : 'Show summary'}
-                                            </button>
                                         )}
-                                    </div>
-                                )
-                                    :
-                                    job?.description ? (
-                                        <div className="text-md mb-2">
-                                            <p className={`text-muted-foreground text-[16px] leading-relaxed break-all transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
-                                                {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
-                                            </p>
-                                        </div>
-                                    ) : null}
-                            </div>
+                                        <div className="text-lg truncate">
+                                            <span className="font-semibold text-gray-500 company-name truncate">{job?.company || "No company name available"}</span>
+                                            <span className="mx-[3px]"></span>
+                                            <span className="truncate">{job?.title || "No job titles available"}
+                                                <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
+                                            </span>
 
-                        </div>
-                        <div className="flex flex-row gap-2 items-center justify-between">
-                        <div className="flex flex-row gap-2 items-center">
-                        <Link
-                            href={{ pathname: `/job-postings/${job.id}`, query: router.query }}
-                            className="ml-auto"
-                        >
-                            <ViewStatusIndicator 
-                                jobId={job.id} 
-                                onViewStatusChange={(isViewed) => {
-                                    return (
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            className={`sm:w-36 h-8 sm:h-9 sm:text-[14px] ${
-                                                isViewed 
-                                                ? 'text-muted-foreground bg-muted/50 border-muted hover:bg-muted hover:text-muted-foreground' 
-                                                : 'text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500'
-                                            }`}
-                                        >
-                                            {isViewed ? 'Viewed' : 'View Job'}
-                                        </Button>
-                                    );
-                                }}
-                            />
-                        </Link>
-                        <SharePopover jobId={job.id} size={'small'} />
-                        {user ? (
-                            <BookmarkButton jobId={job.id} size={'small'} />
-                        ) : null}
-                        </div>
-                            <div className="text-sm flex flex-col gap-2 flex-end">
-                                <div className="flex flex-row flex-wrap gap-2 items-center">
-                                    {job?.salary || job?.salary_range_str ? (
-                                        <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
-                                            {job.salary || job.salary_range_str}
-                                        </Badge>
+                                        </div>
+                                    </h3>
+
+                                    {job?.summary ? (
+                                        <div className="mb-1">
+                                            <p className={`text-muted-foreground text-[16px] break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                                {job.summary}
+                                            </p>
+                                            {job.summary.length > summaryThreshold && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleSummary(job.id);
+                                                    }}
+                                                    className="text-emerald-500 hover:text-emerald-600 text-sm font-medium mt-1"
+                                                >
+                                                    {expandedSummaries.has(job.id) ? 'Hide summary' : 'Show summary'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )
+                                        :
+                                        job?.description ? (
+                                            <div className="text-md mb-2">
+                                                <p className={`text-muted-foreground text-[16px] leading-relaxed break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
+                                                    {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                </div>
+
+                            </div>
+                            <div className="flex flex-row gap-2 items-center justify-between flex-wrap">
+                                <div className="flex flex-row gap-2 items-center">
+                                    {/* Replace Link wrapper with button for view action */}
+                                    <button onClick={() => handleViewJob(job)} className="ml-auto focus:outline-none">
+                                        <ViewStatusIndicator 
+                                            jobId={job.id} 
+                                            onViewStatusChange={(isViewed) => (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className={`sm:w-36 h-8 sm:h-9 sm:text-[14px] ${
+                                                        isViewed 
+                                                        ? 'text-muted-foreground bg-muted/50 border-muted hover:bg-muted hover:text-muted-foreground' 
+                                                        : 'text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500'
+                                                    }`}
+                                                >
+                                                    {isViewed ? 'Viewed' : 'View Job'}
+                                                </Button>
+                                            )}
+                                        />
+                                    </button>
+                                    <SharePopover jobId={job.id} size={'small'} />
+                                    {user ? (
+                                        <BookmarkButton jobId={job.id} size={'small'} />
                                     ) : null}
                                 </div>
+                                <div className="text-sm flex flex-col gap-2 flex-end">
+                                    <div className="flex flex-row flex-wrap gap-2 items-center">
+                                        {job?.salary || job?.salary_range_str ? (
+                                            <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
+                                                {job.salary || job.salary_range_str}
+                                            </Badge>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </div>
-
-
                         </div>
                     </div>
-
-                </div>
-            ))}
-
-            {/* Loading Indicator */}
-            {loading && (
-                <div className="flex justify-center py-4">
-                    <LoaderCircle className="animate-spin" />
-                </div>
-            )}
+                ))}
+                {loading && (
+                    <div className="flex justify-center py-4">
+                        <LoaderCircle className="animate-spin" />
+                    </div>
+                )}
+            </div>
         </div>
+                    </>
     );
 };
 

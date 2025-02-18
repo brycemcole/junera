@@ -1,52 +1,44 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ViewStatusIndicator({ jobId, onViewStatusChange }) {
-    const [status, setStatus] = useState({ isViewed: false, viewedAt: null });
-    const [hasChecked, setHasChecked] = useState(false);
-    const componentRef = useRef(null);
+    const [isViewed, setIsViewed] = useState(false);
     const { user } = useAuth();
 
     useEffect(() => {
-        if (!componentRef.current || hasChecked || !jobId || !user?.token) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting && !hasChecked) {
-                    setHasChecked(true);
-                    fetch(`/api/job-postings/${jobId}/view-status`, {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        setStatus({
-                            isViewed: data.isViewed,
-                            viewedAt: data.viewedAt
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Error checking view status:', error);
-                    });
-                }
-            },
-            {
-                root: null,
-                rootMargin: '50px',
-                threshold: 0.1
+        // Check initial view status
+        const checkViewStatus = async () => {
+            try {
+                const response = await fetch(`/api/job-postings/${jobId}/view-status`, {
+                    headers: user?.token ? {
+                        'Authorization': `Bearer ${user.token}`
+                    } : {}
+                });
+                const data = await response.json();
+                setIsViewed(data.isViewed);
+            } catch (error) {
+                console.error('Error checking view status:', error);
             }
-        );
+        };
 
-        observer.observe(componentRef.current);
-        return () => observer.disconnect();
-    }, [jobId, user?.token, hasChecked]);
+        if (user)
+        checkViewStatus();
 
-    return (
-        <div ref={componentRef}>
-            {onViewStatusChange && onViewStatusChange(status.isViewed, status.viewedAt)}
-        </div>
-    );
+        // Listen for view status changes
+        const handleJobViewed = (event) => {
+            if (event.detail.jobId === jobId) {
+                setIsViewed(event.detail.isViewed);
+            }
+        };
+
+        window.addEventListener('jobViewed', handleJobViewed);
+
+        return () => {
+            window.removeEventListener('jobViewed', handleJobViewed);
+        };
+    }, [jobId, user]);
+
+    return onViewStatusChange(isViewed);
 }
