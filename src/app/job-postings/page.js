@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings, BriefcaseBusinessIcon } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, ChevronDown, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings, BriefcaseBusinessIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -38,7 +38,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { BriefcaseBusiness } from "lucide-react";
-import { Check, ChevronDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Command,
   CommandEmpty,
@@ -210,7 +210,7 @@ const states = {
 
 
 
-const CompaniesSelect = memo(function CompaniesSelectBase({ companies, currentCompany, searchCompanyId }) {
+const CompaniesSelect = memo(function CompaniesSelectBase({ companies = [], currentCompany, searchCompanyId }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -835,7 +835,10 @@ const TrendingJobCards = memo(function TrendingJobCards() {
     );
   });
 
+import { getJobPostings, updateJobSummary, getJobPostingsCount, getCompanies } from '@/app/actions/job-actions';
+
 export default function JobPostingsPage() {
+  const { toast } = useToast();
   const { user, loading: authLoading, updatePreferences: updateUserPreferences } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1457,42 +1460,32 @@ export default function JobPostingsPage() {
           return;
         }
 
-        const params = buildQueryParams();
-        const route = `/api/job-postings?${params.toString()}`;
-        console.log('route:', route);
-        const cachedData = await isDataInLocalStorage(route);
+        const searchParams = new URLSearchParams();
+        if (title) searchParams.append('title', title);
+        if (experienceLevel) searchParams.append('experienceLevel', experienceLevel);
+        if (location) searchParams.append('location', location);
+        if (company) searchParams.append('company', company);
+        searchParams.append('strictSearch', strictSearch.toString());
+        searchParams.append('page', currentPage.toString());
+        searchParams.append('limit', limit.toString());
+        if (keywords) searchParams.append('keywords', keywords);
 
-        if (isCacheValid(cachedData)) {
-          // Check for cached data from multiple pages
-          const cachedPages = [];
-          let pageNum = 1;
+        try {
+          const [jobsResult, countResult] = await Promise.all([
+            getJobPostings(searchParams),
+            getJobPostingsCount(searchParams)
+          ]);
 
-          while (true) {
-            const pageParams = new URLSearchParams(params);
-            pageParams.set('page', pageNum.toString());
-            const pageRoute = `/api/job-postings?${pageParams.toString()}`;
-            const pageData = await isDataInLocalStorage(pageRoute);
-
-            if (!pageData || !isCacheValid(pageData)) {
-              break;
-            }
-
-            cachedPages.push(...pageData.jobPostings);
-            if (!pageData.hasMore) break;
-            pageNum++;
+          if (jobsResult?.ok) {
+            const newJobs = jobsResult?.jobPostings || [];
+            setHasMore(newJobs.length === limit);
+            setData(prevData => currentPage === 1 ? newJobs : [...prevData, ...newJobs]);
+            setCount(countResult?.count || 0);
+          } else {
+            console.error('Error fetching jobs:', jobsResult.error);
           }
-
-          setData(cachedPages);
-          setHasMore(cachedPages.length >= pageNum * limit);
-          setCurrentPage(pageNum);
-        } else {
-          const jobData = await fetchJobData(route);
-          await storeResponseInLocalStorage(route, jobData);
-          updateJobDataState(jobData);
-        }
-
-        if (currentPage === 1) {
-          fetchAdditionalData(params);
+        } catch (error) {
+          console.error('Error fetching job data:', error);
         }
 
         setDataLoading(false);
@@ -1504,88 +1497,6 @@ export default function JobPostingsPage() {
       }
     }
 
-    function buildQueryParams() {
-      const params = new URLSearchParams();
-      
-      // Handle title preferences
-      if (title) {
-        params.append('title', title);
-      } else if (user?.jobPrefsTitle?.length) {
-        // Add all preferred titles as separate parameters
-        user.jobPrefsTitle.forEach(t => params.append('title', t));
-      }
-
-      // Handle experience level
-      if (experienceLevel) {
-        params.append('experienceLevel', experienceLevel);
-      } else if (user?.jobPrefsLevel?.length) {
-        // Add all preferred levels as separate parameters
-        user.jobPrefsLevel.forEach(l => params.append('experienceLevel', l));
-      }
-
-      // Handle location preferences
-      if (location) {
-        params.append('location', location.toLowerCase());
-      } else if (user?.jobPrefsLocation?.length) {
-        // Add all preferred locations as separate parameters
-        user.jobPrefsLocation.forEach(l => params.append('location', l.toLowerCase()));
-      }
-
-      // Add remaining parameters
-      if (company) params.append('company', company);
-      params.append('strictSearch', strictSearch.toString());
-      params.append('page', currentPage.toString());
-      params.append('limit', limit.toString());
-      if (keywords) params.append('keywords', keywords);
-
-      return params;
-    }
-
-    function isCacheValid(cachedData) {
-      return cachedData && Date.now() - cachedData.timestamp < 15 * 60 * 1000;
-    }
-
-    async function fetchJobData(route) {
-      const response = await fetch(route, {
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'cache-control': 'force-cache'
-        },
-      });
-      if (!response.ok) throw new Error("Network response was not ok");
-      const data = await response.json();
-      data.timestamp = Date.now();
-      data.hasMore = data.jobPostings.length === limit;
-      return data;
-    }
-
-    function updateJobDataState(jobData) {
-      const newJobs = jobData?.jobPostings || [];
-      setHasMore(newJobs.length === limit);
-      setData(prevData => {
-        if (currentPage === 1) {
-          return newJobs;
-        }
-        const existingIds = new Set(prevData.map(job => job.id));
-        const uniqueNewJobs = newJobs.filter(job => !existingIds.has(job.id));
-        return [...prevData, ...uniqueNewJobs];
-      });
-    }
-
-    function fetchAdditionalData(params) {
-      Promise.all([
-        fetch(`/api/job-postings/count?${params.toString()}`, { cache: 'force-cache' }),
-        fetch(`/api/companies`, { cache: 'force-cache' })
-      ])
-        .then(([countRes, compRes]) => Promise.all([countRes.json(), compRes.json()]))
-        .then(([countData, companiesData]) => {
-          console.log(countData);
-          setCount(countData?.count || countData.totalJobs || 0);
-          setCompanies(companiesData || []);
-        })
-        .catch(console.error);
-    }
     fetchData();
 
     return () => {
@@ -1612,6 +1523,21 @@ export default function JobPostingsPage() {
       setDataTimestamp(null);
     }
   }, [title, experienceLevel, location, company, saved, currentPage]);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const result = await getCompanies();
+        if (result?.ok) {
+          setCompanies(result.companies);
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
 
 
 

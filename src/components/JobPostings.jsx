@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LoaderCircle, Eye } from "lucide-react";
@@ -45,6 +45,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
     const [expandedSummaries, setExpandedSummaries] = useState(new Set());
     const [summaryThreshold, setSummaryThreshold] = useState(160);
     const [previewJobId, setPreviewJobId] = useState(null);
+    const observer = useRef(null);
 
     useEffect(() => {
         const handleResize = () => {
@@ -56,6 +57,60 @@ export const JobList = ({ data, loading, error, setCid }) => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (data && Array.isArray(data)) {
+            data.forEach(job => {
+                const prefetchJobData = async () => {
+                    try {
+                        const response = await fetch(`/api/job-postings/${job.id}`);
+                        if (!response.ok) {
+                            console.error(`Failed to prefetch data for job ID: ${job.id}`);
+                            return;
+                        }
+                    } catch (error) {
+                        console.error(`Error prefetching data for job ID: ${job.id}`, error);
+                    }
+                };
+
+                const jobElement = document.getElementById(`job-${job.id}`);
+
+                if (jobElement) {
+                    observer.current = new IntersectionObserver(
+                        (entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    prefetchJobData();
+
+                                    // Optionally trigger prefetch for the page route
+                                    const link = document.createElement('link');
+                                    link.rel = 'prefetch';
+                                    link.href = `/job-postings/${job.id}`;
+                                    document.head.appendChild(link);
+
+                                    // Unobserve the element after prefetching
+                                    observer.current.unobserve(jobElement);
+                                }
+                            });
+                        },
+                        {
+                            root: null, // Use the viewport as the root
+                            rootMargin: '200px', // Trigger earlier: 200px before the element is visible
+                            threshold: 0.01 // Trigger when 1% of the element is visible
+                        }
+                    );
+
+                    observer.current.observe(jobElement);
+                }
+            });
+        }
+
+        return () => {
+            if (observer.current) {
+                observer.current.disconnect();
+            }
+        };
+    }, [data]);
 
     const toggleSummary = (jobId) => {
         setExpandedSummaries(prev => {
@@ -133,6 +188,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                 {data.map((job, index) => (
                     <div
                         key={job.id || index} // Use job.id if available, otherwise index
+                        id={`job-${job.id}`}
                         className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
                     >
                         <div className="flex flex-col min-w-0 gap-0 flex-grow overflow-hidden">
@@ -158,9 +214,11 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                         <div className="text-lg truncate">
                                             <span className="font-semibold text-gray-500 company-name truncate">{job?.company || "No company name available"}</span>
                                             <span className="mx-[3px]"></span>
-                                            <span className="truncate">{job?.title || "No job titles available"}
-                                                <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
-                                            </span>
+                                            <Link href={`/job-postings/${job.id}`} prefetch={true}>
+                                                <span className="truncate">{job?.title || "No job titles available"}
+                                                    <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
+                                                </span>
+                                            </Link>
 
                                         </div>
                                     </h3>

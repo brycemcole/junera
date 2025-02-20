@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -21,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/context/AuthContext';
+import { updateJobSummary } from '@/app/actions/job-actions';
+import { useToast } from "@/hooks/use-toast";
 
 // Component imports from the job posting page
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
@@ -130,7 +134,8 @@ const Summarization = ({ title, message, loading, error }) => {
   );
 };
 
-export default function JobPreviewModal({ jobId, onClose, isSidebar }) {
+export default function JobPreviewModal({ jobId, onClose, isSidebar = false }) {
+  const { toast } = useToast();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -239,6 +244,39 @@ export default function JobPreviewModal({ jobId, onClose, isSidebar }) {
       setLlmResponse("");
     } finally {
       setLoadingLLMReponse(false);
+    }
+  };
+
+  const handleSummaryUpdate = async (summary) => {
+    try {
+      setIsUpdating(true);
+      const result = await updateJobSummary(jobId, summary);
+      
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (result.success) {
+        setJobData(prev => ({ ...prev, summary: result.data.summary }));
+        toast({
+          title: "Success",
+          description: "Job summary updated successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating summary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update job summary",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
