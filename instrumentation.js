@@ -43,5 +43,5 @@ export async function register() {
     });
 
     console.log('✓ Agent processor initialization complete');
-  }nearbyStates
+  }
 }

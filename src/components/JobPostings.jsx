@@ -244,7 +244,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                             {job.keywords.slice(0, 5).map((keyword, idx) => (
                                                 <span
                                                     key={idx}
-                                                    className="inline-flex items-center px-2 py-0.5 rounded shadow shadow-blue-500/10 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
+                                                    className="inline-flex items-center px-2 py-0.5 rounded-md shadow shadow-blue-500/10 text-xs font-medium bg-blue-400/30 text-blue-700 dark:text-blue-300 border border-blue-600/50"
                                                 >
                                                     {keyword}
                                                 </span>
