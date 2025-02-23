@@ -28,11 +28,7 @@ import {
   
   export default function IntroAccordion() {
     return (
-      <div className="space-y-4 pt-14">
-        <h2 className="text-lg font-semibold">info</h2>
-        <p className="text-muted-foreground leading-relaxed text-sm">
-            I&apos;m a college student who created this website just to find jobs and found an internship through this website so I decided to make it public.
-            </p>
+      <div className="space-y-4">
         <Accordion type="single" collapsible className="w-full -space-y-px" defaultValue="3">
           {items.map((item) => (
             <AccordionItem

@@ -38,7 +38,7 @@ export const ExampleJobPostings = () => {
   }
 
   return (
-    <div className="border rounded-xl h-[225px] w-full  mx-auto px-4 overflow-y-scroll overflow-x-auto">
+    <div className="border rounded-xl h-[400px] w-full  mx-auto px-4 overflow-y-scroll overflow-x-auto">
       {data.map((job, index) => (
         <div
           key={job.id}
