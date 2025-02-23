@@ -125,11 +125,9 @@ export async function PUT(req) {
 
         const updates = await req.json();
         
-        // Convert arrays to PostgreSQL array format with proper quoting
         const formatArray = (arr) => {
             if (!arr) return null;
             const values = Array.isArray(arr) ? arr : [arr];
-            // Double quote each value and wrap in array braces
             return `{${values.map(v => `"${v}"`).join(',')}}`;
         };
 
@@ -137,16 +135,14 @@ export async function PUT(req) {
         const jobPrefsLocation = formatArray(updates.job_prefs_location);
         const jobPrefsLevel = formatArray(updates.job_prefs_level);
 
-        // Ensure salary is a number
         const jobPrefsSalary = updates.job_prefs_salary 
             ? parseInt(updates.job_prefs_salary, 10) 
             : null;
 
-        // Convert relocatable to boolean
         const jobPrefsRelocatable = updates.job_prefs_relocatable === true 
             || updates.job_prefs_relocatable === 'true';
 
-        // Update query with proper type casting for arrays
+        // Removed skills from users table update since we're using entity_skills
         const updateQuery = `
             UPDATE users
             SET 
@@ -190,7 +186,6 @@ export async function PUT(req) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        // Clear the cache after successful update
         try {
             const cacheKey = `user-profile:${userId}`;
             await clearCache(cacheKey);

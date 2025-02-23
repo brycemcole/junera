@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { processAllPendingJobs } from '@/services/agentProcessor';
+import { processAllPendingTasks } from '@/services/agentProcessor';
 
 export async function POST(request) {
     try {
@@ -17,8 +17,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        // Start processing jobs in the background
-        processAllPendingJobs().catch(console.error);
+        await processAllPendingTasks();
 
         return NextResponse.json({ message: 'Job processing started' });
     } catch (error) {

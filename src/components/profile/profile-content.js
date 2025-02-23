@@ -11,6 +11,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import SuggestedUsers from '@/components/SuggestedUsers';
 import { EmptyState } from '@/components/empty-state';
 import GitHubCalendar from 'react-github-calendar';
+import Image from 'next/image';
 
 const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUsername }) => {
     const { toast } = useToast();
@@ -258,7 +259,7 @@ const ProfileContent = memo(({ profile, onFollow, isFollowing, user, currentUser
                                             target="_blank"
                                             className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
                                         >
-                                            <img src="/producthunt.svg" alt="ProductHunt" className="h-4 w-4" />
+                                            <Image src="/producthunt.svg" alt="ProductHunt" className="h-4 w-4" />
                                             ProductHunt
                                         </Link>
                                     )}

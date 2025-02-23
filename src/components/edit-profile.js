@@ -40,7 +40,8 @@ const FIELD_TYPES = {
     NUMBER: 'number',
     SELECT: 'select',
     BOOLEAN: 'boolean',
-    MULTISELECT: 'multiselect'
+    MULTISELECT: 'multiselect',
+    SKILL: 'skill'
 };
 
 export default function EditProfileDialog({
@@ -150,6 +151,48 @@ export default function EditProfileDialog({
                             className="rounded border-gray-300"
                         />
                         <Label htmlFor={`edit-${name}`}>{label}</Label>
+                    </div>
+                );
+
+            case FIELD_TYPES.SKILL:
+                return (
+                    <div className="space-y-2" key={name}>
+                        <Label htmlFor={`edit-${name}`}>{label}</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {formData[name]?.map((skill, index) => (
+                                <div key={index} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md">
+                                    <span>{skill}</span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-4 w-4 p-0 hover:bg-transparent"
+                                        onClick={() => {
+                                            const newSkills = [...formData[name]];
+                                            newSkills.splice(index, 1);
+                                            handleChange(name, newSkills);
+                                        }}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ))}
+                            <Input
+                                id={`edit-${name}`}
+                                placeholder={placeholder}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && e.target.value) {
+                                        e.preventDefault();
+                                        const newSkill = e.target.value.trim();
+                                        if (newSkill && (!formData[name] || !formData[name].includes(newSkill))) {
+                                            handleChange(name, [...(formData[name] || []), newSkill]);
+                                            e.target.value = '';
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Press Enter to add a skill</p>
                     </div>
                 );
 

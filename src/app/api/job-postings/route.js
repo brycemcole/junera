@@ -302,7 +302,7 @@ export async function PUT(req) {
       WHERE job_id = $2 
       RETURNING *`;
 
-    const result = await query(updateQuery, [summary, jobId] /*, { signal }*/);
+    const result = await query(updateQuery, [summary, jobId]);
 
     if (result.rows.length === 0) {
       return new Response(
@@ -311,12 +311,26 @@ export async function PUT(req) {
       );
     }
 
-    // store in cache with cachekey
+    // Get the full job data to cache
+    const jobResult = await query(`
+      SELECT * FROM jobPostings WHERE job_id = $1
+    `, [jobId]);
+
+    const jobPosting = jobResult.rows[0];
+    const keywords = scanKeywords(jobPosting.description);
+
+    const responseBody = {
+      success: true,
+      data: jobPosting,
+      keywords
+    };
+
+    // Update the cache with the new data
+    const cacheKey = `job-posting:${jobId}`;
+    await setCached(cacheKey, JSON.stringify(responseBody), 3600); // Cache for 1 hour
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: result.rows[0]
-      }),
+      JSON.stringify(responseBody),
       { status: 200 }
     );
 

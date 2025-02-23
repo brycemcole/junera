@@ -1,7 +1,6 @@
-import ModelClient from "@azure-rest/ai-inference";
-import { AzureKeyCredential } from "@azure/core-auth";
 import { query } from '@/lib/pgdb';
 import { verifyToken } from '@/lib/auth';
+import aiAgent from '@/services/aiAgent';
 
 export async function GET(req, { params }) {
     try {
@@ -28,7 +27,7 @@ export async function GET(req, { params }) {
 
         // First try to get the response
         const result = await query(
-            'SELECT response, created_at FROM job_posting_agent_responses WHERE job_posting_id = $1 AND user_id = $2',
+            'SELECT response, worthy_apply, explanation, created_at FROM job_posting_agent_responses WHERE job_posting_id = $1 AND user_id = $2',
             [id, decoded.id]
         );
 
@@ -45,6 +44,8 @@ export async function GET(req, { params }) {
         // Log the response details
         console.log('Found analysis:', {
             responseLength: result.rows[0].response?.length,
+            worthy_apply: result.rows[0].worthy_apply,
+            explanation: result.rows[0].explanation?.length,
             createdAt: result.rows[0].created_at
         });
 
@@ -75,7 +76,6 @@ async function streamToString(stream) {
 
 export async function POST(req, { params }) {
     try {
-        // Token verification
         const authHeader = req.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -92,8 +92,7 @@ export async function POST(req, { params }) {
             });
         }
 
-        // Fetch job posting details
-        const { id } = params;
+        const { id } = await params;
         const jobResult = await query(
             'SELECT * FROM jobPostings WHERE job_id = $1',
             [id]
@@ -106,65 +105,82 @@ export async function POST(req, { params }) {
             });
         }
 
-        const systemMessage = {
-            role: "system",
-            content: `You are a realistic and honest career advisor who prioritizes accurate job fit analysis.
-            You must be strict about experience requirements and never overstate qualifications.
-            
-            Key rules:
-            - Entry level roles (0-2 years) match with interns/juniors
-            - Mid level roles (3-5 years) require proven work experience
-            - Senior roles (5+ years) require extensive experience
-            - Management roles require prior management experience
-            - Technical roles require specific technical skill matches
-            - Don't assume skills that aren't explicitly mentioned
-            - Be direct about missing requirements
-            
-            Format response as:
-            1. Start with clear Yes/No and main reason
-            2. List 1-2 key matching requirements OR main gaps
-            3. Give one specific, actionable tip
-            
-            Example responses:
-            "No - This senior engineering manager role requires 7+ years of experience and prior team management, which you don't yet have as an intern. Focus on gaining more hands-on development experience in your current role before pursuing management positions."
-            
-            "Yes - As a junior developer with 2 years of React experience, you meet the core requirements for this entry-level frontend role. Your recent React projects align well with their tech stack. Consider highlighting your experience with their specific UI frameworks in your application."
-            
-            Keep responses direct and honest, around 300 characters.`
-        };
+        // Get the streaming response from AIAgent
+        const stream = await aiAgent.analyzeJobFit(jobPosting);
 
-        const userMessage = {
-            role: "user",
-            content: `Analyze this job fit based on requirements:
-Title: ${jobPosting.title}
-Company: ${jobPosting.company}
-Experience Level: ${jobPosting.experiencelevel}
-Location: ${jobPosting.location}
-Description: ${jobPosting.description}
+        // After successful analysis, store the complete response
+        let fullResponse = '';
+        const reader = stream.getReader();
+        const newStream = new ReadableStream({
+            async start(controller) {
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-Remember to be realistic about experience requirements and strict about required skills.`
-        };
+                        // Forward the chunk to the client
+                        controller.enqueue(value);
 
-        const client = new ModelClient(
-            process.env.AZURE_INFERENCE_SDK_ENDPOINT ?? "https://junera-ai-services.services.ai.azure.com/models",
-            new AzureKeyCredential(process.env.AZURE_INFERENCE_SDK_KEY)
-        );
+                        // Accumulate the response
+                        const text = new TextDecoder().decode(value);
+                        const lines = text.split('\n').filter(line => line.trim() !== '');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const jsonStr = line.replace('data: ', '').trim();
+                                if (jsonStr === '[DONE]') continue;
+                                try {
+                                    const parsed = JSON.parse(jsonStr);
+                                    if (parsed.content) {
+                                        fullResponse += parsed.content;
+                                    }
+                                } catch (err) {
+                                    console.error('Error parsing chunk:', err);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Store the complete response in the database
+                    try {
+                        // Try to parse the complete response to get worthy_apply and explanation
+                        const parsedResponse = JSON.parse(fullResponse);
+                        await query(
+                            `INSERT INTO job_posting_agent_responses 
+                            (job_posting_id, user_id, response, worthy_apply, explanation)
+                            VALUES ($1, $2, $3, $4, $5)
+                            ON CONFLICT (job_posting_id, user_id) 
+                            DO UPDATE SET 
+                                response = $3,
+                                worthy_apply = $4,
+                                explanation = $5,
+                                updated_at = NOW()`,
+                            [id, decoded.id, fullResponse, parsedResponse.worthy_apply, parsedResponse.explanation]
+                        );
+                    } catch (dbError) {
+                        console.error('Error saving response to database:', dbError);
+                        // If parsing fails, still save the raw response
+                        await query(
+                            `INSERT INTO job_posting_agent_responses 
+                            (job_posting_id, user_id, response)
+                            VALUES ($1, $2, $3)
+                            ON CONFLICT (job_posting_id, user_id) 
+                            DO UPDATE SET response = $3, updated_at = NOW()`,
+                            [id, decoded.id, fullResponse]
+                        );
+                    }
 
-        const response = await client.path("/chat/completions").post({
-            body: {
-                messages: [systemMessage, userMessage],
-                max_tokens: 400,
-                temperature: 0.3,
-                model: process.env.AZURE_DEPLOYMENT_NAME ?? "gpt-4",
-                stream: true
+                    controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+                    controller.close();
+                } catch (error) {
+                    controller.error(error);
+                }
             }
         });
 
-        // Return the stream directly with SSE headers
-        return new Response(response.body, {
+        return new Response(newStream, {
             headers: {
                 'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache, no-transform',
+                'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',
             },
         });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LoaderCircle, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -58,59 +58,6 @@ export const JobList = ({ data, loading, error, setCid }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        if (data && Array.isArray(data)) {
-            data.forEach(job => {
-                const prefetchJobData = async () => {
-                    try {
-                        const response = await fetch(`/api/job-postings/${job.id}`);
-                        if (!response.ok) {
-                            console.error(`Failed to prefetch data for job ID: ${job.id}`);
-                            return;
-                        }
-                    } catch (error) {
-                        console.error(`Error prefetching data for job ID: ${job.id}`, error);
-                    }
-                };
-
-                const jobElement = document.getElementById(`job-${job.id}`);
-
-                if (jobElement) {
-                    observer.current = new IntersectionObserver(
-                        (entries) => {
-                            entries.forEach(entry => {
-                                if (entry.isIntersecting) {
-                                    prefetchJobData();
-
-                                    // Optionally trigger prefetch for the page route
-                                    const link = document.createElement('link');
-                                    link.rel = 'prefetch';
-                                    link.href = `/job-postings/${job.id}`;
-                                    document.head.appendChild(link);
-
-                                    // Unobserve the element after prefetching
-                                    observer.current.unobserve(jobElement);
-                                }
-                            });
-                        },
-                        {
-                            root: null, // Use the viewport as the root
-                            rootMargin: '200px', // Trigger earlier: 200px before the element is visible
-                            threshold: 0.01 // Trigger when 1% of the element is visible
-                        }
-                    );
-
-                    observer.current.observe(jobElement);
-                }
-            });
-        }
-
-        return () => {
-            if (observer.current) {
-                observer.current.disconnect();
-            }
-        };
-    }, [data]);
 
     const toggleSummary = (jobId) => {
         setExpandedSummaries(prev => {
@@ -127,38 +74,41 @@ export const JobList = ({ data, loading, error, setCid }) => {
     const handleViewJob = async (job) => {
         if (user) {
             try {
-                await fetch('/api/job-postings/track-view', {
-                    method: 'POST',
+                await fetch(`/api/job-postings/${job.id}/view-status`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${user.token}`,
-                    },
-                    body: JSON.stringify({ jobId: job.id }),
+                    }
                 });
     
-                // Dispatch view status change event
                 const event = new CustomEvent('jobViewed', {
                     detail: { jobId: job.id, isViewed: true }
                 });
                 window.dispatchEvent(event);
-    
-                // Ensure modal content is scrolled to top
-                setTimeout(() => {
-                    const modalContent = document.getElementById('modal-content');
-                    if (modalContent) {
-                        modalContent.scrollTop = 0;
-                    }
-                }, 0);
             } catch (error) {
                 console.error('Error tracking view:', error);
             }
         }
     
-        // Check screen size and redirect or set Cid accordingly
+        // Check if we're on a job details page
+        const currentPath = window.location.pathname;
+        const currentJobId = currentPath.split('/').pop();
+        
+        // If we're already on this job's details page, do nothing
+        if (currentPath === `/job-postings/${job.id}`) {
+            return;
+        }
+    
+        // Handle navigation based on screen size
         if (window.innerWidth < 768) {
             router.push(`/job-postings/${job.id}`);
         } else {
-            setCid(job.id);
+            if (searchParams.get('cid')) {
+                setCid(job.id);
+            } else {
+                router.push(`/job-postings/${job.id}`);
+            }
         }
     };
 
@@ -255,7 +205,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                             <div className="flex flex-row gap-2 items-center justify-between flex-wrap">
                                 <div className="flex flex-row gap-2 items-center">
                                     {/* Replace Link wrapper with button for view action */}
-                                    <button onClick={() => handleViewJob(job)} className="ml-auto focus:outline-none">
+                                    <div onClick={() => handleViewJob(job)} className="ml-auto focus:outline-none">
                                         <ViewStatusIndicator 
                                             jobId={job.id} 
                                             onViewStatusChange={(isViewed) => (
@@ -272,7 +222,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                                 </Button>
                                             )}
                                         />
-                                    </button>
+                                    </div>
                                     <SharePopover jobId={job.id} size={'small'} />
                                     {user ? (
                                         <BookmarkButton jobId={job.id} size={'small'} />

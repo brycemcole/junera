@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, Search, Info, ChevronLeft, ChevronDown, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings, BriefcaseBusinessIcon } from "lucide-react";
+import { ArrowRight, Search, Info, ChevronLeft, ChevronDown, SparkleIcon, Filter, Clock, Zap, X, Factory, Scroll, FilterX, Loader2, Map, BookmarkIcon, Edit2, Settings, BriefcaseBusinessIcon, Check } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -877,6 +877,137 @@ export default function JobPostingsPage() {
     router.push('/job-postings', { shallow: true });
     setPreviewJobId(null);
   };
+  const fetchBookmarkedJobs = useCallback(async () => {
+    if (!user) return;
+
+    setDataLoading(true);
+    try {
+      const response = await fetch('/api/dashboard/bookmarked-jobs', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+        cache: 'force-cache',
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
+      const bookmarkedJobs = await response.json();
+      setData(bookmarkedJobs);
+      setCount(bookmarkedJobs.length);
+    } catch (err) {
+      console.error('Error fetching bookmarked jobs:', err);
+    } finally {
+      setDataLoading(false);
+      setPageLoading(false);
+    }
+  }, [user]);
+
+    useEffect(() => {
+      const controller = new AbortController();
+      lastRequestRef.current = controller;
+  
+      async function storeResponseInLocalStorage(route_location, route_response) {
+        try {
+          // Purge old data from localStorage
+          Object.keys(localStorage).forEach(key => {
+            try {
+              const item = JSON.parse(localStorage.getItem(key));
+              if (item.timestamp && Date.now() - item.timestamp > 60 * 60 * 1000) { // 1 hour
+                localStorage.removeItem(key);
+              }
+            } catch (e) {
+              // Skip non-JSON items
+            }
+          });
+  
+          const compressed = await compressData(route_response);
+          if (!compressed) return;
+  
+          const { encrypted, key } = encryptData(compressed);
+          if (!encrypted || !key) return;
+  
+          localStorage.setItem(route_location, JSON.stringify({
+            data: encrypted,
+            key,
+            compressed: true,
+            timestamp: Date.now()
+          }));
+        } catch (error) {
+          if (error.name === 'QuotaExceededError') {
+            // console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
+          } else {
+            console.error("Error storing encrypted response in local storage:", error);
+          }
+        }
+      }
+  
+      async function fetchData() {
+        if (currentPage === 1) {
+          setData([]);
+          setInitialLoading(true);
+        }
+        setDataLoading(true);
+  
+        try {
+          if (saved) {
+            await fetchBookmarkedJobs();
+            return;
+          }
+  
+          const searchParams = new URLSearchParams();
+          if (title) searchParams.append('title', title);
+          if (experienceLevel) searchParams.append('experienceLevel', experienceLevel);
+          if (location) searchParams.append('location', location);
+          if (company) searchParams.append('company', company);
+          searchParams.append('strictSearch', strictSearch.toString());
+          searchParams.append('page', currentPage.toString());
+          searchParams.append('limit', limit.toString());
+          if (keywords) searchParams.append('keywords', keywords);
+  
+          try {
+            const [jobsResult, countResult] = await Promise.all([
+              getJobPostings(searchParams),
+              getJobPostingsCount(searchParams)
+            ]);
+  
+            if (jobsResult?.ok) {
+              const newJobs = jobsResult?.jobPostings || [];
+              setHasMore(newJobs.length === limit);
+              setData(prevData => currentPage === 1 ? newJobs : [...prevData, ...newJobs]);
+              setCount(countResult?.count || 0);
+            } else {
+              console.error('Error fetching jobs:', jobsResult.error);
+            }
+          } catch (error) {
+            console.error('Error fetching job data:', error);
+          }
+  
+          setDataLoading(false);
+        } catch (err) {
+          if (err.name !== "AbortError") console.error("Error:", err);
+        } finally {
+          setInitialLoading(false);
+          setIsLoading(false);
+        }
+      }
+  
+      fetchData();
+  
+      return () => {
+        controller.abort();
+      };
+    }, [
+      user,
+      authLoading,
+      currentPage,
+      title,
+      experienceLevel,
+      location,
+      company,
+      strictSearch,
+      saved,
+      fetchBookmarkedJobs,
+      keywords // Add keywords to dependency array
+    ]);
 
     useEffect(() => {
         const cid = searchParams.get('cid');
@@ -1068,29 +1199,6 @@ export default function JobPostingsPage() {
     }
   };
 
-  const fetchBookmarkedJobs = useCallback(async () => {
-    if (!user) return;
-
-    setDataLoading(true);
-    try {
-      const response = await fetch('/api/dashboard/bookmarked-jobs', {
-        headers: {
-          'Authorization': `Bearer ${user.token}`,
-        },
-        cache: 'force-cache',
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch bookmarked jobs');
-      const bookmarkedJobs = await response.json();
-      setData(bookmarkedJobs);
-      setCount(bookmarkedJobs.length);
-    } catch (err) {
-      console.error('Error fetching bookmarked jobs:', err);
-    } finally {
-      setDataLoading(false);
-      setPageLoading(false);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!dataLoading && user) {
@@ -1384,137 +1492,6 @@ export default function JobPostingsPage() {
     };
   }, [handleScroll]);
   useRef(true);
-  useEffect(() => {
-    const controller = new AbortController();
-    lastRequestRef.current = controller;
-
-    async function storeResponseInLocalStorage(route_location, route_response) {
-      try {
-        // Purge old data from localStorage
-        Object.keys(localStorage).forEach(key => {
-          try {
-            const item = JSON.parse(localStorage.getItem(key));
-            if (item.timestamp && Date.now() - item.timestamp > 60 * 60 * 1000) { // 1 hour
-              localStorage.removeItem(key);
-            }
-          } catch (e) {
-            // Skip non-JSON items
-          }
-        });
-
-        const compressed = await compressData(route_response);
-        if (!compressed) return;
-
-        const { encrypted, key } = encryptData(compressed);
-        if (!encrypted || !key) return;
-
-        localStorage.setItem(route_location, JSON.stringify({
-          data: encrypted,
-          key,
-          compressed: true,
-          timestamp: Date.now()
-        }));
-      } catch (error) {
-        if (error.name === 'QuotaExceededError') {
-          // console.error("LocalStorage quota exceeded. Consider clearing some space or optimizing data size.");
-        } else {
-          console.error("Error storing encrypted response in local storage:", error);
-        }
-      }
-    }
-
-    async function isDataInLocalStorage(route_location) {
-      try {
-        const storedData = localStorage.getItem(route_location);
-        if (!storedData) return null;
-
-        const { data: encrypted, key, compressed, timestamp } = JSON.parse(storedData);
-        if (!encrypted || !key) return null;
-
-        // Check if data is older than 1 hour
-        if (Date.now() - timestamp > 60 * 60 * 1000) {
-          localStorage.removeItem(route_location);
-          return null;
-        }
-
-        const decrypted = decryptData(encrypted, key);
-        if (!decrypted) return null;
-
-        return compressed ? await decompressData(decrypted) : decrypted;
-      } catch (error) {
-        console.error("Error checking encrypted local storage:", error);
-        return null;
-      }
-    }
-
-    async function fetchData() {
-      if (currentPage === 1) {
-        setData([]);
-        setInitialLoading(true);
-      }
-      setDataLoading(true);
-
-      try {
-        if (saved) {
-          await fetchBookmarkedJobs();
-          return;
-        }
-
-        const searchParams = new URLSearchParams();
-        if (title) searchParams.append('title', title);
-        if (experienceLevel) searchParams.append('experienceLevel', experienceLevel);
-        if (location) searchParams.append('location', location);
-        if (company) searchParams.append('company', company);
-        searchParams.append('strictSearch', strictSearch.toString());
-        searchParams.append('page', currentPage.toString());
-        searchParams.append('limit', limit.toString());
-        if (keywords) searchParams.append('keywords', keywords);
-
-        try {
-          const [jobsResult, countResult] = await Promise.all([
-            getJobPostings(searchParams),
-            getJobPostingsCount(searchParams)
-          ]);
-
-          if (jobsResult?.ok) {
-            const newJobs = jobsResult?.jobPostings || [];
-            setHasMore(newJobs.length === limit);
-            setData(prevData => currentPage === 1 ? newJobs : [...prevData, ...newJobs]);
-            setCount(countResult?.count || 0);
-          } else {
-            console.error('Error fetching jobs:', jobsResult.error);
-          }
-        } catch (error) {
-          console.error('Error fetching job data:', error);
-        }
-
-        setDataLoading(false);
-      } catch (err) {
-        if (err.name !== "AbortError") console.error("Error:", err);
-      } finally {
-        setInitialLoading(false);
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-
-    return () => {
-      controller.abort();
-    };
-  }, [
-    user,
-    authLoading,
-    currentPage,
-    title,
-    experienceLevel,
-    location,
-    company,
-    strictSearch,
-    saved,
-    fetchBookmarkedJobs,
-    keywords // Add keywords to dependency array
-  ]);
 
   // Clear stored data when search parameters change
   useEffect(() => {
@@ -1619,7 +1596,9 @@ export default function JobPostingsPage() {
         </Suspense>
         <div className="z-0">
           <div className="flex py-4 items-center gap-2">
+            <Suspense fallback={<div>Loading...</div>}>
             <TrendingJobCards />
+            </Suspense>
           </div>     
 
 

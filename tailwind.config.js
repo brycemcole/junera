@@ -8,6 +8,13 @@ module.exports = {
 	],
 	theme: {
 		extend: {
+			borderRadius: {
+				'tremor-small': '0.375rem',
+				'tremor-full': '9999px',
+			  },
+			  fontSize: {
+				'tremor-label': ['0.75rem'],
+			  },
 			colors: {
 				customGreen: 'hsl(166, 43%, 16%)',
 				background: 'hsl(var(--background))',

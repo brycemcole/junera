@@ -325,7 +325,7 @@ export default function DashboardPage() {
         </p>
       </section>
 
-      <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 grid-cols-1 gap-6">
         {/* Featured Bookmark Section */}
         <Suspense fallback={<Skeleton />}>
           <Card className="border-none shadow-none col-span-2 lg:col-span-3 relative">

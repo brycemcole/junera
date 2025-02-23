@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ViewStatusIndicator({ jobId, onViewStatusChange }) {
     const [isViewed, setIsViewed] = useState(false);
     const { user } = useAuth();
+    const componentRef = useRef(null);
+    const [hasChecked, setHasChecked] = useState(false);
 
     useEffect(() => {
-        // Check initial view status
+        if (!componentRef.current || !user || hasChecked) return;
+
         const checkViewStatus = async () => {
             try {
                 const response = await fetch(`/api/job-postings/${jobId}/view-status`, {
@@ -18,13 +21,27 @@ export default function ViewStatusIndicator({ jobId, onViewStatusChange }) {
                 });
                 const data = await response.json();
                 setIsViewed(data.isViewed);
+                setHasChecked(true);
             } catch (error) {
                 console.error('Error checking view status:', error);
             }
         };
 
-        if (user)
-        checkViewStatus();
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const [entry] = entries;
+                if (entry.isIntersecting && !hasChecked) {
+                    checkViewStatus();
+                }
+            },
+            {
+                root: null,
+                rootMargin: '50px',
+                threshold: 0.1
+            }
+        );
+
+        observer.observe(componentRef.current);
 
         // Listen for view status changes
         const handleJobViewed = (event) => {
@@ -36,9 +53,10 @@ export default function ViewStatusIndicator({ jobId, onViewStatusChange }) {
         window.addEventListener('jobViewed', handleJobViewed);
 
         return () => {
+            observer.disconnect();
             window.removeEventListener('jobViewed', handleJobViewed);
         };
-    }, [jobId, user]);
+    }, [jobId, user, hasChecked]);
 
-    return onViewStatusChange(isViewed);
+    return <div ref={componentRef}>{onViewStatusChange(isViewed)}</div>;
 }

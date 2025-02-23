@@ -29,38 +29,36 @@ export async function GET(request) {
       console.error('Error triggering job processing:', error);
     }
 
-    // Get matches with detailed job information and proper ordering
+    // Get matches from agent_tasks with job information
     const results = await query(`
       SELECT 
-        ap.id as match_id,
-        ap.is_match,
-        ap.match_reason,
-        ap.confidence_score,
-        ap.processed_at,
-        j.id as job_id,
-        j.title,
-        j.company,
-        j.location,
-        j.description,
-        j.created_at,
-        j.experience_level,
-        j.employment_type,
-        j.salary_min,
-        j.salary_max
-      FROM agent_progress ap
-      JOIN jobPostings j ON ap.job_id = j.id
-      WHERE ap.user_id = $1
-      AND ap.is_match = true
+        at.id as match_id,
+        at.search_title,
+        at.search_location,
+        at.search_experience_level,
+        at.agent_notes[array_upper(at.agent_notes, 1)] as latest_note,
+        j.*
+      FROM agent_tasks at
+      CROSS JOIN UNNEST(at.processed_job_ids) WITH ORDINALITY AS job_id_arr(job_id, idx)
+      JOIN jobPostings j ON j.job_id = job_id_arr.job_id
+      WHERE at.user_id = $1
+      AND at.agent_notes[job_id_arr.idx] ILIKE '%good match%'
       ORDER BY 
-        ap.confidence_score DESC,
-        j.created_at DESC,
-        ap.processed_at DESC
+        job_id_arr.idx DESC,
+        j.created_at DESC
       LIMIT 50
     `, [userId]);
 
+    // Transform the results to match expected format
+    const matches = results.rows.map(row => ({
+      ...row,
+      match_reason: row.latest_note,
+      confidence_score: 0.8 // Default confidence score since we don't store this
+    }));
+
     return NextResponse.json({ 
-      matches: results.rows,
-      count: results.rows.length
+      matches,
+      count: matches.length
     });
   } catch (error) {
     console.error('Error fetching agent matches:', error);

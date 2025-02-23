@@ -140,23 +140,14 @@ export function NavbarMenu() {
           <NavigationMenuTrigger className="bg-transparent">Profile</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid gap-3 p-6 z-100 opacity-100 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-              <li className="row-span-3">
-                <NavigationMenuLink asChild>
-                  <Link href="/" className="flex h-full w-full select-none flex-col justify-end rounded-md bg-emerald-50 dark:bg-emerald-950/50 from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md">
-                    <div className="mb-2 mt-4 text-lg font-medium">
-                      {user.username}
-                    </div>
-                    <p className="text-sm leading-tight text-muted-foreground">
-
-                    </p>
-                    </Link>
-                </NavigationMenuLink>
-              </li>
               {!loading && user && user.username && (
               <ListItem href="/profile" title="Profile">
                 {user.username}&apos;s profile
               </ListItem>
               )}
+              <ListItem href="/agents" title="Agents">
+                Configure agents to find jobs for you
+              </ListItem>
               <ListItem href="/notifications" title="Notifications">
                 View your notifications
               </ListItem>

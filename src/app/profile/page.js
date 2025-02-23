@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import GitHubCalendar from 'react-github-calendar'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { differenceInYears, differenceInMonths, parseISO } from 'date-fns';
+import { FilterBadge } from "@/components/ui/filter-button";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -248,6 +249,13 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { toast } = useToast();
+
+    const [skillsMap, setSkillsMap] = useState({
+        profile: [],
+        job: {},
+        project: {},
+        education: {}
+    });
 
     const profileFields = [
         {
@@ -1012,6 +1020,113 @@ export default function ProfilePage() {
         }
     }, [user, authLoading, router]);
 
+    useEffect(() => {
+        const fetchSkills = async () => {
+            try {
+                const response = await fetch('/api/user/skills', {
+                    headers: {
+                        'Authorization': `Bearer ${user.token}`,
+                    },
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch skills');
+                
+                const { skills } = await response.json();
+                
+                // Organize skills by entity type and ID
+                const organized = skills.reduce((acc, skill) => {
+                    if (skill.entity_type === 'profile') {
+                        acc.profile.push(skill);
+                    } else {
+                        if (!acc[skill.entity_type][skill.entity_id]) {
+                            acc[skill.entity_type][skill.entity_id] = [];
+                        }
+                        acc[skill.entity_type][skill.entity_id].push(skill);
+                    }
+                    return acc;
+                }, { profile: [], job: {}, project: {}, education: {} });
+
+                setSkillsMap(organized);
+            } catch (err) {
+                console.error('Error fetching skills:', err);
+            }
+        };
+
+        if (user) {
+            fetchSkills();
+        }
+    }, [user]);
+
+    const handleSkillAdd = async (skillName, entityType = 'profile', entityId = null) => {
+        try {
+            const response = await fetch('/api/user/skills', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    skill_name: skillName,
+                    entity_type: entityType,
+                    entity_id: entityId
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to add skill');
+
+            const newSkill = await response.json();
+            
+            setSkillsMap(prev => {
+                const updated = { ...prev };
+                if (entityType === 'profile') {
+                    updated.profile = [...updated.profile, { id: newSkill.id, skill_name: skillName }];
+                } else {
+                    if (!updated[entityType][entityId]) {
+                        updated[entityType][entityId] = [];
+                    }
+                    updated[entityType][entityId] = [...updated[entityType][entityId], { id: newSkill.id, skill_name: skillName }];
+                }
+                return updated;
+            });
+
+            // Remove the profile update since we're now using entity_skills exclusively
+            toast({ title: 'Success', description: 'Skill added successfully' });
+        } catch (err) {
+            console.error('Error adding skill:', err);
+            toast({ title: 'Error', description: 'Failed to add skill', variant: 'destructive' });
+        }
+    };
+
+    const handleSkillDelete = async (skillId, entityType, entityId = null) => {
+        try {
+            const response = await fetch('/api/user/skills', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: skillId }),
+            });
+
+            if (!response.ok) throw new Error('Failed to delete skill');
+
+            setSkillsMap(prev => {
+                const updated = { ...prev };
+                if (entityType === 'profile') {
+                    updated.profile = updated.profile.filter(s => s.id !== skillId);
+                } else {
+                    updated[entityType][entityId] = updated[entityType][entityId].filter(s => s.id !== skillId);
+                }
+                return updated;
+            });
+
+            toast({ title: 'Success', description: 'Skill deleted successfully' });
+        } catch (err) {
+            console.error('Error deleting skill:', err);
+            toast({ title: 'Error', description: 'Failed to delete skill', variant: 'destructive' });
+        }
+    };
+
     if (authLoading || loading) {
         return <LoadingState />;
     }
@@ -1249,6 +1364,158 @@ export default function ProfilePage() {
                     </div>
                 </div>
             )}
+
+            {/* Skills */}
+            <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-md font-semibold">Skills</h2>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            const skill = prompt('Enter a new skill:');
+                            if (skill) handleSkillAdd(skill.trim());
+                        }}
+                    >
+                        <PlusCircle size={14} />
+                    </Button>
+                </div>
+
+                {/* Profile Skills */}
+                                {skillsMap.profile.length > 0 && (
+                                    <div className="mb-4">
+                                        <div className="flex flex-wrap gap-2">
+                                            {skillsMap.profile.map((skill) => (
+                                                <FilterBadge
+                                                    key={skill.id}
+                                                    label={skill.skill_name}
+                                                    onRemove={() => handleSkillDelete(skill.id, 'profile')}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Experience Skills */}
+                {Object.entries(skillsMap.job).map(([jobId, skills]) => {
+                    const job = profile.experience?.find(e => e.id === parseInt(jobId));
+                    if (!job || !skills.length) return null;
+                    
+                    return (
+                        <div key={jobId} className="mb-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-sm text-muted-foreground mb-2">{job.job_title} at {job.company_name}</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const skill = prompt('Enter a new skill:');
+                                        if (skill) handleSkillAdd(skill.trim(), 'job', parseInt(jobId));
+                                    }}
+                                >
+                                    <PlusCircle size={14} />
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {skills.map((skill) => (
+                                    <div key={skill.id} 
+                                        className="group inline-flex items-center rounded-md bg-secondary px-2 py-1 text-sm">
+                                        {skill.skill_name}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="ml-1 h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                                            onClick={() => handleSkillDelete(skill.id, 'job', parseInt(jobId))}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Project Skills */}
+                {Object.entries(skillsMap.project).map(([projectId, skills]) => {
+                    const project = profile.projects?.find(p => p.id === parseInt(projectId));
+                    if (!project || !skills.length) return null;
+                    
+                    return (
+                        <div key={projectId} className="mb-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-sm text-muted-foreground mb-2">{project.project_name}</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const skill = prompt('Enter a new skill:');
+                                        if (skill) handleSkillAdd(skill.trim(), 'project', parseInt(projectId));
+                                    }}
+                                >
+                                    <PlusCircle size={14} />
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {skills.map((skill) => (
+                                    <div key={skill.id} 
+                                        className="group inline-flex items-center rounded-md bg-secondary px-2 py-1 text-sm">
+                                        {skill.skill_name}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="ml-1 h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                                            onClick={() => handleSkillDelete(skill.id, 'project', parseInt(projectId))}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Education Skills */}
+                {Object.entries(skillsMap.education).map(([educationId, skills]) => {
+                    const education = profile.education?.find(e => e.id === parseInt(educationId));
+                    if (!education || !skills.length) return null;
+                    
+                    return (
+                        <div key={educationId} className="mb-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-sm text-muted-foreground mb-2">{education.degree} in {education.field_of_study}</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const skill = prompt('Enter a new skill:');
+                                        if (skill) handleSkillAdd(skill.trim(), 'education', parseInt(educationId));
+                                    }}
+                                >
+                                    <PlusCircle size={14} />
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {skills.map((skill) => (
+                                    <div key={skill.id} 
+                                        className="group inline-flex items-center rounded-md bg-secondary px-2 py-1 text-sm">
+                                        {skill.skill_name}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="ml-1 h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                                            onClick={() => handleSkillDelete(skill.id, 'education', parseInt(educationId))}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
             {/* Integrations */}
             <div className="mb-8">
