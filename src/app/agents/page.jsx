@@ -439,15 +439,6 @@ export default function AgentsPage() {
                         <h2 className="text-md font-[family-name:var(--font-geist-sans)] font-medium">
                             Agent Notes
                         </h2>
-                        {sortBy !== 'all' && (
-                            <Badge className={`${
-                                sortBy === 'high' ? 'bg-green-500/10 text-green-700' :
-                                sortBy === 'medium' ? 'bg-yellow-500/10 text-yellow-700' :
-                                'bg-orange-500/10 text-orange-700'
-                            }`}>
-                                {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} Matches Only
-                            </Badge>
-                        )}
                     </div>
                     <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger className="w-[180px]">
@@ -469,6 +460,17 @@ export default function AgentsPage() {
                         </SelectContent>
                     </Select>
                 </div>
+                {sortBy !== 'all' && (
+                    <div className="mb-4">
+                            <Badge className={`${
+                                sortBy === 'high' ? 'bg-green-500/10 text-green-700 border-green-500' :
+                                sortBy === 'medium' ? 'bg-yellow-500/10 text-yellow-700 border-yellow-500' :
+                                'bg-orange-500/10 text-orange-700 border-orange-500'
+                            }`}>
+                                {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} Matches Only
+                            </Badge>
+                            </div>
+                        )}
 
                 {displayedNotes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">

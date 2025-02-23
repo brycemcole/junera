@@ -86,10 +86,18 @@ const SimilarJobs = ({ jobTitle, experienceLevel }) => {
     fetchSimilarJobs();
   }, [jobTitle, experienceLevel]);
 
-  if (loading) return <div>Loading similar jobs...</div>;
+  if (loading) return (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+      ))}
+    </div>
+  );
 
   return (
-    <JobList data={similarJobs} loading={loading} error={error} />
+    <div className="w-full overflow-x-hidden">
+      <JobList data={similarJobs} loading={loading} error={error} />
+    </div>
   );
 };
 
@@ -114,11 +122,18 @@ const CompanySimilarJobs = ({ company }) => {
     fetchSimilarJobs();
   }, [company]);
 
-  if (loading) return <div>Loading similar jobs...</div>;
+  if (loading) return (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+      ))}
+    </div>
+  );
 
   return (
-    <JobList data={similarJobs} loading={loading} error={error} />
-
+    <div className="w-full overflow-x-hidden">
+      <JobList data={similarJobs} loading={loading} error={error} />
+    </div>
   );
 };
 
@@ -205,275 +220,230 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
 };
 
 // New Components
-const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSummarizationQuery, keywords, isViewed }) => {
-  const { user } = useAuth();
-  const [agentNote, setAgentNote] = useState(null);
-
-  useEffect(() => {
-    const fetchAgentNote = async () => {
-      if (!user || !id) return;
-      try {
-        const response = await fetch(`/api/agent-notes/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${user.token}`
-          }
-        });
-        const data = await response.json();
-        console.log(data.data);
-        if (data.success && data.data) {
-          setAgentNote(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching agent note:', error);
-      }
-    };
-
-    fetchAgentNote();
-  }, [id, user]);
-
+const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSummarizationQuery, keywords, isViewed, agentNote, showFullAnalysis, setShowFullAnalysis }) => {
   const getMatchScoreColor = (score) => {
-    if (!score) return 'border-gray-600/20 bg-gray-500/10 text-gray-600';
+    if (!score) return 'text-muted-foreground';
     
     switch (score.toLowerCase()) {
       case 'high':
-        return 'border-green-600/20 bg-green-500/10 text-green-600';
+        return 'text-green-600';
       case 'medium':
-        return 'border-yellow-600/20 bg-yellow-500/10 text-yellow-600';
+        return 'text-yellow-600';
       case 'low':
-        return 'border-orange-600/20 bg-orange-500/10 text-orange-600';
+        return 'text-orange-600';
       default:
-        return 'border-gray-600/20 bg-gray-500/10 text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
   return (
-    <div className="bg-transparent rounded-lg mb-4">
-      <div className="flex items-start justify-between gap-4 mb-5">
-        <div className="flex-grow">
-          <div className="flex items-center gap-4 mb-4">
-            <Avatar alt={jobPosting.company} className="h-10 w-10 sm:w-14 sm:h-14 rounded-lg flex-shrink-0" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
-              <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-              <AvatarFallback className="rounded-lg">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div>
-              <Link
-                href={`/companies/${jobPosting.company}`}
-                className="text-md font-semibold text-foreground/80 hover:underline underline-offset-4"
-              >
-                {jobPosting.company}
-              </Link>
-              <h1 className="text-2xl font-bold tracking-tight"> {/* Increased font size */}
-                {jobPosting.title}
-              </h1>
-            </div>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-6">
+        {/* Company Section */}
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 rounded-lg" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
+            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+            <AvatarFallback className="rounded-lg bg-muted">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <Link
+              href={`/companies/${jobPosting.company}`}
+              className="text-sm font-medium hover:underline"
+            >
+              {jobPosting.company}
+            </Link>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {jobPosting.title}
+            </h1>
           </div>
+        </div>
 
-          {agentNote && (
-            <div className={`mb-4 p-4 rounded-lg border ${getMatchScoreColor(agentNote.match_score)}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-4 w-4" />
-                <span className="font-medium">AI Agent Match</span>
-                <Badge variant="outline" className={getMatchScoreColor(agentNote.match_score)}>
-                  {agentNote.match_score} Match
-                </Badge>
-              </div>
-              <p className="text-sm">{agentNote.explanation}</p>
+        {/* Key Info Row */}
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          {jobPosting.location && (
+            <div className="flex items-center gap-2">
+              <MapPin size={14} />
+              <span>{jobPosting.location}</span>
             </div>
           )}
-
-          <div className="flex flex-wrap gap-2 mb-6 items-center">
-            {jobPosting.location && (
-              <Badge className="text-sm" variant="outline">
-                <MapPin size={12} className="text-emerald-500 mr-2" />
-                {jobPosting.location}
-              </Badge>
-            )}
-            {jobPosting?.experiencelevel != 'null' && (
-              <>
-            <Badge className="text-sm" variant="outline">
-            <PillStatus>
-                <BriefcaseBusiness size={12} className="mr-2" />
-              </PillStatus>
-              {jobPosting.experiencelevel}
-            </Badge>
-            <Badge className="text-sm flex flex-row items-center gap-2" variant="outline">
-
-        <PillIndicator variant="success" pulse />
-        Active
-      </Badge>
-      </>
-            )}
-            <Badge className="text-sm" variant="outline">
-        <TimerIcon size={12} className="text-emerald-500 mr-2" />
-        {formatDistanceToNow(jobPosting?.created_at, { addSuffix: false })}
-        </Badge>
-            <ViewStatusIndicator 
-              jobId={id}
-              onViewStatusChange={(isViewed) => (
-                <Badge className="text-sm mr-2" variant="outline">
-                  <Eye className="h-3 w-3 mr-2" />
-                  {isViewed ? 'Viewed' : 'Not viewed'}
-                </Badge>
-              )}
-            />
+          {jobPosting?.experiencelevel !== 'null' && (
+            <div className="flex items-center gap-2">
+              <BriefcaseBusiness size={14} />
+              <span>{jobPosting.experiencelevel}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <TimerIcon size={14} />
+            <span>{formatDistanceToNow(jobPosting?.created_at)} ago</span>
           </div>
-          <JobActions
-          jobPosting={jobPosting}
-          id={id}
-          handleApplyClick={handleApplyClick}
-          handleSummarizationQuery={handleSummarizationQuery}
-        />
-          {/* Keywords */}
-          {keywords && keywords.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-1">
-              {keywords.map((keyword, index) => (
-                <Link key={index} href={`/job-postings?keywords=${encodeURIComponent(keyword)}`}>
-                  <Badge className="text-sm text-green-800 border-green-600/20 bg-green-600/10 px-2 hover:bg-green-600/20 hover:border-green-600/30 transition-colors" variant="outline">
-                    {keyword}
-                  </Badge>
-                </Link>
-              ))}
+          {isViewed && (
+            <div className="flex items-center gap-2">
+              <Eye size={14} />
+              <span>Viewed</span>
             </div>
           )}
         </div>
+
+        {/* Agent Note Section */}
+        {agentNote && (
+          <div 
+            className="rounded-lg border bg-card text-card-foreground cursor-pointer transition-all"
+            onClick={() => setShowFullAnalysis(!showFullAnalysis)}
+          >
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Match Analysis</span>
+                  <Badge variant="secondary" className={getMatchScoreColor(agentNote.match_score)}>
+                    {agentNote.match_score} Match
+                  </Badge>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showFullAnalysis ? 'rotate-180' : ''}`} />
+                </Button>
+              </div>
+              {showFullAnalysis && (
+                <div className="mt-4 text-sm text-muted-foreground">
+                  {agentNote.explanation}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={jobPosting.source_url}
+            target="_blank"
+            onClick={handleApplyClick}
+          >
+            <Button className="gap-2">
+              Apply Now <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <BookmarkButton jobId={id} />
+          <ReportPopover jobId={id} />
+          <JobDropdown
+            handleSummarizationQuery={handleSummarizationQuery}
+            jobId={id}
+            title={jobPosting.title}
+            company={jobPosting.company}
+            companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
+            location={jobPosting.location}
+          />
+        </div>
+
+        {/* Keywords */}
+        {keywords && keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {keywords.slice(0, 5).map((keyword, index) => (
+              <Link key={index} href={`/job-postings?keywords=${encodeURIComponent(keyword)}`}>
+                <Badge variant="secondary" className="hover:bg-secondary/80">
+                  {keyword}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const JobActions = ({ jobPosting, id, handleApplyClick, handleSummarizationQuery }) => {
-  return (
-    <div className="flex flex-wrap items-left gap-2 mt-4 mb-8"> {/* Added margin bottom */}
-      <Link
-        href={jobPosting.source_url}
-        target="_blank"
-        onClick={handleApplyClick}
-        className="sm:flex-none relative"
-      >
-        <Button variant="outline" className="text-sm text-foreground">
-        Apply Now <ArrowRight className='h4 w-4' />
-        </Button>
-      
-      </Link>
-      <BookmarkButton jobId={id} />
-      <ReportPopover jobId={id} />
-      <JobDropdown
-        handleSummarizationQuery={handleSummarizationQuery}
-        jobId={id}
-        title={jobPosting.title}
-        company={jobPosting.company}
-        companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
-        location={jobPosting.location}
-      />
-    </div>
-  );
-};
-
-const JobFilters = ({ jobPosting }) => {
-  return (
-    <div className="flex flex-wrap gap-2 mt-4 mb-8"> {/* Added margin bottom */}
-      <Link href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&strictSearch=false`}>
-        <Button variant="outline" size="sm" className="text-sm hover:bg-green-500/10"> {/* Removed text-green-500 */}
-          <Telescope className="w-4 h-4 mr-2" /> {/* Removed text-green-500 */}
-          Similar Titles
-        </Button>
-      </Link>
-      {jobPosting.location && (
-        <>
-          <Link href={`/job-postings?location=${encodeURIComponent(getFullStateFromLocation(jobPosting.location))}`}>
-            <Button variant="outline" size="sm" className="text-sm hover:bg-green-500/10"> {/* Removed text-green-500 */}
-              <MapPin className="w-4 h-4 mr-2" /> {/* Removed text-green-500 */}
-              Jobs in {getFullStateFromLocation(jobPosting.location)}
-            </Button>
-          </Link>
-          <Link
-            href={`/job-postings?title=${encodeURIComponent(jobPosting.title.replace(/[()[\]{}]/g, '').replace(/\d+/g, ''))}&location=${encodeURIComponent(getFullStateFromLocation(jobPosting.location))}&strictSearch=false`}
-          >
-            <Button variant="outline" size="sm" className="text-sm hover:bg-green-500/10"> {/* Removed text-green-500 */}
-              <MapPin className="w-4 h-4 mr-2" /> {/* Removed text-green-500 */}
-              Similar Jobs Here
-            </Button>
-          </Link>
-        </>
-      )}
-      {jobPosting.experiencelevel && jobPosting.experiencelevel !== 'null' && (
-        <Link href={`/job-postings?experienceLevel=${encodeURIComponent(jobPosting.experiencelevel)}`}>
-          <Button variant="outline" size="sm" className="text-sm hover:bg-green-500/10"> {/* Removed text-green-500 */}
-            <Briefcase className="w-4 h-4 mr-2" /> {/* Removed text-green-500 */}
-            {jobPosting.experiencelevel} Jobs
-          </Button>
-        </Link>
-      )}
-      {jobPosting.company && (
-        <Link href={`/companies/${encodeURIComponent(jobPosting.company)}`}>
-          <Button variant="outline" size="sm" className="text-sm hover:bg-green-500/10"> {/* Removed text-green-500 */}
-            <Building2 className="w-4 h-4 mr-2" /> {/* Removed text-green-500 */}
-            More at {jobPosting.company}
-          </Button>
-        </Link>
-      )}
-    </div>
-  );
-};
-
 const JobSummary = ({ jobPosting, loadingLLMReponse, llmResponse, error }) => (
-  (jobPosting.summary || loadingLLMReponse || llmResponse) && (
-    <div className="mb-8"> {/* Added margin bottom */}
-      <Summarization
-        title="Summary"
-        message={llmResponse || jobPosting.summary}
-        loading={loadingLLMReponse}
-        error={error}
-      />
+  <div className="rounded-lg border bg-card">
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <h2 className="text-base font-semibold">Summary</h2>
+      </div>
+      
+      {loadingLLMReponse ? (
+        <div className="space-y-2">
+          <TextShimmer className="text-sm h-4 w-full">Generating summary...</TextShimmer>
+          <TextShimmer className="text-sm h-4 w-3/4">Please wait...</TextShimmer>
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="text-sm leading-relaxed text-foreground">
+            {llmResponse || jobPosting.summary}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            This content was generated by AI
+          </div>
+        </div>
+      )}
     </div>
-  )
+  </div>
 );
 
-const JobDescription = ({ jobPosting, user, loading }) => (
-  <div className="space-y-4 [&_strong]:font-semibold [&_strong]:text-foreground"> {/* Added margin top */}
-    <div type="single" className="w-full" defaultValue="item-description">
-      {[
-        { key: 'description', label: 'Job Description' }
-
-      ].map(({ key, label }) => (
-        <div key={key}>
-          <span className="flex flex-row mb-2 gap-4 items-center">
-            <strong>{label}</strong>
-          </span>
-          <p className="leading-loose text-md break-words text-foreground dark:text-neutral-300">
-            <div
-              className="space-y-2"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(stripHTML(decodeHTMLEntities(jobPosting[key]))),
-              }}
-            />
-
-          </p>
-        </div>
-      ))}
+const JobDescription = ({ jobPosting }) => (
+  <div className="rounded-lg border bg-card">
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Text className="h-4 w-4 text-primary" />
+        <h2 className="text-base font-semibold">Job Description</h2>
+      </div>
+      <div 
+        className="text-sm leading-relaxed text-foreground space-y-4"
+        dangerouslySetInnerHTML={{
+          __html: DOMPurify.sanitize(
+            stripHTML(decodeHTMLEntities(jobPosting.description))
+          ),
+        }}
+      />
     </div>
   </div>
 );
 
 const SimilarJobsSection = ({ jobPosting }) => (
-  <Suspense fallback={<div>Loading similar jobs...</div>}>
-    <span className="flex flex-row mb-2 gap-4 items-center">
-      <Telescope size={16} strokeWidth={2} className="text-foreground" />
-      <h2 className="text-md font-semibold text-foreground">Similar Jobs</h2>
-    </span>
-    <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
-  </Suspense>
+  <div className="rounded-lg border bg-card">
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Telescope size={16} className="text-primary" />
+        <h2 className="text-base font-semibold">Similar Jobs</h2>
+      </div>
+      <div className="w-full overflow-x-hidden">
+        <Suspense fallback={
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        }>
+          <SimilarJobs jobTitle={jobPosting.title} experienceLevel={jobPosting.experienceLevel ?? ""} />
+        </Suspense>
+      </div>
+    </div>
+  </div>
 );
 
 const CompanyJobsSection = ({ jobPosting }) => (
-  <Suspense fallback={<div>Loading jobs at {jobPosting.company}...</div>}>
-    <span className="flex flex-row mb-2 gap-4 items-center">
-      <Telescope size={16} strokeWidth={2} className="text-foreground" />
-      <h2 className="text-md font-semibold text-foreground">More Jobs at {jobPosting.company}</h2>
-    </span>
-
-    <CompanySimilarJobs company={jobPosting.company} />
-  </Suspense>
+  <div className="rounded-lg border bg-card">
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Building2 size={16} className="text-primary" />
+        <h2 className="text-base font-semibold">More at {jobPosting.company}</h2>
+      </div>
+      <div className="w-full overflow-x-hidden">
+        <Suspense fallback={
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        }>
+          <CompanySimilarJobs company={jobPosting.company} />
+        </Suspense>
+      </div>
+    </div>
+  </div>
 );
 
 const MarkdownContent = ({ content }) => {
@@ -610,73 +580,70 @@ const JobFitAnalysis = ({ jobPosting }) => {
   };
 
   return (
-    <div className="mt-8 mb-8">
-      <div className="flex items-center justify-between mb-4">
-        {!analysis.explanation && !loading && (
-          <>
-            <div className="rounded-lg border flex flex-row justify-between px-4 w-full py-3 mb-2">
-              <span className="flex flex-row gap-4 items-center">
-                <h2 className="text-md font-semibold text-foreground">Job Fit Analysis</h2>
-              </span>
-              <Button
-                onClick={handleAnalyze}
-                disabled={loading || !user}
-                className="text-green-600 bg-green-500/10 border border-green-600/20 hover:bg-green-500/20 hover:text-green-500"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Fit Analysis
-                  </>
-                )}
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+    <div className="space-y-4">
+      {!analysis.explanation && !loading && (
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-base font-semibold">Job Fit Analysis</span>
+          </div>
+          <Button
+            onClick={handleAnalyze}
+            disabled={loading || !user}
+            variant="outline"
+            className="gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Analyze Fit
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {!user && (
-        <div className="rounded-lg border border-green-600/30 bg-green-500/20 px-4 py-3 mb-4">
-          <p className="text-sm leading-relaxed">
-            <InfoIcon className="-mt-0.5 me-3 inline-flex text-green-500" size={16} strokeWidth={2} />
-            Log in to unlock a personalized job fit analysis based on your profile. <Link href="/login" className="text-green-600 hover:underline">Login here.</Link>
+        <div className="rounded-lg border bg-muted/50 p-4">
+          <p className="text-sm flex items-center gap-2">
+            <InfoIcon className="h-4 w-4 text-primary" />
+            <span className="text-foreground">
+              <Link href="/login" className="font-medium hover:underline">Log in</Link>
+              {" "}to unlock a personalized job fit analysis based on your profile.
+            </span>
           </p>
         </div>
       )}
 
       {loading && !analysis.explanation && (
-        <TextShimmer className='text-sm' duration={1}>
-          Analyzing your profile fit...
-        </TextShimmer>
+        <div className="p-4">
+          <TextShimmer className="text-sm">Analyzing your profile fit...</TextShimmer>
+        </div>
       )}
 
       {error && (
-        <div className="text-red-500">Error: {error}</div>
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
       )}
 
       {analysis.explanation && analysis.explanation.trim() !== '' && (
-        <div className={`rounded-lg border p-6 ${analysis.worthy_apply
-          ? 'border-green-600/20 bg-green-500/5'
-          : analysis.worthy_apply === false
-            ? 'border-yellow-600/20 bg-yellow-500/5'
-            : 'border-gray-600/20 bg-gray-500/5'
-          }`}>
+        <div className="rounded-lg border bg-card p-4 space-y-3">
           {analysis.worthy_apply !== null && (
-            <div className="mb-4">
-              <Badge variant="outline" className={analysis.worthy_apply
+            <Badge variant="outline" className={
+              analysis.worthy_apply
                 ? 'border-green-600/20 bg-green-500/10 text-green-600'
                 : 'border-yellow-600/20 bg-yellow-500/10 text-yellow-600'
-              }>
-                {analysis.worthy_apply ? 'Recommended to Apply' : 'Consider Requirements'}
-              </Badge>
-            </div>
+            }>
+              {analysis.worthy_apply ? 'Recommended to Apply' : 'Consider Requirements'}
+            </Badge>
           )}
-          <div className="space-y-2 leading-loose text-md break-words text-foreground dark:text-neutral-300">
+          <div className="text-sm leading-relaxed text-foreground">
             {analysis.explanation}
           </div>
         </div>
@@ -691,6 +658,8 @@ export default function JobPostingPage({ params }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [agentNote, setAgentNote] = useState(null);
+  const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [insightsShown, setInsightsShown] = useState(false);
   const { user } = useAuth();
   const [showAlert, setShowAlert] = useState(false);
@@ -825,7 +794,23 @@ export default function JobPostingPage({ params }) {
     }
   };
 
-
+  // Add the fetchAgentNote function
+  const fetchAgentNote = async () => {
+    if (!user || !id) return;
+    try {
+      const response = await fetch(`/api/agent-notes/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setAgentNote(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching agent note:', error);
+    }
+  };
 
   // Combined useEffect for fetching both job data and user profile
   useEffect(() => {
@@ -897,6 +882,11 @@ export default function JobPostingPage({ params }) {
           signal: controller.signal
         }).then(res => res.json())
       );
+    }
+
+    // Add fetchAgentNote to the promises array if user exists
+    if (user?.token) {
+      fetchAgentNote();
     }
 
     Promise.all(promises)
@@ -994,70 +984,41 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 sm:pt-10 p-4 sm:p-6 max-w-6xl">
-        {/* Add structured job data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "JobPosting",
-              "title": jobPosting.title,
-              "description": stripHTML(decodeHTMLEntities(jobPosting.description)),
-              "datePosted": jobPosting.created_at,
-              "validThrough": new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              "employmentType": jobPosting.experienceLevel?.toUpperCase() || "FULL_TIME",
-              "hiringOrganization": {
-                "@type": "Organization",
-                "name": jobPosting.company,
-                "logo": jobPosting.company ? `https://logo.clearbit.com/${jobPosting.company.toLowerCase().replace(/[^a-z0-9]/g, '')}.com` : null
-              },
-              "jobLocation": {
-                "@type": "Place",
-                "address": {
-                  "@type": "PostalAddress",
-                  "addressRegion": jobPosting.location
-                }
-              },
-              "baseSalary": jobPosting.salary ? {
-                "@type": "MonetaryAmount",
-                "currency": "USD",
-                "value": {
-                  "@type": "QuantitativeValue",
-                  "value": jobPosting.salary
-                }
-              } : undefined
-            })
-          }}
-        />
-        <JobHeader
-          jobPosting={jobPosting}
-          companyJobCount={companyJobCount}
-          id={id}
-          handleApplyClick={handleApplyClick}
-          handleSummarizationQuery={handleSummarizationQuery}
-          keywords={keywords}
-          isViewed={isViewed}
-        />
-        <JobFitAnalysis jobPosting={jobPosting} />
-        <JobFilters jobPosting={jobPosting} />
-        <JobSummary
-          jobPosting={jobPosting}
-          loadingLLMReponse={loadingLLMReponse}
-          llmResponse={llmResponse}
-          error={llmError}  // Pass the renamed error state
-        />
-        <JobDescription jobPosting={jobPosting} user={user} loading={loading} />
-        <div className="flex flex-col space-y-2 mb-4">
-          <Link href={`/job-postings?explevel=${encodeURIComponent(jobPosting.experienceLevel)}&title=${encodeURIComponent(jobPosting.title)}&location=${encodeURIComponent(jobPosting.location)}&strictSearch=false`}>
-            <Button variant="link" size="sm" className="text-sm underline px-0">
-              See more similar jobs
-            </Button>
-          </Link>
-
+      <div className="container mx-auto py-4 sm:py-6 px-4 max-w-4xl">
+        <div className="space-y-6 md:space-y-8">
+          <JobHeader
+            jobPosting={jobPosting}
+            companyJobCount={companyJobCount}
+            id={id}
+            handleApplyClick={handleApplyClick}
+            handleSummarizationQuery={handleSummarizationQuery}
+            keywords={keywords}
+            isViewed={isViewed}
+            agentNote={agentNote}
+            showFullAnalysis={showFullAnalysis}
+            setShowFullAnalysis={setShowFullAnalysis}
+          />
+          
+          <div className="mt-6 md:mt-8">
+            {(!agentNote || agentNote?.match_score?.toLowerCase() !== 'high') && (
+              <JobFitAnalysis jobPosting={jobPosting} />
+            )}
+          </div>
+          
+          <JobSummary
+            jobPosting={jobPosting}
+            loadingLLMReponse={loadingLLMReponse}
+            llmResponse={llmResponse}
+            error={llmError}
+          />
+          
+          <JobDescription jobPosting={jobPosting} />
+          
+          <div className="space-y-6 md:space-y-8 w-full max-w-[100vw] overflow-hidden">
+            <SimilarJobsSection jobPosting={jobPosting} />
+            <CompanyJobsSection jobPosting={jobPosting} />
+          </div>
         </div>
-        <SimilarJobsSection jobPosting={jobPosting} />
-        <CompanyJobsSection jobPosting={jobPosting} />
       </div>
     </>
   );
