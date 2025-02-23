@@ -62,7 +62,7 @@ export default function Home() {
           Millions of job postings
         </h3>
         <p className="text-left w-full pb-4 text-sm text-muted-foreground font-[family-name:var(--font-geist-sans)]">
-          Here are some example job postings to give you an idea of what's available.
+          Here are some example job postings to give you an idea of what&apos;s available.
           </p>
         <ExampleJobPostings />
         <TotalJobs />
