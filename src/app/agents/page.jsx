@@ -1,25 +1,29 @@
 "use client";
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { redirect, useRouter } from 'next/navigation';
 import { LoaderCircle, Plus, ThumbsUp, Trash2 } from 'lucide-react';
-import { JobList } from "@/components/JobPostings";
+import { JobList } from '@/components/JobPostings';
 import { Button } from '@/components/ui/button';
-import { Card } from "@/components/ui/card";
 import { toast } from 'sonner';
+import { Card } from '@/components/ui/card';
+import ReactMarkdown from 'react-markdown';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PillIndicator } from '@/components/pill';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AgentsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -40,6 +44,41 @@ export default function AgentsPage() {
     const [loadingExplanation, setLoadingExplanation] = useState(null);
     const [detailedExplanation, setDetailedExplanation] = useState({});
     const [taskCounts, setTaskCounts] = useState({});
+    const [sortBy, setSortBy] = useState('all');
+    const [allNotes, setAllNotes] = useState([]);
+    const [displayedNotes, setDisplayedNotes] = useState([]);
+    const [totalPages, setTotalPages] = useState(1);
+
+    // Memoize the filtered notes to avoid unnecessary recalculations
+    const filteredNotes = React.useMemo(() => {
+        return sortBy === 'all' 
+            ? allNotes 
+            : allNotes.filter(note => note.match_score.toLowerCase() === sortBy.toLowerCase());
+    }, [allNotes, sortBy]);
+
+    // Update getSortedNotes to use memoized filtered notes
+    const getSortedNotes = React.useCallback(() => {
+        // Calculate total pages based on filtered results
+        const newTotalPages = Math.ceil(filteredNotes.length / limit);
+        if (totalPages !== newTotalPages) {
+            setTotalPages(newTotalPages);
+        }
+        
+        // Get the current page of filtered results
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        return filteredNotes.slice(startIndex, endIndex);
+    }, [filteredNotes, page, limit, totalPages]);
+
+    // Add match counts getter using allNotes instead of agentNotes
+    const getMatchCounts = () => {
+        return {
+            high: allNotes.filter(note => note.match_score.toLowerCase() === 'high').length,
+            medium: allNotes.filter(note => note.match_score.toLowerCase() === 'medium').length,
+            low: allNotes.filter(note => note.match_score.toLowerCase() === 'low').length,
+            all: allNotes.length
+        };
+    };
 
     // Keep the original useEffect for less frequent updates
     useEffect(() => {
@@ -129,6 +168,48 @@ export default function AgentsPage() {
         }
     }, [user, authLoading, page, limit]);
 
+    // Update useEffect to fetch all notes
+    useEffect(() => {
+        if (!authLoading && user) {
+            const fetchAllNotes = async () => {
+                try {
+                    const response = await fetch('/api/agent-notes/all', {
+                        headers: { 
+                            'Authorization': `Bearer ${user.token}`
+                        },
+                    });
+
+                    if (!response.ok) throw new Error('Failed to fetch agent notes');
+
+                    const data = await response.json();
+                    setAllNotes(data.data);
+                } catch (err) {
+                    console.error('Failed to fetch all notes:', err);
+                }
+            };
+
+            fetchAllNotes();
+            const updateIntervalId = setInterval(fetchAllNotes, 10000); // 10 seconds
+            return () => clearInterval(updateIntervalId);
+        }
+    }, [user, authLoading]);
+
+    // Update the effect to handle pagination updates more efficiently
+    useEffect(() => {
+        const paginatedNotes = getSortedNotes();
+        setDisplayedNotes(paginatedNotes);
+        
+        // If current page is beyond total pages, reset to page 1
+        if (page > totalPages && totalPages > 0) {
+            setPage(1);
+        }
+    }, [filteredNotes, page, getSortedNotes, totalPages]);
+
+    // Reset page when changing sort
+    useEffect(() => {
+        setPage(1);
+    }, [sortBy]);
+
     const handleCreateTask = async () => {
         try {
             const res = await fetch('/api/agent-tasks', {
@@ -173,28 +254,60 @@ export default function AgentsPage() {
 
     const handleExplainFurther = async (noteId) => {
         try {
-            // If we already have the explanation in state, just return
-            if (detailedExplanation[noteId]) {
-                return;
-            }
-
             setLoadingExplanation(noteId);
-            const res = await fetch(`/api/agent-notes/${noteId}/explain`, {
+            // Reset the explanation state for this note when starting a new request
+            setDetailedExplanation(prev => ({
+                ...prev,
+                [noteId]: ''
+            }));
+
+            const response = await fetch(`/api/agent-notes/${noteId}/explain`, {
                 headers: {
                     'Authorization': `Bearer ${user.token}`,
                 },
             });
 
-            if (!res.ok) throw new Error('Failed to get detailed explanation');
+            if (!response.ok) throw new Error('Failed to get detailed explanation');
 
-            const data = await res.json();
-            setDetailedExplanation(prev => ({
-                ...prev,
-                [noteId]: data.detailed
-            }));
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedExplanation = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') break;
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            if (parsed.content) {
+                                accumulatedExplanation += parsed.content;
+                                setDetailedExplanation(prev => ({
+                                    ...prev,
+                                    [noteId]: accumulatedExplanation
+                                }));
+                            }
+                        } catch (err) {
+                            console.error('Error parsing chunk:', err);
+                        }
+                    }
+                }
+            }
         } catch (err) {
             toast.error('Failed to get detailed explanation');
             console.error(err);
+            // Reset the loading state and clear any partial content on error
+            setDetailedExplanation(prev => ({
+                ...prev,
+                [noteId]: ''
+            }));
         } finally {
             setLoadingExplanation(null);
         }
@@ -214,7 +327,7 @@ export default function AgentsPage() {
     }
 
     return (
-        <div className="container mx-auto px-6 max-w-4xl">
+        <div className="container mx-auto px-6 max-w-6xl">
             <section className="mb-8">
                 <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
                     AI Job Agents
@@ -321,16 +434,49 @@ export default function AgentsPage() {
             </section>
 
             <section className="mb-8">
-                <h2 className="text-md font-[family-name:var(--font-geist-sans)] flex flex-row items-center justify-between font-medium mb-4">
-                    Agent Notes
-                    </h2>
-                {agentNotes.length === 0 ? (
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-md font-[family-name:var(--font-geist-sans)] font-medium">
+                            Agent Notes
+                        </h2>
+                        {sortBy !== 'all' && (
+                            <Badge className={`${
+                                sortBy === 'high' ? 'bg-green-500/10 text-green-700' :
+                                sortBy === 'medium' ? 'bg-yellow-500/10 text-yellow-700' :
+                                'bg-orange-500/10 text-orange-700'
+                            }`}>
+                                {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)} Matches Only
+                            </Badge>
+                        )}
+                    </div>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by match..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">
+                                All Matches <Badge variant="secondary" className="ml-2">{getMatchCounts().all}</Badge>
+                            </SelectItem>
+                            <SelectItem value="high">
+                                High Matches <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-700">{getMatchCounts().high}</Badge>
+                            </SelectItem>
+                            <SelectItem value="medium">
+                                Medium Matches <Badge variant="secondary" className="ml-2 bg-yellow-500/10 text-yellow-700">{getMatchCounts().medium}</Badge>
+                            </SelectItem>
+                            <SelectItem value="low">
+                                Low Matches <Badge variant="secondary" className="ml-2 bg-orange-500/10 text-orange-700">{getMatchCounts().low}</Badge>
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {displayedNotes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                         No agent notes found.
                     </p>
                 ) : (
                     <div className="grid gap-4">
-                        {agentNotes.map((note) => (
+                        {displayedNotes.map((note) => (
                             <Card key={note.id} className={`p-4 ${
                                 note.match_score === 'High' ? 'border-green-500/30 bg-green-500/10' :
                                 note.match_score === 'Medium' ? 'border-yellow-500/30 bg-yellow-500/10' :
@@ -366,26 +512,40 @@ export default function AgentsPage() {
                                                     )}
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="max-w-2xl">
-                                                <DialogHeader>
-                                                    <DialogTitle>Detailed Job Match Analysis</DialogTitle>
-                                                    <DialogDescription>
-                                                        In-depth breakdown of your fit for this role
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <div className="mt-4 space-y-4">
-                                                    {loadingExplanation === note.id ? (
-                                                        <div className="flex items-center justify-center py-8">
-                                                            <LoaderCircle className="w-6 h-6 animate-spin" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="prose prose-sm max-w-none">
-                                                            {detailedExplanation[note.id]?.split('\n').map((paragraph, i) => (
-                                                                <p key={i} className="mb-4 text-foreground" dangerouslySetInnerHTML={{ __html: paragraph }} />
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                            <DialogContent className="flex flex-col gap-0 p-0 sm:max-h-[min(640px,80vh)] sm:max-w-[800px] [&>button:last-child]:hidden">
+                                                <ScrollArea className="flex max-h-full flex-col overflow-hidden">
+                                                    <DialogHeader className="contents space-y-0 text-left">
+                                                        <DialogTitle className="px-6 pt-6">Job Match Analysis</DialogTitle>
+                                                        <DialogDescription asChild>
+                                                            <div className="p-6">
+                                                                <div className="prose prose-sm max-w-none dark:prose-invert [&_h2]:text-foreground [&_h3]:text-foreground [&_ul]:list-disc [&_ul]:pl-4 [&_p]:text-muted-foreground">
+                                                                    {loadingExplanation === note.id && !detailedExplanation[note.id] ? (
+                                                                        <div className="flex items-center gap-2 mb-4 text-muted-foreground">
+                                                                            <LoaderCircle className="w-4 h-4 animate-spin" />
+                                                                            <span>Analyzing your profile match...</span>
+                                                                        </div>
+                                                                    ) : null}
+                                                                    {detailedExplanation[note.id] ? (
+                                                                        <ReactMarkdown>
+                                                                            {detailedExplanation[note.id]}
+                                                                        </ReactMarkdown>
+                                                                    ) : !loadingExplanation ? (
+                                                                        <div className="text-muted-foreground">
+                                                                            Click &quot;Get Detailed Analysis&quot; to see an in-depth breakdown of your match with this role.
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+                                                            </div>
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <DialogFooter className="sticky bottom-0 border-t bg-background px-6 py-4 sm:justify-start">
+                                                        <DialogClose asChild>
+                                                            <Button type="button" variant="outline">
+                                                                Close
+                                                            </Button>
+                                                        </DialogClose>
+                                                    </DialogFooter>
+                                                </ScrollArea>
                                             </DialogContent>
                                         </Dialog>
                                         <Button
@@ -403,25 +563,28 @@ export default function AgentsPage() {
                         ))}
                     </div>
                 )}
+
                 <div className="flex justify-between items-center mt-4">
                     <Button
                         variant="outline"
                         disabled={page === 1}
                         onClick={() => {
-                            setPage(prev => Math.max(prev - 1, 1))
-                            // scroll to top
+                            setPage(prev => Math.max(prev - 1, 1));
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                     >
                         Previous
                     </Button>
-                    <span>Page {page}</span>
+                    <div className="flex flex-col items-center text-sm text-muted-foreground">
+                        <span>Page {page} of {totalPages}</span>
+                        <span>Showing {((page - 1) * limit) + 1}-{Math.min(page * limit, filteredNotes.length)} of {filteredNotes.length} {sortBy !== 'all' ? `${sortBy} matches` : 'matches'}</span>
+                    </div>
                     <Button
                         variant="outline"
+                        disabled={page >= totalPages}
                         onClick={() => {
-                            setPage(prev => prev + 1)
+                            setPage(prev => prev + 1);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
-
                         }}
                     >
                         Next
@@ -436,8 +599,6 @@ export default function AgentsPage() {
                         <Plus className="w-4 h-4" />
                     </Button>
                 </h2>
-
-            
             </section>
 
             <section>

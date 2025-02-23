@@ -50,6 +50,20 @@ async function getCompleteUserProfile(userId) {
             award_id, award_description
         FROM user_awards
         WHERE user_id = $1
+    ),
+    Skills AS (
+        SELECT 
+            entity_type,
+            entity_id,
+            json_agg(
+                json_build_object(
+                    'skill_name', skill_name,
+                    'created_at', created_at
+                )
+            ) as skills
+        FROM entity_skills
+        WHERE user_id = $1
+        GROUP BY entity_type, entity_id
     )
     SELECT 
         (SELECT row_to_json(UserInfo) FROM UserInfo) as userdata,
@@ -57,7 +71,11 @@ async function getCompleteUserProfile(userId) {
         (SELECT json_agg(Certifications) FROM Certifications) as certificationdata,
         (SELECT json_agg(WorkExperience) FROM WorkExperience) as experiencedata,
         (SELECT json_agg(Projects) FROM Projects) as projectdata,
-        (SELECT json_agg(Awards) FROM Awards) as awarddata;
+        (SELECT json_agg(Awards) FROM Awards) as awarddata,
+        (SELECT json_object_agg(
+            COALESCE(entity_type || '_' || COALESCE(entity_id::text, 'null'), entity_type),
+            skills
+        ) FROM Skills) as skills;
   `;
 
   const result = await query(queryText, [userId]);
@@ -65,14 +83,15 @@ async function getCompleteUserProfile(userId) {
     throw new Error('Profile not found');
   }
 
-  const { userdata, educationdata, certificationdata, experiencedata, projectdata, awarddata } = result.rows[0];
+  const { userdata, educationdata, certificationdata, experiencedata, projectdata, awarddata, skills } = result.rows[0];
   return {
     user: userdata || {},
     education: educationdata || [],
     certifications: certificationdata || [],
     experience: experiencedata || [],
     projects: projectdata || [],
-    awards: awarddata || []
+    awards: awarddata || [],
+    skills: skills || {}
   };
 }
 
@@ -165,13 +184,17 @@ async function processAllPendingTasks() {
         const searchTitlePattern = searchTitle ? `%(${searchTitle.split(' ').join('|')})%` : '%';
         const locationParam = searchLocation ? `%${searchLocation}%` : '%';
 
+        // Only keep the last 100 processed job IDs
+        const processedIds = (task.processed_job_ids || []).slice(-100);
+        
         console.log('Executing job query with params:', {
           title: titleParam,
           titlePattern: searchTitlePattern,
           location: locationParam,
           relocatable: completeProfile.user.job_prefs_relocatable,
           experienceLevel: searchExperienceLevel,
-          processedJobIds: task.processed_job_ids || []
+          processedJobIds: processedIds,
+          processedIdsCount: processedIds.length
         });
 
         let offset = 0;
@@ -179,32 +202,48 @@ async function processAllPendingTasks() {
         let totalProcessedJobs = 0;
         const maxJobsToProcess = 1000;
 
+        // Get the date 120
+        const oldestJobDate = new Date();
+        oldestJobDate.setDate(oldestJobDate.getDate() - 120);
+
         while (totalProcessedJobs < maxJobsToProcess) {
-          const jobQuery = `
+          // Build the base query and parameters
+          let jobQuery = `
             SELECT * FROM jobPostings 
             WHERE 
-              (LOWER(title) LIKE LOWER($1) 
-               OR LOWER(title) SIMILAR TO LOWER($2))
-              AND (LOWER(location) LIKE LOWER($3)
-                   OR ($4 = true AND LOWER(location) ILIKE '%remote%'))
-              AND ($5 = '' OR LOWER(experiencelevel) = LOWER($5))
-              AND (array_length($6::text[], 1) IS NULL OR job_id <> ALL($6::text[]))
-            ORDER BY created_at DESC
-            LIMIT $7 OFFSET $8`;
+              created_at >= $1
+              AND (LOWER(title) LIKE LOWER($2) 
+               OR LOWER(title) SIMILAR TO LOWER($3))
+              AND (LOWER(location) LIKE LOWER($4)
+                   OR ($5 = true AND LOWER(location) ILIKE '%remote%'))
+              AND ($6 = '' OR LOWER(experiencelevel) = LOWER($6))`;
+          
+          const baseParams = [
+            oldestJobDate,    // $1
+            titleParam,       // $2
+            searchTitlePattern, // $3
+            locationParam,    // $4
+            completeProfile.user.job_prefs_relocatable, // $5
+            searchExperienceLevel // $6
+          ];
+          
+          // Dynamically add condition for processed job ids if any
+          if (processedIds.length > 0) {
+            const placeholders = processedIds.map((_, i) => `$${baseParams.length + i + 1}`);
+            jobQuery += `\n      AND job_id NOT IN (${placeholders.join(', ')})`;
+            baseParams.push(...processedIds);
+          }
+          
+          // Append ordering, limit and offset
+          jobQuery += `\n    ORDER BY created_at DESC \n    LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}`;
+          
+          const finalParams = [ ...baseParams, limit, offset ];
 
-          const jobs = await query(
-            jobQuery,
-            [
-              titleParam,
-              searchTitlePattern,
-              locationParam,
-              completeProfile.user.job_prefs_relocatable,
-              searchExperienceLevel,
-              task.processed_job_ids || [],
-              limit,
-              offset
-            ]
-          );
+          // Log the actual query and parameters for debugging
+          console.log('Query:', jobQuery);
+          console.log('Params:', finalParams);
+
+          const jobs = await query(jobQuery, finalParams);
 
           console.log(`Found ${jobs.rows.length} matching jobs in this batch (offset: ${offset})`);
 
@@ -248,10 +287,20 @@ async function explainFurther(noteId) {
     );
 
     if (existingNote.rows[0]?.detailed_explanation) {
-      return {
-        original: existingNote.rows[0].explanation,
-        detailed: existingNote.rows[0].detailed_explanation
-      };
+      // Return existing explanation as a stream to maintain consistent response format
+      return new ReadableStream({
+        async start(controller) {
+          try {
+            // Send the existing explanation in chunks to simulate streaming
+            const content = existingNote.rows[0].detailed_explanation;
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+            controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        }
+      });
     }
 
     // If no existing explanation, get the note and associated data
@@ -280,7 +329,6 @@ async function explainFurther(noteId) {
       location: note.location,
       description: note.description,
       experiencelevel: note.experiencelevel,
-      // ...other job fields
     };
 
     const systemMessage = {
@@ -319,35 +367,43 @@ ${JSON.stringify(jobPosting, null, 2)}
 Explain why this match was rated as it was and provide specific details about strengths and improvement areas.`
     };
 
-    const analysis = await AIAgent.client.path("/chat/completions").post({
-      body: {
-        messages: [systemMessage, userMessage],
-        max_tokens: 1000,
-        temperature: 0.4,
-        model: process.env.AZURE_DEPLOYMENT_NAME ?? "gpt-4",
-        stream: false
+    const result = await AIAgent.client.chat.completions.create({
+      messages: [systemMessage, userMessage],
+      max_tokens: 4000,
+      temperature: 0.4,
+      model: process.env.AZURE_DEPLOYMENT_NAME ?? "gpt-4",
+      stream: true
+    });
+
+    // Return the ReadableStream for streaming responses
+    return new ReadableStream({
+      async start(controller) {
+        try {
+          let fullResponse = '';
+          for await (const chunk of result) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            if (content) {
+              fullResponse += content;
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
+          }
+          
+          // Store the complete response
+          await query(
+            `UPDATE agent_notes 
+             SET detailed_explanation = $1
+             WHERE id = $2`,
+            [fullResponse, noteId]
+          );
+
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
       }
     });
 
-    if (!analysis.body?.choices?.[0]?.message?.content) {
-      throw new Error('No valid response content found');
-    }
-
-    const detailedExplanation = analysis.body.choices[0].message.content;
-
-    // Update the note with the detailed explanation
-    await query(
-      `UPDATE agent_notes 
-       SET detailed_explanation = $1
-       WHERE id = $2
-       RETURNING *`,
-      [detailedExplanation, noteId]
-    );
-
-    return {
-      original: note.explanation,
-      detailed: detailedExplanation
-    };
   } catch (error) {
     console.error('Error in explainFurther:', error);
     throw error;

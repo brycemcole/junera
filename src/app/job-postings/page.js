@@ -554,7 +554,7 @@ const TrendingJobCards = memo(function TrendingJobCards() {
     return (
       <div className="flex gap-4 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors animate-pulse">
+          <Card key={i} className="min-w-0 sm:min-w-[250px] p-0 m-0 cursor-pointer hover:border-primary transition-colors animate-pulse">
             <CardHeader>
               <div className="h-5 w-3/4 bg-muted rounded"></div>
               <div className="h-4 w-1/2 bg-muted rounded mt-2"></div>
@@ -571,16 +571,16 @@ const TrendingJobCards = memo(function TrendingJobCards() {
       {trendingJobs.map((job) => (
         <Card 
           key={job.title} 
-          className="min-w-[250px] p-0 m-0 cursor-pointer hover:border-muted-foreground transition-colors"
+          className="min-w-[200px] sm:min-w-[250px] p-0 m-0 cursor-pointer hover:border-muted-foreground transition-colors"
           onClick={() => {
             const params = new URLSearchParams({ title: job.title });
             router.push(`/job-postings?${params.toString()}`);
           }}
         >
-          <CardHeader className="p-4 py-2 sm:p-6">
+          <CardHeader className="p-4 py-2 sm:p-3">
             <CardTitle className="text-base truncate">{job.title}</CardTitle>
             <CardDescription>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-0">
                 <span className="text-sm text-primary">{job.category}</span>
                 <span>{parseInt(job.count).toLocaleString()} new jobs in 30 days</span>
               </div>
@@ -686,7 +686,8 @@ const TrendingJobCards = memo(function TrendingJobCards() {
         }
         setLoading(true);
         // Immediately set location on Enter
-        onSearch(searchValue).finally(() => setLoading(false));
+        onSearch(searchValue)
+        setLoading(false);
       }
     };
 
@@ -1526,6 +1527,11 @@ export default function JobPostingsPage() {
         <div className={`container ${previewJobId ? 'max-w-xl' : 'max-w-6xl'} w-full py-0 p-4 sm:p-6`}>
                     <div className="flex flex-col pb-4 gap-2">
                       <h2 className="text-lg mb-2 font-semibold">Job Search</h2>
+                      <div className="flex py-4 items-center gap-2">
+            <Suspense fallback={<div>Loading...</div>}>
+            <TrendingJobCards />
+            </Suspense>
+          </div>  
                       <div className="flex flex-col gap-2 space-y-2">
                         <Input26 
                           onSearch={handleTitleSearch} 
@@ -1573,16 +1579,6 @@ export default function JobPostingsPage() {
                         </div>
                       </div>
                     </div>
-                    {user && (
-                    <div className="flex flex-col gap-2">
-                      <h2 className="text-lg font-semibold">Saved Searches</h2>
-                      <div className="flex flex-col gap-2">
-                        <Button variant="outline" size="sm" onClick={userSavedSearches}>
-                          View Saved Searches
-                        </Button>
-                      </div>
-                    </div>
-                    )}
         <Suspense fallback={<div>Loading search parameters...</div>}>
           <SearchParamsHandler
             setTitle={setTitle}
@@ -1594,12 +1590,7 @@ export default function JobPostingsPage() {
             setKeywords={setKeywords}
           />
         </Suspense>
-        <div className="z-0">
-          <div className="flex py-4 items-center gap-2">
-            <Suspense fallback={<div>Loading...</div>}>
-            <TrendingJobCards />
-            </Suspense>
-          </div>     
+        <div className="z-0">   
 
 
           {company && (

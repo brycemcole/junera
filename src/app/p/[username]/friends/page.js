@@ -123,7 +123,7 @@ export default function Page({ params }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 px-4 md:px-6 lg:px-8 max-w-4xl">
+      <div className="container mx-auto py-6 px-4 md:px-6 lg:px-8 max-w-6xl">
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>

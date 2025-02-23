@@ -134,140 +134,18 @@ const expandLocation = (location) => {
   return [...new Set(searchTerms)]; // Remove duplicates
 };
 
+import { getJobPostings, updateJobSummary, getJobPostingsCount, getCompanies } from '@/app/actions/job-actions';
+
 export async function GET(req) {
   const { signal } = req;
   const url = req.url;
-  console.log("URL:", url);
   const { searchParams } = new URL(url);
 
   try {
-    const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 20;
-    const strictParam = searchParams.get("strictSearch");
-    const strict = strictParam !== 'false'; 
-
-    if (page < 1 || limit > 50) {
-      return Response.json({ error: "Invalid parameters" }, { status: 400 });
-    }
-
-    const offset = (page - 1) * limit;
-
-    // Get all values for multi-value parameters
-    const titles = searchParams.getAll("title").filter(Boolean);
-    const locations = searchParams.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
-    const experienceLevels = searchParams.getAll("experienceLevel").filter(Boolean);
-    const company = searchParams.get("company")?.trim() || "";
-    const keywords = searchParams.get("keywords")?.trim() || "";
-    console.log(searchParams);
-    console.log("Keywords:", keywords);
-
-    const cacheKey = `jobPostings-${titles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}-${keywords}`;
-
-    const cachedResponse = await getCached(cacheKey);
-    if (cachedResponse) {
-      return Response.json(cachedResponse);
-    }
-
-    let queryText = `
-      WITH RankedJobs AS (
-        SELECT 
-          job_id,
-          title,
-          company,
-          location,
-          description,
-          salary,
-          experiencelevel,
-          created_at,
-          source_url,
-          ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
-        FROM jobPostings
-        WHERE 1=1
-    `;
-    
-    const params = [];
-    
-    // Handle multiple titles
-    if (titles.length > 0) {
-      const titleConditions = titles.map((_, idx) => {
-        params.push(`%${titles[idx]}%`);
-        return `LOWER(title) LIKE LOWER($${params.length})`;
-      });
-      queryText += ` AND (${titleConditions.join(' OR ')})`;
-    }
-
-    // Handle multiple locations
-    if (locations.length > 0) {
-      const locationConditions = locations.map((_, idx) => {
-        params.push(`%${locations[idx]}%`);
-        return `LOWER(location) LIKE LOWER($${params.length})`;
-      });
-      queryText += ` AND (${locationConditions.join(' OR ')})`;
-    }
-
-    // Handle multiple experience levels
-    if (experienceLevels.length > 0) {
-      const levelConditions = experienceLevels.map((_, idx) => {
-        params.push(experienceLevels[idx]);
-        return `LOWER(experiencelevel) = LOWER($${params.length})`;
-      });
-      queryText += ` AND (${levelConditions.join(' OR ')})`;
-    }
-
-    if (company) {
-      params.push(company);
-      queryText += ` AND company = $${params.length}`;
-    }
-
-    if (keywords) {
-      const keywordArray = keywords.split('+').map(keyword => `%${keyword}%`);
-      console.log("Keyword Array:", keywordArray);
-      const keywordConditions = keywordArray.map((keyword, index) => {
-        params.push(keyword);
-        return `LOWER(description) LIKE LOWER($${params.length})`;
-      });
-      console.log("Keyword Conditions:", keywordConditions);
-      queryText += ` AND (${keywordConditions.join(' OR ')})`;
-    }
-
-    // Close the CTE and select from it
-    queryText += `) 
-      SELECT 
-        job_id,
-        title,
-        company,
-        location,
-        description,
-        salary,
-        experiencelevel,
-        created_at,
-        source_url
-      FROM RankedJobs 
-      WHERE rn = 1 
-      ORDER BY created_at DESC 
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-
-    params.push(limit, offset);
-
-    console.log('Query:', queryText);
-    console.log('Params:', params);
-
-    const result = await query(queryText, params);
-
-    // store in cache with cachekey
-    const response = {
-      jobPostings: processJobPostings(result.rows),
-      ok: true,
-      page,
-      limit,
-      total: result.rows.length
-    };
-    await setCached(cacheKey, response, 60 * 5);
-    
+    const response = await getJobPostings(searchParams);
     return Response.json(response);
-
   } catch (error) {
-    console.error("Database error:", error);
+    console.error("Error in job-postings route:", error);
     return Response.json({ 
       error: "Error fetching job postings",
       details: error.message,
@@ -279,70 +157,20 @@ export async function GET(req) {
 }
 
 export async function PUT(req) {
-  const { signal } = req;
   try {
-    if (signal.aborted) {
-      throw new Error('Request aborted');
-    }
-
     const { jobId, summary } = await req.json();
 
     // Validate inputs
     if (!jobId || !summary) {
-      return new Response(
-        JSON.stringify({ error: "Job ID and summary are required" }),
-        { status: 400 }
-      );
+      return Response.json({ error: "Job ID and summary are required" }, { status: 400 });
     }
 
-    // Update the job posting with the new summary
-    const updateQuery = `
-      UPDATE jobPostings 
-      SET summary = $1 
-      WHERE job_id = $2 
-      RETURNING *`;
-
-    const result = await query(updateQuery, [summary, jobId]);
-
-    if (result.rows.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Job posting not found" }),
-        { status: 404 }
-      );
-    }
-
-    // Get the full job data to cache
-    const jobResult = await query(`
-      SELECT * FROM jobPostings WHERE job_id = $1
-    `, [jobId]);
-
-    const jobPosting = jobResult.rows[0];
-    const keywords = scanKeywords(jobPosting.description);
-
-    const responseBody = {
-      success: true,
-      data: jobPosting,
-      keywords
-    };
-
-    // Update the cache with the new data
-    const cacheKey = `job-posting:${jobId}`;
-    await setCached(cacheKey, JSON.stringify(responseBody), 3600); // Cache for 1 hour
-
-    return new Response(
-      JSON.stringify(responseBody),
-      { status: 200 }
-    );
+    const response = await updateJobSummary(jobId, summary);
+    return Response.json(response);
 
   } catch (error) {
-    if (error.message === 'Request aborted') {
-      return new Response(JSON.stringify({ error: 'Request was aborted' }), { status: 499 });
-    }
     console.error("Error updating job posting:", error);
-    return new Response(
-      JSON.stringify({ error: "Error updating job posting" }),
-      { status: 500 }
-    );
+    return Response.json({ error: "Error updating job posting" }, { status: 500 });
   }
 }
 

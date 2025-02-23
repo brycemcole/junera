@@ -12,8 +12,6 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await processAllPendingTasks();
-
     const token = authHeader.split('Bearer ')[1];
     const decoded = verifyToken(token);
     if (!decoded) {

@@ -21,7 +21,7 @@ export async function GET(req, { params }) {
             });
         }
 
-        const { id } = params;
+        const { id } = await params;
         
         console.log(`Checking analysis for job_id: ${id}, user_id: ${decoded.id}`);
 
@@ -30,8 +30,6 @@ export async function GET(req, { params }) {
             'SELECT response, worthy_apply, explanation, created_at FROM job_posting_agent_responses WHERE job_posting_id = $1 AND user_id = $2',
             [id, decoded.id]
         );
-
-        console.log('Query result:', result.rows);
 
         if (result.rows.length === 0) {
             console.log('No analysis found');
@@ -65,15 +63,6 @@ export async function GET(req, { params }) {
     }
 }
 
-// Helper function to convert stream to string
-async function streamToString(stream) {
-  const chunks = [];
-  for await (const chunk of stream) {
-    chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
-  }
-  return chunks.join('');
-}
-
 export async function POST(req, { params }) {
     try {
         const authHeader = req.headers.get('authorization');
@@ -91,8 +80,70 @@ export async function POST(req, { params }) {
                 headers: { 'Content-Type': 'application/json' },
             });
         }
+        
 
         const { id } = await params;
+
+        // get the user's profile data
+        const queryText = `
+        WITH UserInfo AS (
+            SELECT 
+                username, full_name, headline, email, phone_number, profile_links,
+                is_premium, job_prefs_title, job_prefs_location, job_prefs_skills,
+                job_prefs_industry, job_prefs_language, job_prefs_salary, job_prefs_relocatable,
+                job_prefs_level, avatar, github_user, github_access_token
+            FROM users
+            WHERE id = $1
+        ),
+        Education AS (
+            SELECT 
+                id, institution_name, degree, field_of_study, start_date,
+                end_date, is_current, description
+            FROM user_education
+            WHERE user_id = $1
+        ),
+        Certifications AS (
+            SELECT 
+                id, certification_name, issuing_organization, issue_date, 
+                expiration_date, credential_id, credential_url
+            FROM user_certifications
+            WHERE user_id = $1
+        ),
+        WorkExperience AS (
+            SELECT 
+                id, company_name, job_title, start_date, end_date, 
+                location, is_current, description
+            FROM user_job_experience
+            WHERE user_id = $1
+        ),
+        Projects AS (
+            SELECT 
+                id, project_name, start_date, end_date, is_current, 
+                description, technologies_used, project_url, github_url,
+                producthunt_url
+            FROM user_projects
+            WHERE user_id = $1
+        ),
+        Awards AS (
+            SELECT 
+                id, award_name, award_issuer, award_date, award_url, 
+                award_id, award_description, user_id
+            FROM user_awards
+            WHERE user_id = $1
+        )
+        SELECT 
+            (SELECT row_to_json(UserInfo) FROM UserInfo) as userdata,
+            (SELECT json_agg(Education) FROM Education) as educationdata,
+            (SELECT json_agg(Certifications) FROM Certifications) as certificationdata,
+            (SELECT json_agg(WorkExperience) FROM WorkExperience) as experiencedata,
+            (SELECT json_agg(Projects) FROM Projects) as projectdata,
+            (SELECT json_agg(Awards) FROM Awards) as awarddata;
+    `;
+        const profileResult = await query(queryText, [decoded.id]);
+        const profileData = profileResult.rows[0];
+        
+
+        // get the job posting 
         const jobResult = await query(
             'SELECT * FROM jobPostings WHERE job_id = $1',
             [id]
@@ -105,8 +156,18 @@ export async function POST(req, { params }) {
             });
         }
 
-        // Get the streaming response from AIAgent
-        const stream = await aiAgent.analyzeJobFit(jobPosting);
+        // Organize the profile data
+        const userProfile = {
+            experience: profileData.experiencedata || [],
+            education: profileData.educationdata || [],
+            projects: profileData.projectdata || [],
+            certifications: profileData.certificationdata || [],
+            awards: profileData.awarddata || [],
+            user: profileData.userdata || {}
+        };
+
+        // Get the streaming response from AIAgent with profile data
+        const stream = await aiAgent.analyzeJobFit(jobPosting, userProfile);
 
         // After successful analysis, store the complete response
         let fullResponse = '';

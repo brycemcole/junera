@@ -15,7 +15,7 @@ class AIAgent {
         this.client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment });
     }
 
-    async analyzeJobFit(jobPosting) {
+    async analyzeJobFit(jobPosting, userProfile) {
         const JobFitAnalysis = z.object({
             worthy_apply: z.boolean().describe("Whether the user should apply to this job"),
             explanation: z.string().describe("A detailed explanation of why the user should or should not apply")
@@ -24,7 +24,7 @@ class AIAgent {
         const systemMessage = {
             role: "system",
             content: `You are a realistic and honest career advisor who prioritizes accurate job fit analysis.
-            You must be strict about experience requirements and never overstate qualifications.
+            You must analyze both the job requirements and the candidate's profile to make informed recommendations.
             
             Key rules:
             - Entry level roles (0-2 years) match with interns/juniors
@@ -32,8 +32,10 @@ class AIAgent {
             - Senior roles (5+ years) require extensive experience
             - Management roles require prior management experience
             - Technical roles require specific technical skill matches
-            - Don't assume skills that aren't explicitly mentioned
+            - Compare required skills with candidate's actual experience
+            - Consider education, certifications, and projects as supporting evidence
             - Be direct about missing requirements
+            - Account for transferable skills from related domains
             
             Format your response as a JSON object with:
             - worthy_apply: boolean indicating if they should apply
@@ -44,12 +46,22 @@ class AIAgent {
 
         const userMessage = {
             role: "user",
-            content: `Analyze this job fit based on requirements:
+            content: `Analyze this job fit based on requirements and candidate profile:
+
+Job Details:
 Title: ${jobPosting.title}
 Company: ${jobPosting.company}
 Experience Level: ${jobPosting.experiencelevel}
 Location: ${jobPosting.location}
 Description: ${jobPosting.description}
+
+Candidate Profile:
+${userProfile ? `Work Experience: ${JSON.stringify(userProfile.experience)}
+Education: ${JSON.stringify(userProfile.education)}
+Projects: ${JSON.stringify(userProfile.projects)}
+Certifications: ${JSON.stringify(userProfile.certifications)}
+Awards: ${JSON.stringify(userProfile.awards)}
+Preferences: ${JSON.stringify(userProfile.user)}` : 'No profile provided'}
 
 Remember to be realistic about experience requirements and strict about required skills.`
         };

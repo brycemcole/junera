@@ -21,9 +21,24 @@ function DateDisplay({ postedDate }) {
     }
 
     const date = new Date(postedDate);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+
+    let timeString;
+    if (diffInHours < 24) {
+        if (diffInHours === 0) {
+            const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+            timeString = `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+        } else {
+            timeString = `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+        }
+    } else {
+        timeString = formatDistanceToNow(date, { addSuffix: true });
+    }
+
     return (
-        <span className="text-muted-foreground text-sm">
-            {formatDistanceToNow(date, { addSuffix: true, includeSeconds: false })}
+        <span className="text-muted-foreground text-sm whitespace-nowrap">
+            {timeString}
         </span>
     );
 }
@@ -139,7 +154,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                     <div
                         key={job.id || index} // Use job.id if available, otherwise index
                         id={`job-${job.id}`}
-                        className="flex flex-row items-center gap-4 group py-3 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
+                        className="flex flex-row items-center gap-4 group py-6 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
                     >
                         <div className="flex flex-col min-w-0 gap-0 flex-grow overflow-hidden">
                             <div className="flex flex-row items-start gap-2">
@@ -173,6 +188,30 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                         </div>
                                     </h3>
 
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 flex-wrap">
+                                        <DateDisplay postedDate={job.postedDate} />
+                                        {job.experienceLevel && job.experienceLevel !== 'null' && (
+                                            <>
+                                                <span className="text-muted-foreground">•</span>
+                                                <span className="font-medium">{job.experienceLevel}</span>
+                                            </>
+                                        )}
+                                        {job.remoteKeyword && (
+                                            <>
+                                                <span className="text-muted-foreground">•</span>
+                                                <span className="text-emerald-600 font-medium">{job.remoteKeyword}</span>
+                                            </>
+                                        )}
+                                        {(job?.salary || job?.salary_range_str) && (
+                                            <>
+                                                <span className="text-muted-foreground">•</span>
+                                                <span className="text-emerald-600 font-medium">
+                                                    {job.salary || job.salary_range_str}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+
                                     {job?.summary ? (
                                         <div className="mb-1">
                                             <p className={`text-muted-foreground text-[16px] break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
@@ -199,12 +238,28 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                                 </p>
                                             </div>
                                         ) : null}
+                                        
+                                    {job.keywords && job.keywords.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {job.keywords.slice(0, 5).map((keyword, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="inline-flex items-center px-2 py-0.5 rounded shadow shadow-blue-500/10 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
+                                                >
+                                                    {keyword}
+                                                </span>
+                                            ))}
+                                            {job.keywords.length > 5 && (
+                                                <span className="text-xs text-muted-foreground px-2 py-0.5">
+                                                    +{job.keywords.length - 5} more
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-
                             </div>
-                            <div className="flex flex-row gap-2 items-center justify-between flex-wrap">
+                            <div className="flex flex-row gap-2 items-center justify-between flex-wrap mt-3">
                                 <div className="flex flex-row gap-2 items-center">
-                                    {/* Replace Link wrapper with button for view action */}
                                     <div onClick={() => handleViewJob(job)} className="ml-auto focus:outline-none">
                                         <ViewStatusIndicator 
                                             jobId={job.id} 
@@ -230,11 +285,6 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                 </div>
                                 <div className="text-sm flex flex-col gap-2 flex-end">
                                     <div className="flex flex-row flex-wrap gap-2 items-center">
-                                        {job?.salary || job?.salary_range_str ? (
-                                            <Badge variant="outline" className="truncate border-emerald-500 text-emerald-500">
-                                                {job.salary || job.salary_range_str}
-                                            </Badge>
-                                        ) : null}
                                     </div>
                                 </div>
                             </div>

@@ -52,7 +52,7 @@ export default function About() {
   // Dependencies: pnpm install lucide-react
 
   return (
-    <div className="container py-20 px-4 mx-auto max-w-4xl md:px-0 w-full">
+    <div className="container py-20 px-4 mx-auto max-w-6xl md:px-0 w-full">
       <main className="space-y-4 items-center">
         {/* Hero Section */}
         <section className="text-center space-y-4 mb-20">

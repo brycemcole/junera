@@ -16,9 +16,7 @@ export async function POST(request) {
         if (!decoded) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
-
-        await processAllPendingTasks();
-
+        
         return NextResponse.json({ message: 'Job processing started' });
     } catch (error) {
         console.error('Error in agent process route:', error);

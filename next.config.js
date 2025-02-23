@@ -13,6 +13,7 @@ const nextConfig = {
     domains: ['corestore.blob.core.windows.net', 'logo.clearbit.com', 'avatars.githubusercontent.com'],
   },
   experimental: {
+    instrumentation: true,
     turbo: {
       resolveAlias: {
         // Add any custom module resolutions if needed
@@ -28,13 +29,6 @@ const nextConfig = {
 
 if (isProduction) {
   nextConfig.webpack = (config, { isServer }) => {
-    if (isServer) {
-      // Only run on the server side
-      process.nextServer = async () => {
-        const { initialize } = require('./src/services/startup');
-        await initialize();
-      };
-    }
     return config;
   };
 }

@@ -51,7 +51,7 @@ export default function SavedPage() {
     }
 
     return (
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-6xl">
             <section className="mb-4">
                 <h1 className="text-lg font-[family-name:var(--font-geist-sans)] font-medium mb-1">
                     Saved

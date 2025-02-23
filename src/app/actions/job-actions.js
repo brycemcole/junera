@@ -63,26 +63,70 @@ const expandLocation = (location) => {
 
 export async function getJobPostings(searchParams) {
   try {
-    // Ensure searchParams is a URLSearchParams object
     const params = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams(searchParams);
     
     const page = parseInt(params.get("page") || "1");
     const limit = parseInt(params.get("limit") || "20");
     const strictParam = params.get("strictSearch");
-    const strict = strictParam !== 'false';
+    const strict = strictParam !== 'false'; 
 
     if (page < 1 || limit > 50) {
       throw new ServerError("Invalid page or limit parameters", 400);
     }
 
     const offset = (page - 1) * limit;
-    const titles = params.getAll("title") ? params.getAll("title").filter(Boolean) : [];
-    const locations = params.getAll("location") ? params.getAll("location").filter(Boolean).map(loc => loc.toLowerCase()) : [];
-    const experienceLevels = params.getAll("experienceLevel") ? params.getAll("experienceLevel").filter(Boolean) : [];
+
+    // Process titles and separate into include and exclude terms
+    let includeTitles = [];
+    let excludeTitles = [];
+    
+    const titleParams = params.getAll("title");
+    console.log('Raw title params:', titleParams);
+    
+    for (let titleParam of titleParams) {
+      // First decode the URL parameter
+      const decodedTitle = decodeURIComponent(titleParam);
+      console.log('Decoded title param:', decodedTitle);
+      
+      // Split the title into terms by spaces
+      const terms = decodedTitle.split(/\s+/);
+      let currentPhrase = [];
+      
+      // Process each term
+      for (let term of terms) {
+        if (term.startsWith('-')) {
+          // If we have a current phrase, add it to includeTitles
+          if (currentPhrase.length > 0) {
+            includeTitles.push(currentPhrase.join(' '));
+            currentPhrase = [];
+          }
+          // Add the term without '-' to excludeTitles
+          excludeTitles.push(term.substring(1));
+        } else {
+          currentPhrase.push(term);
+        }
+      }
+      
+      // Add any remaining phrase to includeTitles
+      if (currentPhrase.length > 0) {
+        includeTitles.push(currentPhrase.join(' '));
+      }
+    }
+
+    console.log('Include titles:', includeTitles);
+    console.log('Exclude titles:', excludeTitles);
+
+    // Remove duplicates case-insensitively
+    includeTitles = [...new Map(includeTitles.map(t => [t.toLowerCase(), t])).values()];
+    excludeTitles = [...new Map(excludeTitles.map(t => [t.toLowerCase(), t])).values()];
+    
+    const locations = params.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
+    const experienceLevels = params.getAll("experienceLevel").filter(Boolean);
     const company = params.get("company")?.trim() || "";
     const keywords = params.get("keywords")?.trim() || "";
 
-    const cacheKey = `jobPostings-${titles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}-${keywords}`;
+    // Update cache key to include exclude terms
+    const cacheKey = `jobPostings-${includeTitles.join('-')}-${excludeTitles.join('-')}-${locations.join('-')}-${experienceLevels.join('-')}-${company}-${page}-${limit}-${keywords}`;
 
     const cachedResponse = await getCached(cacheKey);
     if (cachedResponse) {
@@ -108,12 +152,21 @@ export async function getJobPostings(searchParams) {
     
     const paramsArray = [];
     
-    if (titles.length > 0) {
-      const titleConditions = titles.map((_, idx) => {
-        paramsArray.push(`%${titles[idx]}%`);
-        return `LOWER(title) LIKE LOWER($${paramsArray.length})`;
+    // Handle inclusive title search
+    if (includeTitles.length > 0) {
+      const titleConditions = includeTitles.map((_, idx) => {
+        paramsArray.push(`%${includeTitles[idx]}%`);
+        return `title ILIKE $${paramsArray.length}`;
       });
       queryText += ` AND (${titleConditions.join(' OR ')})`;
+    }
+
+    // Handle exclusive title search
+    if (excludeTitles.length > 0) {
+      excludeTitles.forEach((title) => {
+        paramsArray.push(`%${title}%`);
+        queryText += ` AND title NOT ILIKE $${paramsArray.length}`;
+      });
     }
 
     if (locations.length > 0) {
@@ -164,8 +217,11 @@ export async function getJobPostings(searchParams) {
 
     paramsArray.push(limit, offset);
 
+    console.log('Final SQL Query:', queryText);
+    console.log('Query parameters:', paramsArray);
+
     const result = await executeQueryWithTimeout(queryText, paramsArray);
-    console.log('Query result:', result);
+    console.log('Query result count:', result.rows.length);
     
     if (!result) {
       throw new ServerError("No results found", 404);
@@ -218,69 +274,114 @@ export async function updateJobSummary(jobId, summary) {
 
 export async function getJobPostingsCount(searchParams) {
   try {
-    // Ensure searchParams is a URLSearchParams object
     const params = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams(searchParams);
     
-    const title = (params.get("title") || "").trim();
-    const location = (params.get("location") || "").trim().toLowerCase();
-    const company = (params.get("company") || "").trim();
-    const experienceLevel = (params.get("experienceLevel") || "").trim().toLowerCase();
+    // Process titles and separate into include and exclude terms
+    let includeTitles = [];
+    let excludeTitles = [];
+    
+    const titleParams = params.getAll("title");
+    
+    for (let titleParam of titleParams) {
+      const decodedTitle = decodeURIComponent(titleParam);
+      const terms = decodedTitle.split(/\s+/);
+      let currentPhrase = [];
+      
+      for (let term of terms) {
+        if (term.startsWith('-')) {
+          if (currentPhrase.length > 0) {
+            includeTitles.push(currentPhrase.join(' '));
+            currentPhrase = [];
+          }
+          excludeTitles.push(term.substring(1));
+        } else {
+          currentPhrase.push(term);
+        }
+      }
+      
+      if (currentPhrase.length > 0) {
+        includeTitles.push(currentPhrase.join(' '));
+      }
+    }
 
-    const cacheKey = `job-count:${title}:${location}:${company}:${experienceLevel}`;
+    // Remove duplicates case-insensitively
+    includeTitles = [...new Map(includeTitles.map(t => [t.toLowerCase(), t])).values()];
+    excludeTitles = [...new Map(excludeTitles.map(t => [t.toLowerCase(), t])).values()];
+
+    const locations = params.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
+    const experienceLevels = params.getAll("experienceLevel").filter(Boolean);
+    const company = params.get("company")?.trim() || "";
+    const keywords = params.get("keywords")?.trim() || "";
+
+    const cacheKey = `job-count:${includeTitles.join('-')}:${excludeTitles.join('-')}:${locations.join('-')}:${experienceLevels.join('-')}:${company}:${keywords}`;
     const cachedResult = await getCached(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
 
-    // Get title group if title provided
-    const titleGroup = title ? findJobTitleGroup(title) : [];
-
-    // Build location search terms
-    const locationSearchTerms = location ? expandLocation(location) : [];
-
-    // Use materialized view or indexed subquery for faster counting
     let queryText = `
-      SELECT COUNT(*) OVER() as total_count 
-      FROM jobPostings 
-      WHERE 1=1
+      WITH RankedJobs AS (
+        SELECT 
+          job_id,
+          ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
+        FROM jobPostings
+        WHERE 1=1
     `;
-    const paramsArray = [];
-    let paramIndex = 1;
 
-    // Add filters using the same logic as the main route
-    if (titleGroup.length > 0) {
-      const titleConditions = titleGroup.map((_, i) => {
-        return `title_vector @@ to_tsquery('english', $${paramIndex + i})`;
+    const paramsArray = [];
+
+    // Handle inclusive title search
+    if (includeTitles.length > 0) {
+      const titleConditions = includeTitles.map((_, idx) => {
+        paramsArray.push(`%${includeTitles[idx]}%`);
+        return `title ILIKE $${paramsArray.length}`;
       });
       queryText += ` AND (${titleConditions.join(' OR ')})`;
-      paramsArray.push(...titleGroup.map(t => t.trim().replace(/\s+/g, ' & ')));
-      paramIndex += titleGroup.length;
     }
 
-    if (locationSearchTerms.length > 0) {
-      const locationConditions = locationSearchTerms.map((_, i) => {
-        return `location_vector @@ to_tsquery('simple', $${paramIndex + i})`;
+    // Handle exclusive title search
+    if (excludeTitles.length > 0) {
+      excludeTitles.forEach((title) => {
+        paramsArray.push(`%${title}%`);
+        queryText += ` AND title NOT ILIKE $${paramsArray.length}`;
+      });
+    }
+
+    if (locations.length > 0) {
+      const locationConditions = locations.map((_, idx) => {
+        paramsArray.push(`%${locations[idx]}%`);
+        return `LOWER(location) LIKE LOWER($${paramsArray.length})`;
       });
       queryText += ` AND (${locationConditions.join(' OR ')})`;
-      paramsArray.push(...locationSearchTerms.map(term => term.split(/\s+/).join(' & ')));
-      paramIndex += locationSearchTerms.length;
+    }
+
+    if (experienceLevels.length > 0) {
+      const levelConditions = experienceLevels.map((_, idx) => {
+        paramsArray.push(experienceLevels[idx]);
+        return `LOWER(experiencelevel) = LOWER($${paramsArray.length})`;
+      });
+      queryText += ` AND (${levelConditions.join(' OR ')})`;
     }
 
     if (company) {
-      queryText += ` AND company = $${paramIndex}`;
       paramsArray.push(company);
-      paramIndex++;
+      queryText += ` AND company = $${paramsArray.length}`;
     }
 
-    if (experienceLevel) {
-      queryText += ` AND LOWER(experiencelevel) = $${paramIndex}`;
-      paramsArray.push(experienceLevel);
+    if (keywords) {
+      const keywordArray = keywords.split('+').map(keyword => `%${keyword}%`);
+      const keywordConditions = keywordArray.map((keyword) => {
+        paramsArray.push(keyword);
+        return `LOWER(description) LIKE LOWER($${paramsArray.length})`;
+      });
+      queryText += ` AND (${keywordConditions.join(' OR ')})`;
     }
 
-    // Optimize by limiting to 1 row since we just need the count
-    queryText += ` LIMIT 1`;
+    queryText += `) 
+      SELECT COUNT(*) as total_count
+      FROM RankedJobs 
+      WHERE rn = 1`;
 
-    // Execute query
     const result = await query(queryText, paramsArray);
     const count = parseInt(result.rows[0]?.total_count || 0);
 

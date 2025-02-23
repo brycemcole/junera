@@ -19,7 +19,7 @@ export default function Home() {
     return null;
   }
   return (
-    <div className="container py-10 px-6  mx-auto max-w-4xl w-full">
+    <div className="container py-10 px-6  mx-auto max-w-6xl w-full">
       <main className="space-y-4">
         <h1 className="text-2xl text-left font-semibold font-[family-name:var(--font-geist-sans)]">
           junera

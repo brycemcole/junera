@@ -341,7 +341,7 @@ export default function CompanyView({ companyName, page }) {
     };
 
     if (loading) {
-        return <div className="container mx-auto py-6 px-4 max-w-4xl">
+        return <div className="container mx-auto py-6 px-4 max-w-6xl">
             <div className="animate-pulse">
                 <div className="h-8 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/4 mb-4"></div>
                 <div className="h-8 bg-gray-200 dark:bg-gray-900 rounded-xl w-1/2 mb-4"></div>
@@ -355,13 +355,13 @@ export default function CompanyView({ companyName, page }) {
     }
 
     if (error || !company) {
-        return <div className="container mx-auto py-6 px-4 max-w-4xl">
+        return <div className="container mx-auto py-6 px-4 max-w-6xl">
             <p className="text-red-500">Error loading company data.</p>
         </div>;
     }
 
     return (
-        <div className="container mx-auto sm:py-6 px-4 sm:px-6 lg:px-8 max-w-4xl">
+        <div className="container mx-auto sm:py-6 px-4 sm:px-6 lg:px-8 max-w-6xl">
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-4">
                     <Avatar className="h-12 w-12">

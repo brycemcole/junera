@@ -327,7 +327,7 @@ export default function SavedSearchPage() {
   }
 
   return (
-    <div className="container mx-auto md:py-10 px-4 max-w-4xl">
+    <div className="container mx-auto md:py-10 px-4 max-w-6xl">
       <div className="flex justify-between items-center justify-center  mb-6">
         <h1 className="text-3xl font-bold">Saved Searches</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
