@@ -22,7 +22,7 @@ export async function register() {
     
     // Start the agent processor with error handling
     try {
-      // await processAllPendingTasks();
+      await processAllPendingTasks();
       console.log('✓ Initial job processing complete');
     } catch (err) {
       console.error('Error during initial job processing:', err);
