@@ -333,7 +333,9 @@ async function explainFurther(noteId) {
 
     const systemMessage = {
       role: "system",
-      content: `You are a career advisor providing an in-depth analysis of a job match.
+      content: `You are a career advisor providing an in-depth analysis of a job match directly to the job seeker.
+      Speak directly to the user in first person, as if you're having a conversation with them.
+      
       Give a thorough breakdown of why this role matches or doesn't match their profile.
       
       Consider and explicitly address:
@@ -345,18 +347,19 @@ async function explainFurther(noteId) {
       
       Format your response in clear sections:
       • Overall Match Assessment
-      • Key Strengths
-      • Areas for Growth
-      • Strategic Recommendations
+      • Your Key Strengths
+      • Areas for Your Growth
+      • Strategic Recommendations for You
       
-      Be constructive but honest about gaps. Give actionable advice.`
+      Be conversational, supportive and personal. Use "you" and "your" instead of referring to them in third person.
+      Be constructive but honest about gaps. Give actionable advice directly to them.`
     };
 
     const userMessage = {
       role: "user",
       content: `Previous analysis: "${note.explanation}"
 
-Provide a detailed explanation of this job match analysis considering:
+Provide a detailed explanation of this job match analysis directly to the user:
 
 User Profile:
 ${JSON.stringify(userProfile, null, 2)}
@@ -364,7 +367,7 @@ ${JSON.stringify(userProfile, null, 2)}
 Job Details:
 ${JSON.stringify(jobPosting, null, 2)}
 
-Explain why this match was rated as it was and provide specific details about strengths and improvement areas.`
+Explain to them personally why this match was rated as it was. Highlight their specific strengths and areas where they could improve to better fit this role.`
     };
 
     const result = await AIAgent.client.chat.completions.create({
