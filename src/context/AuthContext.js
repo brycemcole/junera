@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         if (token) {
           const decoded = jwt.decode(token);
-          console.log('Token decoded during init:', decoded); // Debug log
           
           if (decoded && decoded.exp * 1000 > Date.now()) {
             const userData = {
@@ -31,7 +30,6 @@ export const AuthProvider = ({ children }) => {
               jobPrefsLevel: decoded.jobPrefsLevel || []
             };
             
-            console.log('Setting user data during init:', userData); // Debug log
             setUser(userData);
           } else {
             console.log('Token expired or invalid, removing from storage'); // Debug log

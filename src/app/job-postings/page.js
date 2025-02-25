@@ -56,6 +56,17 @@ import { is } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import JobPreviewModal from '../../components/JobPreviewModal';
+const LazyTrendingJobCards = dynamic(() => import('../components/TrendingJobCards'), {
+  loading: () => <div className="w-full flex gap-2 overflow-x-auto py-2">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="min-w-[120px] h-8 rounded bg-gray-200 dark:bg-gray-800 animate-pulse"></div>
+    ))}
+  </div>,
+  ssr: false // Disable server-side rendering for this component
+});
+
+// Add this to your imports at the top of the file
+import dynamic from 'next/dynamic';
 
 // Add encryption utilities
 const encryptData = (data) => {
@@ -1527,11 +1538,16 @@ export default function JobPostingsPage() {
         <div className={`container ${previewJobId ? 'max-w-xl' : 'max-w-6xl'} w-full py-0 p-4 sm:p-6`}>
                     <div className="flex flex-col pb-4 gap-2">
                       <h2 className="text-lg mb-2 font-semibold">Job Search</h2>
-                      <div className="flex py-4 items-center gap-2">
-            <Suspense fallback={<div>Loading...</div>}>
-            <TrendingJobCards />
-            </Suspense>
-          </div>  
+                      <div className="flex items-center gap-2">
+              <Suspense fallback={<div className="w-full flex gap-2 overflow-x-auto py-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="min-w-[120px] h-8 rounded bg-gray-200 dark:bg-gray-800 animate-pulse"></div>
+                ))}
+              </div>}>
+                {/* Move TrendingJobCards to a deferred loading pattern */}
+                <LazyTrendingJobCards />
+              </Suspense>
+            </div>  
                       <div className="flex flex-col gap-2 space-y-2">
                         <Input26 
                           onSearch={handleTitleSearch} 

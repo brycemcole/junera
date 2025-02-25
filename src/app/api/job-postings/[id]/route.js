@@ -1,10 +1,10 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { query } from "@/lib/pgdb";
-import { scanKeywords } from '@/lib/job-utils';
 import { getCached, setCached } from '@/lib/cache';
+import jwt from 'jsonwebtoken';
+import { query } from '@/lib/pgdb';
+import { scanKeywords } from '@/lib/job-utils';
 
 export async function GET(req, { params }) {
   try {

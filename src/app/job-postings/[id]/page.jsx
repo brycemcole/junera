@@ -49,7 +49,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text, Eye, HandCoins, CheckCircleIcon, TimerIcon } from "lucide-react";
+import { Blocks, Bolt, BookmarkIcon, BookOpen, Box, BriefcaseBusiness, Building2, ChevronDown, CircleAlert, CopyPlus, Ellipsis, Files, House, InfoIcon, Layers2, Loader2, Loader2Icon, MapIcon, PanelsTopLeft, Tag, Telescope, Text, Eye, HandCoins, CheckCircleIcon, TimerIcon, ChevronLeft } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -66,6 +66,8 @@ import { redirect } from 'next/navigation';
 import { decodeHTMLEntities, stripHTML, stateMap, getStateFromLocation, getFullStateFromLocation } from '@/lib/job-utils';
 import { Pill, PillDelta, PillIndicator, PillStatus } from '@/components/pill';
 import LoginCTA from '@/components/login-cta';
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { MatchAnalysis } from '@/components/job-postings/match-analysis';
 
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
@@ -168,7 +170,7 @@ const Summarization = ({ title, message, loading, error }) => {
   );
 }
 
-const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyLogo, location }) => {
+const JobDropdown = ({ handleSummarizationQuery, handleAnalyzeJob, jobId, title, company, companyLogo, location }) => {
   const [copied, setCopied] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
   const { user, loading } = useAuth();
@@ -211,10 +213,16 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
           Copy Link
         </DropdownMenuItem>
         {user && !loading && (
-          <DropdownMenuItem onClick={handleSummarizationQuery}>
-            <Sparkles size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
-            Generate Summary
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem onClick={handleSummarizationQuery}>
+              <Sparkles size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+              Generate Summary
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleAnalyzeJob}>
+              <Wand2 size={16} strokeWidth={2} className="opacity-60" aria-hidden="true" />
+              Regenerate Analysis
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -222,7 +230,19 @@ const JobDropdown = ({ handleSummarizationQuery, jobId, title, company, companyL
 };
 
 // New Components
-const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSummarizationQuery, keywords, isViewed, agentNote, showFullAnalysis, setShowFullAnalysis }) => {
+const JobHeader = ({ 
+  jobPosting, 
+  companyJobCount, 
+  id, 
+  handleApplyClick, 
+  handleSummarizationQuery,
+  handleAnalyzeJob,  // Add this prop
+  keywords, 
+  isViewed, 
+  agentNote, 
+  showFullAnalysis, 
+  setShowFullAnalysis 
+}) => {
   const getMatchScoreColor = (score) => {
     if (!score) return 'text-muted-foreground';
     
@@ -239,80 +259,103 @@ const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSu
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-6">
-        {/* Company Section */}
-        <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12 rounded-lg" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
+    <div className="space-y-6">
+      {/* Back to Search Results Pagination */}
+      <div className="flex items-center">
+        <div className="flex-1">
+          <Link href="/job-postings">
+            <Button variant="link" className="px-0 flex items-center gap-1 text-muted-foreground hover:text-foreground">
+              <ChevronLeft className="h-4 w-4" />
+              Back to search results
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start gap-3"> {/* Changed from items-center to items-start */}
+          <div className="space-y-1 flex-1"> {/* Added flex-1 */}
+            <Link
+              href={`/companies/${jobPosting.company}`}
+              className="text-sm flex flex-row items-center gap-2 font-medium hover:underline"
+            >
+                        <Avatar className="h-6 w-6 rounded-lg" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
             <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
             <AvatarFallback className="rounded-lg bg-muted">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div className="space-y-1">
-            <Link
-              href={`/companies/${jobPosting.company}`}
-              className="text-sm font-medium hover:underline"
-            >
               {jobPosting.company}
             </Link>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {jobPosting.title}
-            </h1>
-          </div>
-        </div>
-
-        {/* Key Info Row */}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          {jobPosting.location && (
-            <div className="flex items-center gap-2">
-              <MapPin size={14} />
-              <span>{jobPosting.location}</span>
-            </div>
-          )}
-          {jobPosting?.experiencelevel !== 'null' && (
-            <div className="flex items-center gap-2">
-              <BriefcaseBusiness size={14} />
-              <span>{jobPosting.experiencelevel}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <TimerIcon size={14} />
-            <span>{formatDistanceToNow(jobPosting?.created_at)} ago</span>
-          </div>
-          {isViewed && (
-            <div className="flex items-center gap-2">
-              <Eye size={14} />
-              <span>Viewed</span>
-            </div>
-          )}
-        </div>
-
-        {/* Agent Note Section */}
-        {agentNote && (
-          <div 
-            className="rounded-lg border bg-card text-card-foreground cursor-pointer transition-all"
-            onClick={() => setShowFullAnalysis(!showFullAnalysis)}
-          >
-            <div className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <span className="font-medium">Match Analysis</span>
-                  <Badge variant="secondary" className={getMatchScoreColor(agentNote.match_score)}>
-                    {agentNote.match_score} Match
-                  </Badge>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showFullAnalysis ? 'rotate-180' : ''}`} />
-                </Button>
-              </div>
-              {showFullAnalysis && (
-                <div className="mt-4 text-sm text-muted-foreground">
-                  {agentNote.explanation}
-                </div>
+            <div className="flex flex-wrap items-center gap-2"> {/* Changed flex container */}
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {jobPosting.title}
+              </h1>
+              {agentNote && agentNote.match_score?.toLowerCase() === 'high' && (
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-600/20 whitespace-nowrap">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  High Match
+                </Badge>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Job Details - Only render this div if at least one detail is available */}
+        {(jobPosting.location || 
+         (jobPosting?.experiencelevel && jobPosting.experiencelevel !== 'null') || 
+         jobPosting?.created_at || 
+         isViewed) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-4">
+            {jobPosting.location && (
+              <div>
+                <h5 className="text-sm font-medium mb-1">Location</h5>
+                <p className="text-muted-foreground">{jobPosting.location}</p>
+              </div>
+            )}
+            
+            {jobPosting?.experiencelevel && jobPosting.experiencelevel !== 'null' && (
+              <div>
+                <h5 className="text-sm font-medium mb-1">Experience Level</h5>
+                <p className="text-muted-foreground">{jobPosting.experiencelevel}</p>
+              </div>
+            )}
+            
+            {jobPosting?.created_at && (
+              <div>
+                <h5 className="text-sm font-medium mb-1">Posted</h5>
+                <p className="text-muted-foreground">{formatDistanceToNow(jobPosting.created_at)} ago</p>
+              </div>
+            )}
+            
+            {isViewed && (
+              <div>
+                <h5 className="text-sm font-medium mb-1">Status</h5>
+                <p className="text-muted-foreground">Viewed</p>
+              </div>
+            )}
+                    {keywords && keywords.length > 0 && (
+                      <div>
+                      <h5 className="text-sm font-medium mb-1">Keywords</h5>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {keywords.slice(0, 5).map((keyword, index) => (
+                          <KeywordBadge 
+                            key={index}
+                            keyword={keyword}
+                            clickable={true}
+                            colorScheme="blue"
+                          />
+                        ))}
+                        {keywords.length > 5 && (
+                          <span className="text-xs text-muted-foreground px-2 py-0.5">
+                            +{keywords.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    )}
+          </div>
         )}
+        </div>
+        
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
@@ -321,7 +364,10 @@ const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSu
             target="_blank"
             onClick={handleApplyClick}
           >
-            <Button className="gap-2">
+            <Button 
+              className="gap-2 bg-green-500/10 text-green-600 border-green-600/20 hover:bg-green-500/20"
+              variant="outline"
+            >
               Apply Now <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -329,6 +375,7 @@ const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSu
           <ReportPopover jobId={id} />
           <JobDropdown
             handleSummarizationQuery={handleSummarizationQuery}
+            handleAnalyzeJob={handleAnalyzeJob}
             jobId={id}
             title={jobPosting.title}
             company={jobPosting.company}
@@ -337,26 +384,16 @@ const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSu
           />
         </div>
 
-        {/* Keywords */}
-        {keywords && keywords.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {keywords.slice(0, 5).map((keyword, index) => (
-              <KeywordBadge 
-                key={index}
-                keyword={keyword}
-                clickable={true}
-                colorScheme="blue"
-              />
-            ))}
-            {keywords.length > 5 && (
-              <span className="text-xs text-muted-foreground px-2 py-0.5">
-                +{keywords.length - 5} more
-              </span>
-            )}
-          </div>
-        )}
+                {/* Agent Note Section */}
+                {agentNote && (
+  <MatchAnalysis 
+    agentNote={agentNote}
+    showFullAnalysis={showFullAnalysis}
+    onToggleAnalysis={() => setShowFullAnalysis(!showFullAnalysis)}
+  />
+)}
+
       </div>
-    </div>
   );
 };
 
@@ -406,7 +443,7 @@ const JobDescription = ({ jobPosting }) => (
         <h2 className="text-base font-semibold">Job Description</h2>
       </div>
       <div 
-        className="text-sm leading-relaxed text-foreground space-y-4"
+        className="text-sm leading-relaxed text-foreground space-y-4 [&_a]:break-words [&_a]:inline-block [&_a]:max-w-full"
         dangerouslySetInnerHTML={{
           __html: DOMPurify.sanitize(
             stripHTML(decodeHTMLEntities(jobPosting.description))
@@ -973,6 +1010,76 @@ export default function JobPostingPage({ params }) {
     []
   );
 
+  const handleAnalyzeJob = async () => {
+    if (!user) return;
+    
+    const response = await fetch(`/api/job-postings/${id}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${user.token}`,
+      }
+    });
+
+    if (!response.ok) {
+      toast({
+        title: "Error",
+        description: "Failed to analyze job fit",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Reset any existing analysis state
+    setAgentNote(null);
+
+    // Read the streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullResponse = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.replace('data: ', '').trim();
+            if (jsonStr === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.content) {
+                fullResponse += parsed.content;
+                try {
+                  const parsedResponse = JSON.parse(fullResponse);
+                  setAgentNote({
+                    match_score: parsedResponse.worthy_apply ? 'High' : 'Low',
+                    explanation: parsedResponse.explanation
+                  });
+                } catch {
+                  // If not valid JSON yet, continue accumulating
+                }
+              }
+            } catch (err) {
+              console.error('Error parsing chunk:', err);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading stream:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process analysis",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) return <div className="container mx-auto py-2 px-4 max-w-6xl">
     <div className="animate-pulse">
       <div className="flex flex-row items-center gap-4">
@@ -999,7 +1106,7 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-4 sm:py-6 px-4 max-w-4xl">
+      <div className="container mx-auto py-0 sm:py-6 px-4 max-w-4xl">
         <div className="space-y-6 md:space-y-8">
           <JobHeader
             jobPosting={jobPosting}
@@ -1007,6 +1114,7 @@ export default function JobPostingPage({ params }) {
             id={id}
             handleApplyClick={handleApplyClick}
             handleSummarizationQuery={handleSummarizationQuery}
+            handleAnalyzeJob={handleAnalyzeJob}  // Add this prop
             keywords={keywords}
             isViewed={isViewed}
             agentNote={agentNote}

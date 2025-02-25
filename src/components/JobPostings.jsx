@@ -61,7 +61,10 @@ export const JobList = ({ data, loading, error, setCid }) => {
     const [expandedSummaries, setExpandedSummaries] = useState(new Set());
     const [summaryThreshold, setSummaryThreshold] = useState(160);
     const [previewJobId, setPreviewJobId] = useState(null);
-    const observer = useRef(null);
+    const jobRefs = useRef({});
+    
+    // Track which jobs have already been prefetched
+    const prefetchedJobs = useRef(new Set());
 
     useEffect(() => {
         const handleResize = () => {
@@ -74,6 +77,50 @@ export const JobList = ({ data, loading, error, setCid }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        // Set up Intersection Observer to detect when job cards are visible
+        const observerOptions = {
+            root: null, // use viewport as root
+            rootMargin: '100px', // start prefetching when job is 100px away from viewport
+            threshold: 0.1 // trigger when at least 10% of the job card is visible
+        };
+
+        const observerCallback = (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const jobId = entry.target.id.replace('job-', '');
+                    
+                    // Only prefetch if we haven't already
+                    if (!prefetchedJobs.current.has(jobId)) {
+                        // Prefetch the job details
+                        router.prefetch(`/job-postings/${jobId}`);
+                        prefetchedJobs.current.add(jobId);
+                        console.log(`Prefetched job: ${jobId}`);
+                    }
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+        // Observe all job cards
+        if (data && data.length > 0) {
+            data.forEach(job => {
+                const jobElement = document.getElementById(`job-${job.id}`);
+                if (jobElement) {
+                    observer.observe(jobElement);
+                    jobRefs.current[job.id] = jobElement;
+                }
+            });
+        }
+
+        return () => {
+            // Cleanup observer on component unmount
+            if (observer) {
+                observer.disconnect();
+            }
+        };
+    }, [data, router]);
 
     const toggleSummary = (jobId) => {
         setExpandedSummaries(prev => {
@@ -155,6 +202,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                     <div
                         key={job.id || index} // Use job.id if available, otherwise index
                         id={`job-${job.id}`}
+                        ref={el => { jobRefs.current[job.id] = el; }}
                         className="flex flex-row items-center gap-4 group py-6 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
                     >
                         <div className="flex flex-col min-w-0 gap-0 flex-grow overflow-hidden">

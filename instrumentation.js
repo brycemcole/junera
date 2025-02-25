@@ -1,6 +1,5 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const cron = require('node-cron');
     const { processAllPendingTasks } = require('./src/services/agentProcessor');
     const { checkDB } = require('./src/lib/pgdb');
 
@@ -20,28 +19,15 @@ export async function register() {
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
-
-    console.log('Database is ready, starting agent processor...');
-
-    // Process jobs immediately once database is ready
+    
+    // Start the agent processor with error handling
     try {
-      await processAllPendingTasks();
+      // await processAllPendingTasks();
       console.log('✓ Initial job processing complete');
     } catch (err) {
-      console.error('✕ Error in initial job processing:', err);
+      console.error('Error during initial job processing:', err);
     }
-
-    // Schedule to run every hour
-    cron.schedule('0 * * * *', async () => {
-      console.log('Running scheduled job processing...');
-      try {
-        await processAllPendingTasks();
-        console.log('✓ Scheduled job processing complete');
-      } catch (err) {
-        console.error('✕ Error in scheduled job processing:', err);
-      }
-    });
-
+    
     console.log('✓ Agent processor initialization complete');
   }
 }
