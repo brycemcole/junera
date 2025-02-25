@@ -17,6 +17,7 @@ import ReportPopover from "@/components/report-popover";
 import { TextEffect } from '@/components/ui/text-effect';
 import ReactMarkdown from 'react-markdown';
 import { GlowEffect } from '@/components/ui/glow-effect';
+import KeywordBadge from '@/components/keyword-badge';
 
 import {
   Accordion,
@@ -64,6 +65,7 @@ import { Badge } from "@/components/ui/badge";
 import { redirect } from 'next/navigation';
 import { decodeHTMLEntities, stripHTML, stateMap, getStateFromLocation, getFullStateFromLocation } from '@/lib/job-utils';
 import { Pill, PillDelta, PillIndicator, PillStatus } from '@/components/pill';
+import LoginCTA from '@/components/login-cta';
 
 const SimilarJobs = ({ jobTitle, experienceLevel }) => {
   const [similarJobs, setSimilarJobs] = useState([]);
@@ -339,12 +341,18 @@ const JobHeader = ({ jobPosting, companyJobCount, id, handleApplyClick, handleSu
         {keywords && keywords.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {keywords.slice(0, 5).map((keyword, index) => (
-              <Link key={index} href={`/job-postings?keywords=${encodeURIComponent(keyword)}`}>
-                <Badge variant="secondary" className="hover:bg-secondary/80">
-                  {keyword}
-                </Badge>
-              </Link>
+              <KeywordBadge 
+                key={index}
+                keyword={keyword}
+                clickable={true}
+                colorScheme="blue"
+              />
             ))}
+            {keywords.length > 5 && (
+              <span className="text-xs text-muted-foreground px-2 py-0.5">
+                +{keywords.length - 5} more
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -1006,11 +1014,30 @@ export default function JobPostingPage({ params }) {
             setShowFullAnalysis={setShowFullAnalysis}
           />
           
-          <div className="mt-6 md:mt-8">
-            {(!agentNote || agentNote?.match_score?.toLowerCase() !== 'high') && (
-              <JobFitAnalysis jobPosting={jobPosting} />
-            )}
-          </div>
+          {/* Show Job Fit Analysis for logged in users, or LoginCTA for non-logged in users */}
+          {user ? (
+            <>
+              {(!agentNote || agentNote?.match_score?.toLowerCase() !== 'high') && (
+                <div className="mt-6 md:mt-8">
+                  <JobFitAnalysis jobPosting={jobPosting} />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="mt-6 md:mt-8">
+              <LoginCTA 
+                title="Unlock personalized job tools"
+                description="Create an account to access premium job search features."
+                features={[
+                  "Personal job fit analysis based on your profile",
+                  "Save jobs and track applications",
+                  "AI-powered resume and job matching",
+                  "Smart recruiter agent notifications",
+                  "Job application tracking"
+                ]}
+              />
+            </div>
+          )}
           
           <JobSummary
             jobPosting={jobPosting}

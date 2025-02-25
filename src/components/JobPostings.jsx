@@ -14,6 +14,7 @@ import { fullStripHTML, decodeHTMLEntities, parseUSLocations } from "@/lib/job-u
 import DOMPurify from 'dompurify';
 import ViewStatusIndicator from '@/components/view-status-indicator';
 import JobPreviewModal from './JobPreviewModal';
+import KeywordBadge from './keyword-badge';
 
 function DateDisplay({ postedDate }) {
     if (!postedDate) {
@@ -242,12 +243,12 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                     {job.keywords && job.keywords.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             {job.keywords.slice(0, 5).map((keyword, idx) => (
-                                                <span
+                                                <KeywordBadge 
                                                     key={idx}
-                                                    className="inline-flex items-center px-2 py-0.5 rounded-md shadow shadow-blue-500/10 text-xs font-medium bg-blue-400/30 text-blue-700 dark:text-blue-300 border border-blue-600/50"
-                                                >
-                                                    {keyword}
-                                                </span>
+                                                    keyword={keyword}
+                                                    clickable={true}
+                                                    colorScheme="blue"
+                                                />
                                             ))}
                                             {job.keywords.length > 5 && (
                                                 <span className="text-xs text-muted-foreground px-2 py-0.5">
