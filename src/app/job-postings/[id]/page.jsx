@@ -1106,7 +1106,7 @@ export default function JobPostingPage({ params }) {
 
   return (
     <>
-      <div className="container mx-auto py-0 sm:py-6 px-4 max-w-4xl">
+      <div className="container mx-auto py-0 sm:py-6 px-4 max-w-6xl">
         <div className="space-y-6 md:space-y-8">
           <JobHeader
             jobPosting={jobPosting}
