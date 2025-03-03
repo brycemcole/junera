@@ -16,6 +16,8 @@ class AIAgent {
     }
 
     async analyzeJobFit(jobPosting, userProfile) {
+        console.log('Analyzing job fit for:', jobPosting);
+        console.log('User profile:', userProfile);
         const JobFitAnalysis = z.object({
             worthy_apply: z.boolean().describe("Whether the user should apply to this job"),
             explanation: z.string().describe("A detailed explanation of why the user should or should not apply")

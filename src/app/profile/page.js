@@ -1035,17 +1035,30 @@ export default function ProfilePage() {
                 
                 // Organize skills by entity type and ID
                 const organized = skills.reduce((acc, skill) => {
+                    // Ensure skill is properly structured before processing
+                    if (!skill) return acc;
+
                     if (skill.entity_type === 'profile') {
-                        acc.profile.push(skill);
-                    } else {
+                        // Add skill with actual skill_name property
+                        acc.profile.push({
+                            id: skill.id,
+                            skill_name: skill.skill_name
+                        });
+                    } else if (skill.entity_type && skill.entity_id) {
+                        // Initialize array if it doesn't exist
                         if (!acc[skill.entity_type][skill.entity_id]) {
                             acc[skill.entity_type][skill.entity_id] = [];
                         }
-                        acc[skill.entity_type][skill.entity_id].push(skill);
+                        // Add skill with actual skill_name property
+                        acc[skill.entity_type][skill.entity_id].push({
+                            id: skill.id,
+                            skill_name: skill.skill_name
+                        });
                     }
                     return acc;
                 }, { profile: [], job: {}, project: {}, education: {} });
 
+                console.log('Organized skills:', organized);
                 setSkillsMap(organized);
             } catch (err) {
                 console.error('Error fetching skills:', err);

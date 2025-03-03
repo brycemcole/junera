@@ -376,7 +376,7 @@ async function explainFurther(noteId) {
     const noteQuery = `
       SELECT 
         an.*,
-        at.user_profile,
+        at.user_id,
         jp.*
       FROM agent_notes an
       JOIN agent_tasks at ON an.agent_task_id = at.id
@@ -390,7 +390,32 @@ async function explainFurther(noteId) {
     }
 
     const note = noteResult.rows[0];
-    const userProfile = note.user_profile;
+    
+    // Get the complete user profile with projects, skills, etc.
+    const userProfile = await getCompleteUserProfile(note.user_id);
+    
+    // Process the skills to ensure they're properly formatted
+    if (userProfile.skills && userProfile.skills.profile_null) {
+      // Transform skills from [Object] format to actual skill names
+      userProfile.skills = Object.entries(userProfile.skills).reduce((acc, [key, skillsArray]) => {
+        if (Array.isArray(skillsArray)) {
+          acc[key] = skillsArray.map(skill => {
+            if (skill && skill.skill_name) {
+              return skill.skill_name;
+            } else if (typeof skill === 'object') {
+              return JSON.stringify(skill);
+            }
+            return skill;
+          });
+        } else {
+          acc[key] = skillsArray;
+        }
+        return acc;
+      }, {});
+    }
+    
+    console.log('User profile:', userProfile);
+    
     const jobPosting = {
       job_id: note.job_id,
       title: note.title,
