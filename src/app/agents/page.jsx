@@ -478,29 +478,43 @@ export default function AgentsPage() {
                     </p>
                 ) : (
                     <div className="grid gap-4">
-                        {displayedNotes.map((note) => (
-                            <Card key={note.id} className={`p-4 ${
-                                note.match_score === 'High' ? 'border-green-500/30 bg-green-500/10' :
-                                note.match_score === 'Medium' ? 'border-yellow-500/30 bg-yellow-500/10' :
-                                'border-orange-500/30 bg-orange-500/10'
-                            }`}>
-                                <div className="flex justify-between items-start">
-                                    <div className="w-full">
-                                        <h3 className="font-medium">{note.job_title}</h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            {note.company} • {note.location}
-                                        </p>
-                                        <p className="text-sm mt-2">
-                                            {note.explanation}
-                                        </p>
-                                        
-                                        <div className="flex items-center gap-2 mt-2">
+                        {displayedNotes.map((note) => {
+                            const colorScheme = note.match_score === 'High' ? 'green' :
+                                              note.match_score === 'Medium' ? 'yellow' : 'orange';
+                            return (
+                            <Card key={note.id} className={`p-6 transition-all duration-200 border-${colorScheme}-500/20 bg-${colorScheme}-50/5 hover:shadow-lg hover:shadow-${colorScheme}-500/10`}>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h3 className="text-lg font-medium">{note.job_title}</h3>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                {note.company} • {note.location}
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className={`
+                                            ${note.match_score === 'High' ? 'bg-green-50 border-green-200 text-green-700' : 
+                                              note.match_score === 'Medium' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 
+                                              'bg-orange-50 border-orange-200 text-orange-700'}
+                                        `}>
+                                            {note.match_score} Match
+                                        </Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                        {note.explanation}
+                                    </p>
+                                    
+                                    <div className="flex items-center gap-3">
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm"
-                                                    className="mt-3"
+                                                    className={`
+                                                        ${note.match_score === 'High' ? 'hover:bg-green-50 border-green-200' : 
+                                                          note.match_score === 'Medium' ? 'hover:bg-yellow-50 border-yellow-200' : 
+                                                          'hover:bg-orange-50 border-orange-200'}
+                                                    `}
                                                     onClick={() => {
                                                         if (!detailedExplanation[note.id]) {
                                                             handleExplainFurther(note.id);
@@ -508,9 +522,12 @@ export default function AgentsPage() {
                                                     }}
                                                 >
                                                     {loadingExplanation === note.id ? (
-                                                        <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+                                                        <>
+                                                            <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+                                                            Analyzing...
+                                                        </>
                                                     ) : (
-                                                        'Get Detailed Analysis'
+                                                        'View Analysis'
                                                     )}
                                                 </Button>
                                             </DialogTrigger>
@@ -553,16 +570,19 @@ export default function AgentsPage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="mt-3"
+                                            className={`
+                                                ${note.match_score === 'High' ? 'hover:bg-green-50 border-green-200' : 
+                                                  note.match_score === 'Medium' ? 'hover:bg-yellow-50 border-yellow-200' : 
+                                                  'hover:bg-orange-50 border-orange-200'}
+                                            `}
                                             onClick={() => router.push(`/job-postings/${note.job_id}`)}
                                         >
                                             View Job
                                         </Button>
-                                        </div> 
-                                    </div>
+                                    </div> 
                                 </div>
                             </Card>
-                        ))}
+                        )})}
                     </div>
                 )}
 

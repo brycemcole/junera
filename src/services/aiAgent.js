@@ -16,56 +16,49 @@ class AIAgent {
     }
 
     async analyzeJobFit(jobPosting, userProfile) {
-        console.log('Analyzing job fit for:', jobPosting);
-        console.log('User profile:', userProfile);
         const JobFitAnalysis = z.object({
-            worthy_apply: z.boolean().describe("Whether the user should apply to this job"),
-            explanation: z.string().describe("A detailed explanation of why the user should or should not apply")
+            worthy_apply: z.boolean().describe("Whether you should apply to this job"),
+            explanation: z.string().describe("Personal feedback on your fit for this role")
         }).describe("Job fit analysis result");
 
         const systemMessage = {
             role: "system",
-            content: `You are a realistic and honest career advisor who prioritizes accurate job fit analysis.
-            You must analyze both the job requirements and the candidate's profile to make informed recommendations.
+            content: `You are a supportive career advisor speaking directly to the candidate.
+            Analyze their fit for the role and provide personalized feedback.
             
-            Key rules:
-            - Entry level roles (0-2 years) match with interns/juniors
-            - Mid level roles (3-5 years) require proven work experience
-            - Senior roles (5+ years) require extensive experience
-            - Management roles require prior management experience
-            - Technical roles require specific technical skill matches
-            - Compare required skills with candidate's actual experience
-            - Consider education, certifications, and projects as supporting evidence
-            - Be direct about missing requirements
-            - Account for transferable skills from related domains
+            When analyzing:
+            - Reference specific parts of their experience/background
+            - Compare their years of experience to role requirements
+            - Mention relevant skills they have or are missing
+            - Be encouraging but honest about gaps
+            - Keep tone personal using "you" and "your"
             
-            Format your response as a JSON object with:
-            - worthy_apply: boolean indicating if they should apply
-            - explanation: detailed explanation of why they should or shouldn't apply
+            Format response as JSON with:
+            - worthy_apply: boolean for if they should apply
+            - explanation: personal feedback mentioning specific aspects of their profile
             
-            Keep responses direct and honest, around 300 characters.`
+            Keep responses direct and encouraging, around 300 characters.`
         };
 
         const userMessage = {
             role: "user",
-            content: `Analyze this job fit based on requirements and candidate profile:
+            content: `Analyze if this job is right for this person:
 
-Job Details:
-Title: ${jobPosting.title}
-Company: ${jobPosting.company}
-Experience Level: ${jobPosting.experiencelevel}
+Role Details:
+${jobPosting.title} at ${jobPosting.company}
+Level: ${jobPosting.experiencelevel}
 Location: ${jobPosting.location}
 Description: ${jobPosting.description}
 
-Candidate Profile:
-${userProfile ? `Work Experience: ${JSON.stringify(userProfile.experience)}
+Their Background:
+${userProfile ? `Experience: ${JSON.stringify(userProfile.experience)}
 Education: ${JSON.stringify(userProfile.education)}
 Projects: ${JSON.stringify(userProfile.projects)}
 Certifications: ${JSON.stringify(userProfile.certifications)}
 Awards: ${JSON.stringify(userProfile.awards)}
 Preferences: ${JSON.stringify(userProfile.user)}` : 'No profile provided'}
 
-Remember to be realistic about experience requirements and strict about required skills.`
+Provide personal feedback mentioning specific aspects of their background.`
         };
 
         const result = await this.client.chat.completions.create({
@@ -79,7 +72,6 @@ Remember to be realistic about experience requirements and strict about required
             response_format: zodResponseFormat(JobFitAnalysis, "JobFitAnalysis"),
         });
 
-        // Return the ReadableStream for streaming responses
         return new ReadableStream({
             async start(controller) {
                 try {

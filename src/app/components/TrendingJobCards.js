@@ -56,6 +56,7 @@ export default function TrendingJobCards() {
       }
     };
 
+    if (trending.length === 0)
     fetchTrending();
     
     return () => {

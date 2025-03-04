@@ -283,9 +283,8 @@ export default function Navbar() {
       <div className="flex flex-row justify-between px-4 sm:px-6 py-3 z-100">
         <div className="flex items-center space-x-2">
           <Link href="/">
-          <Image src="/apple-icon.png" alt="junera" width={28} height={28} />
           </Link>
-          <span className="text-lg font-semibold flex items-center gap-2 font-[family-name:var(--font-geist-sans)]">
+          <span className="text-lg flex items-center gap-2 font-[family-name:var(--font-geist-mono)]">
             junera
             {!productionEnv && <Badge className="ml-1 bg-green-500/30 border backdrop-blur border-green-600/30 text-green-700 dark:text-green-100 rounded-lg">dev</Badge>}
             </span>

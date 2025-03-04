@@ -147,7 +147,9 @@ async function processJob(taskId, jobId, userProfile, jobDetails) {
     // Update the agent_tasks with just the processed job id
     await query(
       `UPDATE agent_tasks 
-       SET processed_job_ids = array_append(processed_job_ids, $1)
+       SET processed_job_ids = array_append(processed_job_ids, $1),
+           jobs_processed_count = COALESCE(jobs_processed_count, 0) + 1,
+           last_processed_at = NOW()
        WHERE id = $2`,
       [jobId, taskId]
     );
@@ -160,6 +162,226 @@ async function processJob(taskId, jobId, userProfile, jobDetails) {
   }
 }
 
+// Process a single task by ID
+async function processTask(taskId) {
+  try {
+    console.log(`Processing single task: ${taskId}`);
+
+    // Get task details
+    const taskResult = await query(`
+      SELECT * FROM agent_tasks WHERE id = $1
+    `, [taskId]);
+
+    if (taskResult.rows.length === 0) {
+      throw new Error(`Task with ID ${taskId} not found`);
+    }
+
+    const task = taskResult.rows[0];
+    
+    // Update task status to processing
+    await query(`
+      UPDATE agent_tasks 
+      SET status = 'processing', 
+          processing_started_at = NOW(),
+          jobs_processed_count = 0
+      WHERE id = $1
+    `, [taskId]);
+
+    // Get complete user profile if not already available
+    let completeProfile = task.user_profile;
+    if (!completeProfile) {
+      completeProfile = await getCompleteUserProfile(task.user_id);
+      await query(
+        `UPDATE agent_tasks SET user_profile = $1 WHERE id = $2`,
+        [JSON.stringify(completeProfile), task.id]
+      );
+    } else if (typeof completeProfile === 'string') {
+      completeProfile = JSON.parse(completeProfile);
+    }
+
+    // Setup search parameters
+    const searchTitle = task.search_title || (completeProfile.user.job_prefs_title?.length > 0 ? completeProfile.user.job_prefs_title[0] : '');
+    const searchLocation = task.search_location || (completeProfile.user.job_prefs_location?.length > 0 ? completeProfile.user.job_prefs_location[0] : '');
+    const searchExperienceLevel = task.search_experience_level || (completeProfile.user.job_prefs_level?.length > 0 ? completeProfile.user.job_prefs_level[0] : '');
+
+    const titleParam = searchTitle ? `%${searchTitle}%` : '%';
+    const searchTitlePattern = searchTitle ? `%(${searchTitle.split(' ').join('|')})%` : '%';
+    const locationParam = searchLocation ? `%${searchLocation}%` : '%';
+
+    // Only keep the last 100 processed job IDs
+    const processedIds = (task.processed_job_ids || []).slice(-100);
+    
+    console.log('Executing job query with params:', {
+      title: titleParam,
+      titlePattern: searchTitlePattern,
+      location: locationParam,
+      relocatable: completeProfile.user.job_prefs_relocatable,
+      experienceLevel: searchExperienceLevel,
+      processedJobIds: processedIds,
+      processedIdsCount: processedIds.length
+    });
+
+    // Setup query parameters
+    let offset = 0;
+    const limit = 25; // Process fewer jobs for immediate feedback
+    let totalProcessedJobs = 0;
+    const maxJobsToProcess = 50; // Process fewer jobs for immediate feedback
+
+    // Get the date 120 days ago
+    const oldestJobDate = new Date();
+    oldestJobDate.setDate(oldestJobDate.getDate() - 120);
+
+    while (totalProcessedJobs < maxJobsToProcess) {
+      // Update progress in the database
+      await query(`
+        UPDATE agent_tasks
+        SET jobs_processed_count = $1,
+            progress = $2
+        WHERE id = $3
+      `, [totalProcessedJobs, Math.min(100, Math.round((totalProcessedJobs / maxJobsToProcess) * 100)), taskId]);
+
+      // Build query using same pattern as job-actions.js
+      let queryText = `
+        WITH RankedJobs AS (
+          SELECT 
+            job_id,
+            title,
+            company,
+            location,
+            description,
+            salary,
+            experiencelevel,
+            created_at,
+            source_url,
+            ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
+          FROM jobPostings
+          WHERE created_at >= $1
+      `;
+      
+      const paramsArray = [oldestJobDate];
+      
+      // Add title search conditions
+      if (searchTitle) {
+        paramsArray.push(`%${searchTitle}%`);
+        paramsArray.push(searchTitlePattern);
+        queryText += ` AND (LOWER(title) LIKE LOWER($${paramsArray.length-1}) 
+                      OR LOWER(title) SIMILAR TO LOWER($${paramsArray.length}))`;
+      }
+      
+      // Add location search conditions
+      if (searchLocation) {
+        paramsArray.push(`%${searchLocation}%`);
+        queryText += ` AND (LOWER(location) LIKE LOWER($${paramsArray.length})`;
+        
+        if (completeProfile.user.job_prefs_relocatable) {
+          queryText += ` OR LOWER(location) ILIKE '%remote%'`;
+        }
+        
+        queryText += `)`;
+      } else if (completeProfile.user.job_prefs_relocatable) {
+        queryText += ` AND LOWER(location) ILIKE '%remote%'`;
+      }
+      
+      // Add experience level conditions
+      if (searchExperienceLevel) {
+        paramsArray.push(searchExperienceLevel);
+        queryText += ` AND LOWER(experiencelevel) = LOWER($${paramsArray.length})`;
+      }
+      
+      // Add condition for processed job ids
+      if (processedIds.length > 0) {
+        queryText += ` AND job_id NOT IN (${processedIds.map((_, idx) => 
+          `$${paramsArray.length + idx + 1}`).join(',')})`;
+        paramsArray.push(...processedIds);
+      }
+      
+      // Close the CTE and add the final query
+      queryText += `) 
+        SELECT 
+          job_id,
+          title,
+          company,
+          location,
+          description,
+          salary,
+          experiencelevel,
+          created_at,
+          source_url
+        FROM RankedJobs 
+        WHERE rn = 1 
+        ORDER BY created_at DESC 
+        LIMIT $${paramsArray.length + 1} OFFSET $${paramsArray.length + 2}`;
+      
+      paramsArray.push(limit, offset);
+
+      // Log the actual query and parameters for debugging
+      console.log('Query:', queryText);
+      console.log('Params:', paramsArray);
+
+      const jobs = await query(queryText, paramsArray);
+
+      console.log(`Found ${jobs.rows.length} matching jobs in this batch (offset: ${offset})`);
+
+      if (jobs.rows.length === 0) {
+        console.log('No more jobs found, exiting loop.');
+        break;
+      }
+
+      for (const job of jobs.rows) {
+        try {
+          console.log(`Processing job ${job.job_id} for task ${task.id}`);
+          await processJob(task.id, job.job_id, completeProfile, job);
+          totalProcessedJobs++;
+
+          // Update the processed job count in real-time
+          await query(`
+            UPDATE agent_tasks
+            SET jobs_processed_count = $1,
+                progress = $2
+            WHERE id = $3
+          `, [totalProcessedJobs, Math.min(100, Math.round((totalProcessedJobs / maxJobsToProcess) * 100)), taskId]);
+
+          if (totalProcessedJobs >= maxJobsToProcess) {
+            console.log(`Reached maximum jobs to process (${maxJobsToProcess}), exiting loop.`);
+            break;
+          }
+        } catch (jobError) {
+          // Log error but continue with next job
+          console.error(`Failed to process job ${job.job_id} for task ${task.id}:`, jobError);
+        }
+      }
+
+      offset += limit;
+    }
+
+    console.log(`Total jobs processed for task ${task.id}: ${totalProcessedJobs}`);
+    
+    // Mark task as completed
+    await query(`
+      UPDATE agent_tasks 
+      SET status = 'completed', 
+          processing_completed_at = NOW(),
+          jobs_processed_count = $1,
+          progress = 100
+      WHERE id = $2
+    `, [totalProcessedJobs, taskId]);
+    
+    return true;
+  } catch (error) {
+    console.error(`Error processing task ${taskId}:`, error);
+    
+    // Mark task as error
+    await query(`
+      UPDATE agent_tasks 
+      SET status = 'error',
+          error_message = $1
+      WHERE id = $2
+    `, [error.message, taskId]);
+    
+    throw error;
+  }
+}
+
 async function processAllPendingTasks() {
   try {
     console.log('Processing agent tasks...');
@@ -169,6 +391,7 @@ async function processAllPendingTasks() {
       WITH tasks_to_process AS (
         SELECT id, user_id
         FROM agent_tasks at
+        WHERE status = 'pending' OR status IS NULL
         ORDER BY id
         LIMIT $1
         FOR UPDATE SKIP LOCKED
@@ -186,155 +409,7 @@ async function processAllPendingTasks() {
     // Process tasks concurrently but with controlled parallelism
     await Promise.all(tasks.rows.map(async (task) => {
       try {
-        // Get complete user profile
-        const completeProfile = await getCompleteUserProfile(task.user_id);
-        
-        // Update the task with complete profile if not already set
-        if (!task.user_profile) {
-          await query(
-            `UPDATE agent_tasks SET user_profile = $1 WHERE id = $2`,
-            [JSON.stringify(completeProfile), task.id]
-          );
-          task.user_profile = completeProfile;
-        }
-
-        const searchTitle = task.search_title || (completeProfile.user.job_prefs_title?.length > 0 ? completeProfile.user.job_prefs_title[0] : '');
-        const searchLocation = task.search_location || (completeProfile.user.job_prefs_location?.length > 0 ? completeProfile.user.job_prefs_location[0] : '');
-        const searchExperienceLevel = task.search_experience_level || (completeProfile.user.job_prefs_level?.length > 0 ? completeProfile.user.job_prefs_level[0] : '');
-
-        const titleParam = searchTitle ? `%${searchTitle}%` : '%';
-        const searchTitlePattern = searchTitle ? `%(${searchTitle.split(' ').join('|')})%` : '%';
-        const locationParam = searchLocation ? `%${searchLocation}%` : '%';
-
-        // Only keep the last 100 processed job IDs
-        const processedIds = (task.processed_job_ids || []).slice(-100);
-        
-        console.log('Executing job query with params:', {
-          title: titleParam,
-          titlePattern: searchTitlePattern,
-          location: locationParam,
-          relocatable: completeProfile.user.job_prefs_relocatable,
-          experienceLevel: searchExperienceLevel,
-          processedJobIds: processedIds,
-          processedIdsCount: processedIds.length
-        });
-
-        let offset = 0;
-        const limit = 50;
-        let totalProcessedJobs = 0;
-        const maxJobsToProcess = 1000;
-
-        // Get the date 120
-        const oldestJobDate = new Date();
-        oldestJobDate.setDate(oldestJobDate.getDate() - 120);
-
-        while (totalProcessedJobs < maxJobsToProcess) {
-          // Build query using same pattern as job-actions.js
-          let queryText = `
-            WITH RankedJobs AS (
-              SELECT 
-                job_id,
-                title,
-                company,
-                location,
-                description,
-                salary,
-                experiencelevel,
-                created_at,
-                source_url,
-                ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
-              FROM jobPostings
-              WHERE created_at >= $1
-          `;
-          
-          const paramsArray = [oldestJobDate];
-          
-          // Add title search conditions
-          if (searchTitle) {
-            paramsArray.push(`%${searchTitle}%`);
-            paramsArray.push(searchTitlePattern);
-            queryText += ` AND (LOWER(title) LIKE LOWER($${paramsArray.length-1}) 
-                         OR LOWER(title) SIMILAR TO LOWER($${paramsArray.length}))`;
-          }
-          
-          // Add location search conditions
-          if (searchLocation) {
-            paramsArray.push(`%${searchLocation}%`);
-            queryText += ` AND (LOWER(location) LIKE LOWER($${paramsArray.length})`;
-            
-            if (completeProfile.user.job_prefs_relocatable) {
-              queryText += ` OR LOWER(location) ILIKE '%remote%'`;
-            }
-            
-            queryText += `)`;
-          } else if (completeProfile.user.job_prefs_relocatable) {
-            queryText += ` AND LOWER(location) ILIKE '%remote%'`;
-          }
-          
-          // Add experience level conditions
-          if (searchExperienceLevel) {
-            paramsArray.push(searchExperienceLevel);
-            queryText += ` AND LOWER(experiencelevel) = LOWER($${paramsArray.length})`;
-          }
-          
-          // Add condition for processed job ids
-          if (processedIds.length > 0) {
-            queryText += ` AND job_id NOT IN (${processedIds.map((_, idx) => 
-              `$${paramsArray.length + idx + 1}`).join(',')})`;
-            paramsArray.push(...processedIds);
-          }
-          
-          // Close the CTE and add the final query
-          queryText += `) 
-            SELECT 
-              job_id,
-              title,
-              company,
-              location,
-              description,
-              salary,
-              experiencelevel,
-              created_at,
-              source_url
-            FROM RankedJobs 
-            WHERE rn = 1 
-            ORDER BY created_at DESC 
-            LIMIT $${paramsArray.length + 1} OFFSET $${paramsArray.length + 2}`;
-          
-          paramsArray.push(limit, offset);
-
-          // Log the actual query and parameters for debugging
-          console.log('Query:', queryText);
-          console.log('Params:', paramsArray);
-
-          const jobs = await query(queryText, paramsArray);
-
-          console.log(`Found ${jobs.rows.length} matching jobs in this batch (offset: ${offset})`);
-
-          if (jobs.rows.length === 0) {
-            console.log('No more jobs found, exiting loop.');
-            break;
-          }
-
-          for (const job of jobs.rows) {
-            try {
-              console.log(`Processing job ${job.job_id} for task ${task.id}`);
-              await processJob(task.id, job.job_id, completeProfile, job);
-              totalProcessedJobs++;
-
-              if (totalProcessedJobs >= maxJobsToProcess) {
-                console.log(`Reached maximum jobs to process (${maxJobsToProcess}), exiting loop.`);
-                break;
-              }
-            } catch (jobError) {
-              // Log error but continue with next job
-              console.error(`Failed to process job ${job.job_id} for task ${task.id}:`, jobError);
-            }
-          }
-
-          offset += limit;
-        }
-        console.log(`Total jobs processed for task ${task.id}: ${totalProcessedJobs}`);
+        await processTask(task.id);
       } catch (error) {
         console.error(`Error processing task ${task.id}:`, error);
       }
@@ -510,5 +585,6 @@ Explain to them personally why this match was rated as it was. Highlight their s
 module.exports = {
   processJob,
   processAllPendingTasks,
+  processTask,
   explainFurther
 };

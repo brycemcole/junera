@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/popover"
 import { ArrowRight, Briefcase, Bell, Flag, Mail, MapPin, Sparkle, Timer, User, Wand2, Zap, DollarSign, Sparkles, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { redirect } from 'next/navigation';
+import { redirect, useSearchParams } from 'next/navigation';
 import { decodeHTMLEntities, stripHTML, stateMap, getStateFromLocation, getFullStateFromLocation } from '@/lib/job-utils';
 import { Pill, PillDelta, PillIndicator, PillStatus } from '@/components/pill';
 import LoginCTA from '@/components/login-cta';
@@ -236,164 +236,158 @@ const JobHeader = ({
   id, 
   handleApplyClick, 
   handleSummarizationQuery,
-  handleAnalyzeJob,  // Add this prop
+  handleAnalyzeJob,
   keywords, 
   isViewed, 
   agentNote, 
   showFullAnalysis, 
   setShowFullAnalysis 
 }) => {
-  const getMatchScoreColor = (score) => {
-    if (!score) return 'text-muted-foreground';
+  const searchParams = useSearchParams();
+  const getReturnUrl = () => {
+    const prevPage = searchParams.get('fromPage') || '1';
+    const origParams = new URLSearchParams();
+    const title = searchParams.get('title');
+    const explevel = searchParams.get('explevel');
+    const location = searchParams.get('location');
+    const company = searchParams.get('company');
+    const keywords = searchParams.get('keywords');
+    const saved = searchParams.get('saved');
+
+    if (title) origParams.set('title', title);
+    if (explevel) origParams.set('explevel', explevel);
+    if (location) origParams.set('location', location);
+    if (company) origParams.set('company', company);
+    if (keywords) origParams.set('keywords', keywords);
+    if (saved) origParams.set('saved', saved);
+    origParams.set('page', prevPage);
     
-    switch (score.toLowerCase()) {
-      case 'high':
-        return 'text-green-600';
-      case 'medium':
-        return 'text-yellow-600';
-      case 'low':
-        return 'text-orange-600';
-      default:
-        return 'text-muted-foreground';
-    }
+    return `/job-postings?${origParams.toString()}`;
   };
 
   return (
     <div className="space-y-6">
-      {/* Back to Search Results Pagination */}
+      {/* Back Button */}
       <div className="flex items-center">
-        <div className="flex-1">
-          <Link href="/job-postings">
-            <Button variant="link" className="px-0 flex items-center gap-1 text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="h-4 w-4" />
-              Back to search results
-            </Button>
-          </Link>
-        </div>
+        <Link href={getReturnUrl()}>
+          <Button variant="ghost" className="px-0 flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" />
+            Back to search
+          </Button>
+        </Link>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start gap-3"> {/* Changed from items-center to items-start */}
-          <div className="space-y-1 flex-1"> {/* Added flex-1 */}
+      <div className="space-y-4">
+        {/* Company Section */}
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12 rounded-xl border bg-background" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
+            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
+            <AvatarFallback className="rounded-xl bg-muted">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
             <Link
               href={`/companies/${jobPosting.company}`}
-              className="text-sm flex flex-row items-center gap-2 font-medium hover:underline"
+              className="text-sm font-medium hover:underline inline-flex items-center gap-2"
             >
-                        <Avatar className="h-6 w-6 rounded-lg" onClick={() => redirect(`/companies/${jobPosting.company}`)}>
-            <AvatarImage src={`https://logo.clearbit.com/${jobPosting.company}.com`} />
-            <AvatarFallback className="rounded-lg bg-muted">{jobPosting.company?.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
               {jobPosting.company}
-            </Link>
-            <div className="flex flex-wrap items-center gap-2"> {/* Changed flex container */}
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {jobPosting.title}
-              </h1>
-              {agentNote && agentNote.match_score?.toLowerCase() === 'high' && (
-                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-600/20 whitespace-nowrap">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  High Match
+              {companyJobCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {companyJobCount} jobs
                 </Badge>
               )}
-            </div>
+            </Link>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {jobPosting.title}
+            </h1>
           </div>
         </div>
 
-        {/* Job Details - Only render this div if at least one detail is available */}
-        {(jobPosting.location || 
-         (jobPosting?.experiencelevel && jobPosting.experiencelevel !== 'null') || 
-         jobPosting?.created_at || 
-         isViewed) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-4">
-            {jobPosting.location && (
-              <div>
-                <h5 className="text-sm font-medium mb-1">Location</h5>
-                <p className="text-muted-foreground">{jobPosting.location}</p>
-              </div>
-            )}
-            
-            {jobPosting?.experiencelevel && jobPosting.experiencelevel !== 'null' && (
-              <div>
-                <h5 className="text-sm font-medium mb-1">Experience Level</h5>
-                <p className="text-muted-foreground">{jobPosting.experiencelevel}</p>
-              </div>
-            )}
-            
-            {jobPosting?.created_at && (
-              <div>
-                <h5 className="text-sm font-medium mb-1">Posted</h5>
-                <p className="text-muted-foreground">{formatDistanceToNow(jobPosting.created_at)} ago</p>
-              </div>
-            )}
-            
-            {isViewed && (
-              <div>
-                <h5 className="text-sm font-medium mb-1">Status</h5>
-                <p className="text-muted-foreground">Viewed</p>
-              </div>
-            )}
-                    {keywords && keywords.length > 0 && (
-                      <div>
-                      <h5 className="text-sm font-medium mb-1">Keywords</h5>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {keywords.slice(0, 5).map((keyword, index) => (
-                          <KeywordBadge 
-                            key={index}
-                            keyword={keyword}
-                            clickable={true}
-                            colorScheme="blue"
-                          />
-                        ))}
-                        {keywords.length > 5 && (
-                          <span className="text-xs text-muted-foreground px-2 py-0.5">
-                            +{keywords.length - 5} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    )}
+        {/* Job Details Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {jobPosting.location && (
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>{jobPosting.location}</span>
+            </div>
+          )}
+          {jobPosting?.experiencelevel && jobPosting.experiencelevel !== 'null' && (
+            <div className="flex items-center gap-2 text-sm">
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              <span>{jobPosting.experiencelevel}</span>
+            </div>
+          )}
+          {jobPosting?.created_at && (
+            <div className="flex items-center gap-2 text-sm">
+              <Timer className="h-4 w-4 text-muted-foreground" />
+              <span>{formatDistanceToNow(jobPosting.created_at)} ago</span>
+            </div>
+          )}
+          {isViewed && (
+            <div className="flex items-center gap-2 text-sm">
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <span>Viewed</span>
+            </div>
+          )}
+        </div>
+
+        {/* Keywords */}
+        {keywords && keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((keyword, index) => (
+              <KeywordBadge 
+                key={index}
+                keyword={keyword}
+                clickable={true}
+                colorScheme="neutral"
+              />
+            ))}
           </div>
         )}
-        </div>
-        
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 pt-2">
           <Link
             href={jobPosting.source_url}
             target="_blank"
             onClick={handleApplyClick}
           >
             <Button 
-              className="gap-2 bg-green-500/10 text-green-600 border-green-600/20 hover:bg-green-500/20"
+              size="lg"
+              className={`gap-2 font-medium ${
+                agentNote?.match_score?.toLowerCase() === 'high'
+                  ? 'bg-green-500/10 text-green-600 border-green-600/20 hover:bg-green-500/20'
+                  : 'bg-blue-500/10 text-blue-600 border-blue-600/20 hover:bg-blue-500/20'
+              }`}
               variant="outline"
             >
               Apply Now <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <BookmarkButton jobId={id} />
-          <ReportPopover jobId={id} />
-          <JobDropdown
-            handleSummarizationQuery={handleSummarizationQuery}
-            handleAnalyzeJob={handleAnalyzeJob}
-            jobId={id}
-            title={jobPosting.title}
-            company={jobPosting.company}
-            companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
-            location={jobPosting.location}
-          />
+          <div className="flex items-center gap-2">
+            <BookmarkButton jobId={id} />
+            <ReportPopover jobId={id} />
+            <JobDropdown
+              handleSummarizationQuery={handleSummarizationQuery}
+              handleAnalyzeJob={handleAnalyzeJob}
+              jobId={id}
+              title={jobPosting.title}
+              company={jobPosting.company}
+              companyLogo={`https://logo.clearbit.com/${jobPosting.company}.com`}
+              location={jobPosting.location}
+            />
+          </div>
         </div>
 
-                {/* Agent Note Section */}
-                {agentNote && (
-  <MatchAnalysis 
-    agentNote={agentNote}
-    showFullAnalysis={showFullAnalysis}
-    onToggleAnalysis={() => setShowFullAnalysis(!showFullAnalysis)}
-  />
-)}
-
+        {/* Match Analysis */}
+        {agentNote && (
+          <MatchAnalysis 
+            agentNote={agentNote}
+            showFullAnalysis={showFullAnalysis}
+            onToggleAnalysis={() => setShowFullAnalysis(!showFullAnalysis)}
+          />
+        )}
       </div>
+    </div>
   );
 };
 
@@ -435,27 +429,111 @@ const JobSummary = ({ jobPosting, loadingLLMReponse, llmResponse, error }) => {
   );
 };
 
-const JobDescription = ({ jobPosting }) => (
-  <div className="rounded-lg border bg-card">
-    <div className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Text className="h-4 w-4 text-primary" />
-        <h2 className="text-base font-semibold">Job Description</h2>
+const JobDescription = ({ jobPosting }) => {
+  const [markdownContent, setMarkdownContent] = useState('');
+  
+  useEffect(() => {
+    // Only import TurnDown on the client side
+    if (typeof window !== 'undefined' && jobPosting && jobPosting.description) {
+      // Dynamic import to avoid SSR issues
+      import('turndown').then(({ default: TurndownService }) => {
+        const turndownService = new TurndownService({
+          headingStyle: 'atx', // Use # style headings
+          hr: '---',
+          bulletListMarker: '•', // Use bullet points for lists
+          codeBlockStyle: 'fenced',
+          emDelimiter: '_',
+          strongDelimiter: '**'
+        });
+        
+        // Add additional rules to better preserve formatting
+        turndownService.addRule('preserveLineBreaks', {
+          filter: 'br',
+          replacement: function(content) {
+            return '  \n'; // Markdown line break
+          }
+        });
+
+        // Preserve div tags as paragraphs with line breaks
+        turndownService.addRule('preserveDivs', {
+          filter: 'div',
+          replacement: function(content) {
+            return content + '\n\n';
+          }
+        });
+
+        // Preserve spacing and special characters
+        turndownService.addRule('preserveSpaces', {
+          filter: function(node) {
+            return node.nodeType === 3 && node.nodeValue.includes('  ');
+          },
+          replacement: function(content) {
+            return content.replace(/  +/g, ' ');
+          }
+        });
+
+        // Keep lists properly formatted
+        turndownService.addRule('nestedLists', {
+          filter: ['ul', 'ol'],
+          replacement: function(content, node) {
+            let prefix = node.nodeName === 'OL' ? '1. ' : '• ';
+            return '\n\n' + content.trim() + '\n\n';
+          }
+        });
+
+        // First sanitize with DOMPurify
+        const sanitizedHtml = DOMPurify.sanitize(
+          decodeHTMLEntities(jobPosting.description),
+          { ADD_ATTR: ['target'] } // Preserve target attribute for links
+        );
+
+        // Then convert to markdown
+        const markdown = turndownService.turndown(sanitizedHtml);
+        setMarkdownContent(markdown);
+      });
+    }
+  }, [jobPosting]);
+
+  return (
+    <div className="rounded-3xl border shadow">
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Text className="h-4 w-4 text-primary" />
+          <h2 className="text-base font-semibold">Job Description</h2>
+        </div>
+        <div className="prose prose-neutral dark:prose-invert max-w-none">
+          <ReactMarkdown
+            components={{
+              h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-4" {...props} />,
+              h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-3" {...props} />,
+              h3: ({ node, ...props }) => <h3 className="text-md font-bold mb-2" {...props} />,
+              p: ({ node, ...props }) => <p className="mb-4 leading-relaxed" {...props} />,
+              ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-4" {...props} />,
+              ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-4" {...props} />,
+              li: ({ node, ...props }) => <li className="mb-2" {...props} />,
+              strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+              em: ({ node, ...props }) => <em className="italic" {...props} />,
+              blockquote: ({ node, ...props }) => (
+                <blockquote className="border-l-4 border-green-500/50 pl-4 italic my-4" {...props} />
+              ),
+              code: ({ node, inline, ...props }) => 
+                inline ? 
+                  <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props} /> :
+                  <code className="block bg-muted p-2 rounded-md text-sm overflow-x-auto my-4" {...props} />,
+              pre: ({ node, ...props }) => <pre className="bg-muted p-4 rounded-md overflow-x-auto my-4" {...props} />,
+              hr: ({ node, ...props }) => <hr className="my-6 border-t border-border" {...props} />,
+            }}
+          >
+            {markdownContent}
+          </ReactMarkdown>
+        </div>
       </div>
-      <div 
-        className="text-sm leading-relaxed text-foreground space-y-4 [&_a]:break-words [&_a]:inline-block [&_a]:max-w-full"
-        dangerouslySetInnerHTML={{
-          __html: DOMPurify.sanitize(
-            stripHTML(decodeHTMLEntities(jobPosting.description))
-          ),
-        }}
-      />
     </div>
-  </div>
-);
+  );
+};
 
 const SimilarJobsSection = ({ jobPosting }) => (
-  <div className="rounded-lg border bg-card">
+  <div className="rounded-3xl border shadow">
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Telescope size={16} className="text-primary" />
@@ -477,7 +555,7 @@ const SimilarJobsSection = ({ jobPosting }) => (
 );
 
 const CompanyJobsSection = ({ jobPosting }) => (
-  <div className="rounded-lg border bg-card">
+  <div className="rounded-3xl border shadow">
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Building2 size={16} className="text-primary" />
@@ -634,7 +712,7 @@ const JobFitAnalysis = ({ jobPosting }) => {
   return (
     <div className="space-y-4">
       {!analysis.explanation && !loading && (
-        <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center justify-between rounded-3xl border shadow p-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-base font-semibold">Job Fit Analysis</span>
@@ -685,7 +763,11 @@ const JobFitAnalysis = ({ jobPosting }) => {
       )}
 
       {analysis.explanation && analysis.explanation.trim() !== '' && (
-        <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div className={`rounded-3xl shadow border bg-card p-6 space-y-3 ${
+          analysis.worthy_apply
+            ? 'border-green-500/30 bg-green-500/10'
+            : 'border-yellow-500/30 bg-yellow-500/10'
+        }`}>
           {analysis.worthy_apply !== null && (
             <Badge variant="outline" className={
               analysis.worthy_apply
@@ -1114,7 +1196,7 @@ export default function JobPostingPage({ params }) {
             id={id}
             handleApplyClick={handleApplyClick}
             handleSummarizationQuery={handleSummarizationQuery}
-            handleAnalyzeJob={handleAnalyzeJob}  // Add this prop
+            handleAnalyzeJob={handleAnalyzeJob}
             keywords={keywords}
             isViewed={isViewed}
             agentNote={agentNote}
@@ -1122,10 +1204,10 @@ export default function JobPostingPage({ params }) {
             setShowFullAnalysis={setShowFullAnalysis}
           />
           
-          {/* Show Job Fit Analysis for logged in users, or LoginCTA for non-logged in users */}
           {user ? (
+            // Only show JobFitAnalysis if there's no agent match analysis
             <>
-              {(!agentNote || agentNote?.match_score?.toLowerCase() !== 'high') && (
+              {!agentNote && (
                 <div className="mt-6 md:mt-8">
                   <JobFitAnalysis jobPosting={jobPosting} />
                 </div>

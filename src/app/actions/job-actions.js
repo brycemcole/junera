@@ -120,7 +120,10 @@ export async function getJobPostings(searchParams) {
     includeTitles = [...new Map(includeTitles.map(t => [t.toLowerCase(), t])).values()];
     excludeTitles = [...new Map(excludeTitles.map(t => [t.toLowerCase(), t])).values()];
     
+    // Get locations parameters and ensure they're properly processed
     const locations = params.getAll("location").filter(Boolean).map(loc => loc.toLowerCase());
+    console.log('Location search terms:', locations);  // Add debug logging
+    
     const experienceLevels = params.getAll("experienceLevel").filter(Boolean);
     const company = params.get("company")?.trim() || "";
     const keywords = params.get("keywords")?.trim() || "";
@@ -145,6 +148,35 @@ export async function getJobPostings(searchParams) {
           experiencelevel,
           created_at,
           source_url,
+    `;
+
+    // Add relevance ranking score for vector-based search
+    if (includeTitles.length > 0 || locations.length > 0) {
+      const titleScoreParts = includeTitles.map((_, idx) => {
+        return `ts_rank_cd(title_vector, to_tsquery('english', $${idx + 1}))`;
+      }).join(' + ');
+
+      const locationOffset = includeTitles.length;
+      const locationScoreParts = locations.map((_, idx) => {
+        return `ts_rank_cd(location_vector, to_tsquery('simple', $${locationOffset + idx + 1}))`;
+      }).join(' + ');
+
+      // Combine scores with appropriate weights
+      let relevanceScore = '';
+      if (includeTitles.length > 0 && locations.length > 0) {
+        relevanceScore = `(${titleScoreParts}) * 2 + (${locationScoreParts})`;
+      } else if (includeTitles.length > 0) {
+        relevanceScore = titleScoreParts;
+      } else if (locations.length > 0) {
+        relevanceScore = locationScoreParts;
+      }
+
+      if (relevanceScore) {
+        queryText += `${relevanceScore} AS relevance_score,`;
+      }
+    }
+
+    queryText += `
           ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) as rn
         FROM jobPostings
         WHERE 1=1
@@ -152,11 +184,12 @@ export async function getJobPostings(searchParams) {
     
     const paramsArray = [];
     
-    // Handle inclusive title search
+    // Handle inclusive title search with title_vector
     if (includeTitles.length > 0) {
-      const titleConditions = includeTitles.map((_, idx) => {
-        paramsArray.push(`%${includeTitles[idx]}%`);
-        return `title ILIKE $${paramsArray.length}`;
+      const titleConditions = includeTitles.map((title) => {
+        // Convert to tsquery format - replace spaces with & for AND search
+        paramsArray.push(title.trim().replace(/\s+/g, ' & '));
+        return `title_vector @@ to_tsquery('english', $${paramsArray.length})`;
       });
       queryText += ` AND (${titleConditions.join(' OR ')})`;
     }
@@ -169,10 +202,17 @@ export async function getJobPostings(searchParams) {
       });
     }
 
+    // Improve the location search handling
     if (locations.length > 0) {
-      const locationConditions = locations.map((_, idx) => {
-        paramsArray.push(`%${locations[idx]}%`);
-        return `LOWER(location) LIKE LOWER($${paramsArray.length})`;
+      const locationConditions = locations.map((location) => {
+        // First try exact match with location_vector
+        paramsArray.push(location.trim().replace(/\s+/g, ' & '));
+        
+        // Also do a LIKE search for partial matches
+        paramsArray.push(`%${location}%`);
+        
+        return `(location_vector @@ to_tsquery('simple', $${paramsArray.length-1}) OR 
+                LOWER(location) LIKE $${paramsArray.length})`;
       });
       queryText += ` AND (${locationConditions.join(' OR ')})`;
     }
@@ -209,11 +249,26 @@ export async function getJobPostings(searchParams) {
         salary,
         experiencelevel,
         created_at,
-        source_url
+        source_url`;
+    
+    // Add relevance_score to the SELECT part if it was calculated
+    if (includeTitles.length > 0 || locations.length > 0) {
+      queryText += `, relevance_score`;
+    }
+    
+    queryText += `
       FROM RankedJobs 
       WHERE rn = 1 
-      ORDER BY created_at DESC 
-      LIMIT $${paramsArray.length + 1} OFFSET $${paramsArray.length + 2}`;
+      ORDER BY `;
+    
+    // Order by relevance_score if available, otherwise by created_at
+    if (includeTitles.length > 0 || locations.length > 0) {
+      queryText += `relevance_score DESC, created_at DESC`;
+    } else {
+      queryText += `created_at DESC`;
+    }
+    
+    queryText += ` LIMIT $${paramsArray.length + 1} OFFSET $${paramsArray.length + 2}`;
 
     paramsArray.push(limit, offset);
 
@@ -330,11 +385,12 @@ export async function getJobPostingsCount(searchParams) {
 
     const paramsArray = [];
 
-    // Handle inclusive title search
+    // Handle inclusive title search with title_vector
     if (includeTitles.length > 0) {
-      const titleConditions = includeTitles.map((_, idx) => {
-        paramsArray.push(`%${includeTitles[idx]}%`);
-        return `title ILIKE $${paramsArray.length}`;
+      const titleConditions = includeTitles.map((title) => {
+        // Convert to tsquery format - replace spaces with & for AND search
+        paramsArray.push(title.trim().replace(/\s+/g, ' & '));
+        return `title_vector @@ to_tsquery('english', $${paramsArray.length})`;
       });
       queryText += ` AND (${titleConditions.join(' OR ')})`;
     }
@@ -347,10 +403,12 @@ export async function getJobPostingsCount(searchParams) {
       });
     }
 
+    // Use location_vector for location search
     if (locations.length > 0) {
-      const locationConditions = locations.map((_, idx) => {
-        paramsArray.push(`%${locations[idx]}%`);
-        return `LOWER(location) LIKE LOWER($${paramsArray.length})`;
+      const locationConditions = locations.map((location) => {
+        // Convert to tsquery format for location search
+        paramsArray.push(location.trim().replace(/\s+/g, ' & '));
+        return `location_vector @@ to_tsquery('simple', $${paramsArray.length})`;
       });
       queryText += ` AND (${locationConditions.join(' OR ')})`;
     }

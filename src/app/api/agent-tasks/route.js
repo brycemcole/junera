@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/pgdb';
 import { verifyToken } from '@/lib/auth';
-import { processAllPendingTasks } from '@/services/agentProcessor';
-
+import { processAllPendingTasks, processTask } from '@/services/agentProcessor';
 
 // Get all agent tasks for a user
 export async function GET(request) {
@@ -93,12 +92,28 @@ export async function POST(request) {
         processed_job_ids,
         agent_notes,
         user_profile,
-        created_at
-      ) VALUES ($1, $2, $3, $4, ARRAY[]::text[], ARRAY[]::text[], $5, NOW())
+        created_at,
+        status
+      ) VALUES ($1, $2, $3, $4, ARRAY[]::text[], ARRAY[]::text[], $5, NOW(), 'pending')
       RETURNING *
     `, [decoded.id, search_title, search_location, search_experience_level, JSON.stringify(userProfile)]);
 
-    return NextResponse.json({ task: result.rows[0] });
+    const newTask = result.rows[0];
+    
+    // Trigger immediate processing for this task in the background
+    // We don't await this to respond quickly to the user
+    (async () => {
+      try {
+        await query(`UPDATE agent_tasks SET status = 'processing' WHERE id = $1`, [newTask.id]);
+        await processTask(newTask.id);
+        await query(`UPDATE agent_tasks SET status = 'completed' WHERE id = $1`, [newTask.id]);
+      } catch (error) {
+        console.error(`Error processing task ${newTask.id}:`, error);
+        await query(`UPDATE agent_tasks SET status = 'error' WHERE id = $1`, [newTask.id]);
+      }
+    })();
+
+    return NextResponse.json({ task: newTask });
   } catch (error) {
     console.error('Error creating agent task:', error);
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });

@@ -44,15 +44,6 @@ function DateDisplay({ postedDate }) {
     );
 }
 
-const JobCard = ({ job, onClick }) => {
-    return (
-        <div className="p-4 border rounded mb-2 cursor-pointer" onClick={() => onClick(job)}>
-            <h3 className="font-bold">{job.title}</h3>
-            <p>{job.company} - {job.location}</p>
-            {/* ...other job details... */}
-        </div>
-    );
-};
 
 export const JobList = ({ data, loading, error, setCid }) => {
     const router = useRouter();
@@ -66,6 +57,9 @@ export const JobList = ({ data, loading, error, setCid }) => {
     // Track which jobs have already been prefetched
     const prefetchedJobs = useRef(new Set());
 
+    // Get current page from URL
+    const currentPage = searchParams.get('page') || '1';
+
     useEffect(() => {
         const handleResize = () => {
             const newThreshold = window.innerWidth >= 768 ? 300 : 160;
@@ -77,50 +71,6 @@ export const JobList = ({ data, loading, error, setCid }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        // Set up Intersection Observer to detect when job cards are visible
-        const observerOptions = {
-            root: null, // use viewport as root
-            rootMargin: '100px', // start prefetching when job is 100px away from viewport
-            threshold: 0.1 // trigger when at least 10% of the job card is visible
-        };
-
-        const observerCallback = (entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const jobId = entry.target.id.replace('job-', '');
-                    
-                    // Only prefetch if we haven't already
-                    if (!prefetchedJobs.current.has(jobId)) {
-                        // Prefetch the job details
-                        router.prefetch(`/job-postings/${jobId}`);
-                        prefetchedJobs.current.add(jobId);
-                        console.log(`Prefetched job: ${jobId}`);
-                    }
-                }
-            });
-        };
-
-        const observer = new IntersectionObserver(observerCallback, observerOptions);
-
-        // Observe all job cards
-        if (data && data.length > 0) {
-            data.forEach(job => {
-                const jobElement = document.getElementById(`job-${job.id}`);
-                if (jobElement) {
-                    observer.observe(jobElement);
-                    jobRefs.current[job.id] = jobElement;
-                }
-            });
-        }
-
-        return () => {
-            // Cleanup observer on component unmount
-            if (observer) {
-                observer.disconnect();
-            }
-        };
-    }, [data, router]);
 
     const toggleSummary = (jobId) => {
         setExpandedSummaries(prev => {
@@ -132,52 +82,6 @@ export const JobList = ({ data, loading, error, setCid }) => {
             }
             return newSet;
         });
-    };
-
-    const handleViewJob = async (job) => {
-        if (user) {
-            try {
-                await fetch(`/api/job-postings/${job.id}/view-status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${user.token}`,
-                    }
-                });
-    
-                const event = new CustomEvent('jobViewed', {
-                    detail: { jobId: job.id, isViewed: true }
-                });
-                window.dispatchEvent(event);
-            } catch (error) {
-                console.error('Error tracking view:', error);
-            }
-        }
-    
-        // Check if we're on a job details page
-        const currentPath = window.location.pathname;
-        const currentJobId = currentPath.split('/').pop();
-        
-        // If we're already on this job's details page, do nothing
-        if (currentPath === `/job-postings/${job.id}`) {
-            return;
-        }
-    
-        // Handle navigation based on screen size
-        if (window.innerWidth < 768) {
-            router.push(`/job-postings/${job.id}`);
-        } else {
-            if (searchParams.get('cid')) {
-                setCid(job.id);
-            } else {
-                router.push(`/job-postings/${job.id}`);
-            }
-        }
-    };
-
-    const closePreviewSidebar = () => {
-        router.push('/job-postings', { shallow: true });
-        setPreviewJobId(null);
     };
 
     if (error) {
@@ -199,45 +103,63 @@ export const JobList = ({ data, loading, error, setCid }) => {
         <div className="w-full">
             <div className="w-full">
                 {data.map((job, index) => (
+                    <Link 
+                        href={`/job-postings/${job.id}?fromPage=${currentPage}${
+                            searchParams.get('title') ? `&title=${searchParams.get('title')}` : ''
+                        }${
+                            searchParams.get('explevel') ? `&explevel=${searchParams.get('explevel')}` : ''
+                        }${
+                            searchParams.get('location') ? `&location=${searchParams.get('location')}` : ''
+                        }${
+                            searchParams.get('company') ? `&company=${searchParams.get('company')}` : ''
+                        }${
+                            searchParams.get('keywords') ? `&keywords=${searchParams.get('keywords')}` : ''
+                        }${
+                            searchParams.get('saved') ? `&saved=${searchParams.get('saved')}` : ''
+                        }`} 
+                        prefetch={true}
+                        key={job.id || index}
+                    >
                     <div
-                        key={job.id || index} // Use job.id if available, otherwise index
                         id={`job-${job.id}`}
                         ref={el => { jobRefs.current[job.id] = el; }}
-                        className="flex flex-row items-center gap-4 group py-6 md:py-3 transition duration-200 ease-in-out w-full  border-gray-200/50 last:border-none relative" // Added relative positioning
+                        className="flex flex-row items-center gap-4 group py-3 my-4 md:py-3 transition duration-200 ease-in-out w-full relative" // Added relative positioning
                     >
                         <div className="flex flex-col min-w-0 gap-0 flex-grow overflow-hidden">
-                            <div className="flex flex-row items-start gap-2">
-                                <div className="flex flex-col gap-1 w-full">
-                                    <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex overflow-hidden"> {/* Removed items-center */}
-                                        {job.company ? (
-                                            <Link href={{ pathname: `/companies/${job.company}`, query: router.query }} className="inline-flex items-center flex-shrink-0">
-                                                <Avatar className="w-6 h-6 rounded-full flex-shrink-0 mr-2">
+                            <div className="flex flex-row items-center gap-2">
+                            {/*
+                            job.company ? (
+                                            <div className="inline-flex items-center flex-shrink-0">
+                                                <Avatar className="w-14 h-14 rounded-md flex-shrink-0 mr-2">
                                                     <AvatarImage src={`https://logo.clearbit.com/${job.company}.com`} loading="lazy" />
-                                                    <AvatarFallback className="rounded-full">
+                                                    <AvatarFallback className="rounded-md">
                                                         {job.company?.charAt(0).toUpperCase()}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                            </Link>
+                                            </div>
                                         ) : (
                                             <Avatar className="w-5 h-5 flex-shrink-0 mr-2">
-                                                <AvatarFallback>
+                                                <AvatarFallback className="rounded-md">
                                                     {job.company?.charAt(0).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-                                        )}
-                                        <div className="text-lg truncate">
-                                            <span className="font-semibold text-gray-500 company-name truncate">{job?.company || "No company name available"}</span>
-                                            <span className="mx-[3px]"></span>
-                                            <Link href={`/job-postings/${job.id}`} prefetch={true}>
-                                                <span className="truncate">{job?.title || "No job titles available"}
-                                                    <span className="text-sm text-muted-foreground"> - {parseUSLocations(job?.location)}</span>
-                                                </span>
-                                            </Link>
-
+                                        )*/}
+                                <div className="flex flex-col gap-2 w-full">
+                                    <h3 className="scroll-m-20 text-md text-foreground font-semibold tracking-tight flex overflow-hidden"> {/* Removed items-center */}
+                                        <div className="text-sm truncate">
+                                            <span className="font-medium company-name truncate">{job?.company || "No company name available"}</span>
                                         </div>
                                     </h3>
+                                    <div className="text-md font-semibold text-foreground job-title group-hover:underline transition duration-200 ease-in-out">{job?.title || "No job title available"}</div>
 
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 flex-wrap">
+
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                                    {parseUSLocations(job?.location)}
+                                    {job?.location && job?.location !== 'null' && (
+                                        <>
+                                            <span className="text-muted-foreground">•</span>
+                                            </>
+                                    )}
                                         <DateDisplay postedDate={job.postedDate} />
                                         {job.experienceLevel && job.experienceLevel !== 'null' && (
                                             <>
@@ -280,16 +202,10 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                         </div>
                                     )
                                         :
-                                        job?.description ? (
-                                            <div className="text-md mb-2">
-                                                <p className={`text-muted-foreground text-[16px] leading-relaxed break-words transition-all duration-300 ${expandedSummaries.has(job.id) ? '' : 'line-clamp-2'}`}>
-                                                    {DOMPurify.sanitize(fullStripHTML(decodeHTMLEntities(job.description)))}
-                                                </p>
-                                            </div>
-                                        ) : null}
+                                        null}
                                         
                                     {job.keywords && job.keywords.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
+                                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground text-center items-center">
                                             {job.keywords.slice(0, 5).map((keyword, idx) => (
                                                 <KeywordBadge 
                                                     key={idx}
@@ -299,15 +215,14 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                                 />
                                             ))}
                                             {job.keywords.length > 5 && (
-                                                <span className="text-xs text-muted-foreground px-2 py-0.5">
+                                                <>
                                                     +{job.keywords.length - 5} more
-                                                </span>
+                                                    </>
                                             )}
                                         </div>
                                     )}
-                                </div>
-                            </div>
-                            <div className="flex flex-row gap-2 items-center justify-between flex-wrap mt-3">
+                                                                <div className="flex flex-row gap-2 items-center justify-between flex-wrap">
+{/*
                                 <div className="flex flex-row gap-2 items-center">
                                     <div onClick={() => handleViewJob(job)} className="ml-auto focus:outline-none">
                                         <ViewStatusIndicator 
@@ -316,7 +231,7 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
-                                                    className={`sm:w-36 h-8 sm:h-9 sm:text-[14px] ${
+                                                    className={`sm:w-36 h-7 sm:h-8 sm:text-[14px] ${
                                                         isViewed 
                                                         ? 'text-muted-foreground bg-muted/50 border-muted hover:bg-muted hover:text-muted-foreground' 
                                                         : 'text-blue-600 bg-blue-500/10 border border-blue-600/20 hover:bg-blue-500/20 hover:text-blue-500'
@@ -332,13 +247,18 @@ export const JobList = ({ data, loading, error, setCid }) => {
                                         <BookmarkButton jobId={job.id} size={'small'} />
                                     ) : null}
                                 </div>
+                                */}
                                 <div className="text-sm flex flex-col gap-2 flex-end">
                                     <div className="flex flex-row flex-wrap gap-2 items-center">
                                     </div>
                                 </div>
                             </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
+                    </Link>
                 ))}
                 {loading && (
                     <div className="flex justify-center py-4">
